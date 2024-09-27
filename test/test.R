@@ -2,8 +2,7 @@ install.packages("testthat")
 
 library(testthat)
 
-# Source the file that contains your function
-source("functions/functions.R") 
+
 
 test_that("calculate_tarspot_risk returns expected values for valid inputs", {
   result <- calculate_tarspot_risk(meanAT = 25, maxRH = 80, rh90_night_tot = 5, threshold = 35)
@@ -16,7 +15,7 @@ test_that("calculate_tarspot_risk returns expected values for valid inputs", {
 test_that("calculate_tarspot_risk handles invalid threshold correctly", {
   result <- calculate_tarspot_risk(meanAT = 25, maxRH = 80, rh90_night_tot = 5, threshold = 10)
   
-  # Add your assertion to check if the error is correctly returned
+  # 
   expect_equal(result$probability, NA_real_)  # Assuming NA or error for invalid threshold
 })
 
