@@ -1,0 +1,65 @@
+# Logistic function to convert logit to probability
+logistic <- function(logit) {
+  return(exp(logit) / (1 + exp(logit)))
+}
+
+# Function to classify risk based on probability and threshold
+classify_risk <- function(probability, high_threshold, medium_threshold, low_threshold = 0) {
+  if (probability >= high_threshold) {
+    return("High")
+  } else if (probability >= medium_threshold) {
+    return("Medium")
+  } else if (probability > low_threshold) {
+    return("Low")
+  } else {
+    return("NoRisk")
+  }
+}
+
+# General function to calculate risk for any disease
+calculate_disease_risk <- function(logit_values, thresholds = c(0.40, 0.20, 0), disease_name, threshold = 35) {
+  # Calculate probabilities using logistic transformation
+  probabilities <- sapply(logit_values, logistic)
+  
+  # Ensemble the probabilities by averaging
+  ensemble_prob <- mean(probabilities)
+  
+  # Classify risk based on the action threshold
+  risk_class <- classify_risk(ensemble_prob, threshold / 100, thresholds[1], thresholds[2])
+  
+  # Return results as a list
+  return(list(
+    disease = disease_name,
+    probability = round(ensemble_prob * 100, 2), 
+    risk_class = risk_class
+  ))
+}
+
+# Function to calculate risk for Tar Spot
+calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35) {
+  # Logistic regression formulas for the two models
+  logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH)
+  logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot)
+  
+  # Calculate risk using the general disease risk function
+  return(calculate_disease_risk(
+    logit_values = c(logit_LR4, logit_LR6),
+    thresholds = c(0.20, 0),  # Adjust thresholds for Tar Spot
+    disease_name = "TarSpot",
+    threshold = threshold
+  ))
+}
+
+# Function to calculate risk for Gray Leaf Spot
+calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold = 60) {
+  # Logistic regression formula for the model
+  logit_LR <- 32.06987 - (0.89471 * minAT21) - (0.14373 * minDP30)
+  
+  # Calculate risk using the general disease risk function
+  return(calculate_disease_risk(
+    logit_values = c(logit_LR),
+    thresholds = c(0.40, 0),  # Adjust thresholds for Gray Leaf Spot
+    disease_name = "GrayLeaf",
+    threshold = threshold
+  ))
+}
