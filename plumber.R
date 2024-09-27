@@ -5,7 +5,7 @@ library(plumber)
 #* @apiDescription Predict the risk of tar spot based on environmental data and user inputs.
 
 
-
+source("functions/functions.R") 
 
 #* Predict Tarspot Risk
 #* @param growth_stage Character: The growth stage of the crop ("V10", "R1","R2","R3")
