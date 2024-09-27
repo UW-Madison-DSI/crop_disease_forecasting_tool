@@ -11,15 +11,16 @@ This API replicates and provides access to the forecasting model developed to pr
 - Predicts the probability of tar spot incidence based on key environmental variables.
 - Customizable action thresholds that allow users to define risk levels for interventions.
 - Returns an ensembled probability and a color-coded risk level:
-  - WHITE: No risk (0% probability).
-  - BLUE: Low risk (1-19% probability).
-  - YELLOW: Medium risk (20-34% probability).
-  - RED: High risk (≥35% probability).
+  - NoRisk: No risk (0% probability).
+  - Low: Low risk (1-19% probability).
+  - Medium: Medium risk (20-34% probability).
+  - High: High risk (≥35% probability).
 
 API stops execution if fungicide application has been detected in the last 14 days or if the crop growth stage is outside the valid range.
 
 
 ## API Endpoints
+API [ULR](https://connect.doit.wisc.edu/forecasting_corn_disease/)
 
 /forecasting_corn_disease/
 Method: POST
