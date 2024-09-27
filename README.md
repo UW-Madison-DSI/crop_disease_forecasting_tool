@@ -1,6 +1,6 @@
-# **Tarspot Prediction Model API**
+# **Forecasting Model API**
 
-This API leverages the power of environmental data—such as air temperature, humidity, and dew point—to predict the likelihood of diseases like Tarspot and Gray Leaf Spot on crops. 
+This API leverages the power of environmental data—such as air temperature, humidity, and dew point—to predict the likelihood of diseases like Tarspot, Apothecia and Gray Leaf Spot on corn crops. 
 
 
 ### Reference:
@@ -9,7 +9,7 @@ This API leverages the power of environmental data—such as air temperature, hu
 
 ## Features
 
-- Predicts the probability of tar spot incidence based on key environmental variables.
+- Predicts the probability of disease incidence based on key environmental variables.
 - Customizable action thresholds that allow users to define risk levels for interventions.
 - Returns the probability and risk classification for the given thresholds.
 
