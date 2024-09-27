@@ -1,25 +1,13 @@
 library(plumber)
 
 # Load functions
-source("R/functions.R")
+source("R/logit_functions.R")
+source("R/crop_mangm_validations.R")
 
 #* @apiTitle Crop Disease Risk Prediction API
 #* @apiDescription This API predicts the risk of crop diseases (Tarspot and Gray Leaf Spot) based on environmental data and user inputs.
 
-# Helper function to validate growth stage and fungicide application
-validate_growth_and_fungicide <- function(growth_stage, fungicide_applied) {
-  allowed_stages <- c("V10", "V11", "V12", "V13", "R1", "R2", "R3")
-  
-  if (fungicide_applied == "yes") {
-    return(list(valid = FALSE, message = "no possible", reason = "Fungicide was applied in the last 14 days"))
-  }
-  
-  if (!(growth_stage %in% allowed_stages)) {
-    return(list(valid = FALSE, message = "no possible", reason = "Growth stage is not within V10 to R3"))
-  }
-  
-  return(list(valid = TRUE))
-}
+
 
 #* Predict Tarspot Risk
 #* @param growth_stage Character: The growth stage of the crop ("V10", "R1", "R2", "R3")
