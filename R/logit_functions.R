@@ -73,7 +73,7 @@ calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA, threshold = 40) {
   return(calculate_disease_risk(
     logit_values = c(logit_mu),
     thresholds = c(0.40, 0.20, 0),  # Adjust thresholds for non-irrigated fields
-    disease_name = "ApothecialPresence(Non-Irrigated)",
+    disease_name = "Apothecial(Non-Irrigated)",
     threshold = threshold
   ))
 }
@@ -90,7 +90,7 @@ calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing, threshol
   return(calculate_disease_risk(
     logit_values = c(logit_mu),
     thresholds = c(0.50, 0.30, 0),  # Adjust thresholds for irrigated fields
-    disease_name = "ApothecialPresence(Irrigated)",
+    disease_name = "Apothecial(Irrigated)",
     threshold = threshold
   ))
 }
