@@ -5,8 +5,9 @@ account: moros2
 server: connect.doit.wisc.edu
 hostUrl: https://connect.doit.wisc.edu/__api__
 appId: 365
-bundleId: 2217
-url: https://connect.doit.wisc.edu/content/e2610266-0310-4d45-93e9-735ff1d7ec6d/
+bundleId: 2226
+url: https://connect.doit.wisc.edu/forecasting_corn_disease/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
+ignoredFiles: example/api_call_surface.R|example/example_api_call.R|LICENSE.md|README.md|test/test.R
