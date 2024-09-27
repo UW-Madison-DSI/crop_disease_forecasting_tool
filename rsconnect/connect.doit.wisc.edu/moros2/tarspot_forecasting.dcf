@@ -1,0 +1,12 @@
+name: tarspot_forecasting
+title: tarspot_forecasting
+username: moros2
+account: moros2
+server: connect.doit.wisc.edu
+hostUrl: https://connect.doit.wisc.edu/__api__
+appId: 365
+bundleId: 2217
+url: https://connect.doit.wisc.edu/content/e2610266-0310-4d45-93e9-735ff1d7ec6d/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
