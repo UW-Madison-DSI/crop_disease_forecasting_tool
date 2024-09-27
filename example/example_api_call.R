@@ -8,7 +8,7 @@ install.packages("httr")
 library(httr)
 
 # Define the URL for the API
-url <- "https://connect.doit.wisc.edu/forecasting_corn_disease/predict"
+url <- "https://connect.doit.wisc.edu/forecasting_corn_disease/predict_traspot"
 
 # Define the data to be sent in the POST request
 body <- list(

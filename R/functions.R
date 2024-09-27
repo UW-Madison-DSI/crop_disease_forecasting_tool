@@ -63,3 +63,34 @@ calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold = 60) {
     threshold = threshold
   ))
 }
+
+# Function to calculate risk for non-irrigated fields
+calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA, threshold = 40) {
+  # Logistic regression formula for non-irrigated model
+  logit_mu <- -0.47 * maxAT30MA - 1.01 * maxWS30MA + 16.65
+  
+  # Calculate risk using the general disease risk function
+  return(calculate_disease_risk(
+    logit_values = c(logit_mu),
+    thresholds = c(0.40, 0.20, 0),  # Adjust thresholds for non-irrigated fields
+    disease_name = "ApothecialPresence(Non-Irrigated)",
+    threshold = threshold
+  ))
+}
+
+# Function to calculate risk for irrigated fields
+calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing, threshold = 50) {
+  # Determine row value (0 for 15-inch, 1 for 30-inch)
+  row <- ifelse(row_spacing == 30, 1, 0)
+  
+  # Logistic regression formula for irrigated model
+  logit_mu <- -2.38 * row + 0.65 * maxAT30MA + 0.38 * maxRH30MA - 52.65
+  
+  # Calculate risk using the general disease risk function
+  return(calculate_disease_risk(
+    logit_values = c(logit_mu),
+    thresholds = c(0.50, 0.30, 0),  # Adjust thresholds for irrigated fields
+    disease_name = "ApothecialPresence(Irrigated)",
+    threshold = threshold
+  ))
+}

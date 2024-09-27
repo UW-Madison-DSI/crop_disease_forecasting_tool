@@ -18,7 +18,12 @@ This API leverages the power of environmental data—such as air temperature, hu
 API [ULR](https://connect.doit.wisc.edu/forecasting_corn_disease/)
 
 /predict_tarspot
+
 /predict_gray_leaf_spot
+
+/predict_non_irrigated_apothecial
+
+/predict_irrigated_apothecial
 
 
 Method: POST
@@ -26,7 +31,7 @@ Method: POST
 
 Response: A JSON object containing the predicted probability of tar spot incidence and the associated risk level.
 
-See example (here)[https://connect.doit.wisc.edu/forecasting_corn_disease/]
+See example of the api call (here)[https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/example/example_api_call.R]
 
 
 ### License
