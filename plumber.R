@@ -14,19 +14,19 @@ source("R/var_schema.R")
 #* @param growth_stage Character: The growth stage of the crop ("V10", "R1", "R2", "R3")
 #* @param fungicide_applied Character: "yes" if fungicide was applied in the last 14 days, "no" otherwise
 #* @param risk_threshold Numeric: Action threshold (default = 35%)
-#* @param mean_air_temp_30_day_moving_avg Numeric: 30-day moving average of mean air temperature (°C)
-#* @param max_relative_humidity_30_day_moving_avg Numeric: 30-day moving average of max relative humidity (%)
-#* @param total_nighttime_rh_above_90_pct_14_day_moving_avg Numeric: 14-day moving average of nighttime RH > 90%
+#* @param meanAT21 Numeric: 30-day moving average of mean air temperature (°C)
+#* @param maxRH30MA Numeric: 30-day moving average of max relative humidity (%)
+#* @param totNTH14MA Numeric: 14-day moving average of nighttime RH > 90%
 #* @post /predict_tarspot
 function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 35,
-         mean_air_temp_30_day_moving_avg, max_relative_humidity_30_day_moving_avg,
-         total_nighttime_rh_above_90_pct_14_day_moving_avg) {
+         minAT21, maxRH30MA,
+         totNTH14MA) {
   
   # Validate inputs
   risk_threshold <- as.numeric(risk_threshold)
-  mean_air_temp_30_day_moving_avg <- as.numeric(mean_air_temp_30_day_moving_avg)
-  max_relative_humidity_30_day_moving_avg <- as.numeric(max_relative_humidity_30_day_moving_avg)
-  total_nighttime_rh_above_90_pct_14_day_moving_avg <- as.numeric(total_nighttime_rh_above_90_pct_14_day_moving_avg)
+  meanAT21 <- as.numeric(meanAT21)
+  maxRH30MA <- as.numeric(maxRH30MA)
+  totNTH14MA <- as.numeric(totNTH14MA)
   
   validation <- validate_growth_and_fungicide(growth_stage, fungicide_applied)
   if (!validation$valid) {
@@ -39,8 +39,8 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 35,
   }
   
   # Call the tarspot risk calculation function
-  result <- calculate_tarspot_risk(mean_air_temp_30_day_moving_avg,
-                                   max_relative_humidity_30_day_moving_avg,
+  result <- calculate_tarspot_risk(meanAT21,
+                                   maxRH30MA,
                                    total_nighttime_rh_above_90_pct_14_day_moving_avg,
                                    risk_threshold)
   
