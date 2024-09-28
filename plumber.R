@@ -3,6 +3,7 @@ library(plumber)
 # Load functions
 source("R/logit_functions.R")
 source("R/crop_mangm_validations.R")
+source("R/var_schema.R")
 
 #* @apiTitle Crop Disease Risk Prediction API
 #* @apiDescription This API predicts the risk of crop diseases (Tarspot and Gray Leaf Spot) based on environmental data and user inputs.
@@ -78,3 +79,43 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 60,
   # Return the result as JSON
   return(result)
 }
+
+
+#* Calculate risk for apothecia non-irrigated fields
+#* @param maxAT30MA Numeric: 30-day moving average of maximum air temperature (°C)
+#* @param maxWS30MA Numeric: 30-day moving average of maximum wind speed (m/s)
+#* @param threshold Numeric: Risk threshold (default = 40%)
+#* @post /calculate_non_irrigated_risk
+function(maxAT30MA, maxWS30MA, threshold = 40) {
+  # Convert inputs to numeric (in case they are passed as strings)
+  maxAT30MA <- as.numeric(maxAT30MA)
+  maxWS30MA <- as.numeric(maxWS30MA)
+  threshold <- as.numeric(threshold)
+  
+  # Call the risk calculation function
+  result <- calculate_non_irrigated_risk(maxAT30MA, maxWS30MA, threshold)
+  
+  # Return the result
+  return(result)
+}
+
+#* Calculate risk for apothecia irrigated fields
+#* @param maxAT30MA Numeric: 30-day moving average of maximum air temperature (°C)
+#* @param maxRH30MA Numeric: 30-day moving average of maximum relative humidity (%)
+#* @param row_spacing Numeric: Row spacing in inches (either 15 or 30)
+#* @param threshold Numeric: Risk threshold (default = 50%)
+#* @post /calculate_irrigated_risk
+function(maxAT30MA, maxRH30MA, row_spacing, threshold = 50) {
+  # Convert inputs to numeric
+  maxAT30MA <- as.numeric(maxAT30MA)
+  maxRH30MA <- as.numeric(maxRH30MA)
+  row_spacing <- as.numeric(row_spacing)
+  threshold <- as.numeric(threshold)
+  
+  # Call the risk calculation function
+  result <- calculate_irrigated_risk(maxAT30MA, maxRH30MA, row_spacing, threshold)
+  
+  # Return the result
+  return(result)
+}
+
