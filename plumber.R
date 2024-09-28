@@ -85,7 +85,7 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 60,
 #* @param maxAT30MA Numeric: 30-day moving average of maximum air temperature (°C)
 #* @param maxWS30MA Numeric: 30-day moving average of maximum wind speed (m/s)
 #* @param threshold Numeric: Risk threshold (default = 40%)
-#* @post /calculate_non_irrigated_risk
+#* @post /calculate_non_irrigated_sporecaster
 function(maxAT30MA, maxWS30MA, threshold = 40) {
   # Convert inputs to numeric (in case they are passed as strings)
   maxAT30MA <- as.numeric(maxAT30MA)
@@ -104,7 +104,7 @@ function(maxAT30MA, maxWS30MA, threshold = 40) {
 #* @param maxRH30MA Numeric: 30-day moving average of maximum relative humidity (%)
 #* @param row_spacing Numeric: Row spacing in inches (either 15 or 30)
 #* @param threshold Numeric: Risk threshold (default = 50%)
-#* @post /calculate_irrigated_risk
+#* @post /calculate_irrigated_sporecaster
 function(maxAT30MA, maxRH30MA, row_spacing, threshold = 50) {
   # Convert inputs to numeric
   maxAT30MA <- as.numeric(maxAT30MA)

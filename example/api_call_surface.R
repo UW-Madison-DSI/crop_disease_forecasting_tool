@@ -1,3 +1,7 @@
+###############################################################################
+########################### REPLICATING FIGURES 6 PAPER, SURFACE ON GRID
+###############################################################################
+
 # Install and load required packages
 if (!require(plotly)) install.packages("plotly")
 if (!require(httr)) install.packages("httr")
@@ -57,16 +61,14 @@ grid$z <- tryCatch({
   return(rep(NA, nrow(grid)))  # Return NAs in case of error
 })
 
-# View the resulting grid with the new 'z' column
 print(grid)
 
-
+###############################################################################
 # Ensure you have plotly installed
 if (!require(plotly)) install.packages("plotly")
 library(plotly)
 
-# Assuming 'grid' dataframe has temp, humidity, and z
-# Check the grid structure and reshape the z values if necessary
+
 
 # Number of unique temperatures and humidities
 n_temp <- length(unique(grid$temp))
