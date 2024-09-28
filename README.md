@@ -21,9 +21,9 @@ API [ULR](https://connect.doit.wisc.edu/forecasting_corn_disease/)
 
 /predict_gray_leaf_spot
 
-/predict_non_irrigated_apothecial
+/calculate_non_irrigated_sporecaster
 
-/predict_irrigated_apothecial
+/calculate_irrigated_sporecaster
 
 
 Method: POST
