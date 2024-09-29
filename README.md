@@ -35,3 +35,8 @@ See example of the api call (here)[https://github.com/UW-Madison-DSI/corn_diseas
 ### License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+
+### Acknowledgements
+
+This software was created by the [Data Science Institute](https://datascience.wisc.edu) at the [University of Wisconsin-Madison](https://www.wisc.edu)
