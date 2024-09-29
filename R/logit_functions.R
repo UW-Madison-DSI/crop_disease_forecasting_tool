@@ -1,18 +1,16 @@
 # Logistic function to convert logit to probability
 logistic <- function(logit) {
-  return(exp(logit) / (1 + exp(logit)))
+  exp(logit) / (1 + exp(logit))
 }
 
-# Function to classify risk based on probability and threshold
+# Function to classify risk based on probability and thresholds
 classify_risk <- function(probability, high_threshold, medium_threshold, low_threshold = 0) {
   if (probability >= high_threshold) {
     return("High")
   } else if (probability >= medium_threshold) {
     return("Medium")
-  } else if (probability > low_threshold) {
-    return("Low")
   } else {
-    return("NoRisk")
+    return("Low")
   }
 }
 
@@ -24,18 +22,18 @@ calculate_disease_risk <- function(logit_values, thresholds = c(0.40, 0.20, 0), 
   # Ensemble the probabilities by averaging
   ensemble_prob <- mean(probabilities)
   
-  # Classify risk based on the action threshold
+  # Classify risk based on thresholds and the user-defined action threshold
   risk_class <- classify_risk(ensemble_prob, threshold / 100, thresholds[1], thresholds[2])
   
   # Return results as a list
   return(list(
     disease = disease_name,
-    probability = round(ensemble_prob * 100, 2), 
+    probability = round(ensemble_prob * 100, 2),  # Convert probability to percentage
     risk_class = risk_class
   ))
 }
 
-# Function to calculate risk for Tar Spot
+# Function to calculate risk for Tar Spot based on two logistic regression models
 calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35) {
   # Logistic regression formulas for the two models
   logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH)
@@ -43,12 +41,13 @@ calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35
   
   # Calculate risk using the general disease risk function
   return(calculate_disease_risk(
-    logit_values = c(logit_LR4, logit_LR6),
-    thresholds = c(0.20, 0),  
-    disease_name = "TarSpot",
-    threshold = threshold
+    logit_values = c(logit_LR4, logit_LR6),      # Two models' logit values
+    thresholds = c(0.35, 0.20),                  # Risk classification thresholds
+    disease_name = "TarSpot",                    # Disease name
+    threshold = threshold                        # User-defined threshold (default 35%)
   ))
 }
+
 
 # Function to calculate risk for Gray Leaf Spot
 calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold = 60) {

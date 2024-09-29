@@ -1,96 +1,69 @@
-###############################################################################
-########################### REPLICATING FIGURES 6 PAPER, SURFACE ON GRID
-###############################################################################
+# Required Libraries
+library(plotly)  # For 3D plotting
+library(httr)    # For making API requests
+library(jsonlite) # For handling JSON
+library(tidyr)   # For working with data
 
-# Install and load required packages
-if (!require(plotly)) install.packages("plotly")
-if (!require(httr)) install.packages("httr")
-if (!require(jsonlite)) install.packages("jsonlite")
+# Generate the grid for total_nighttime_rh_above_90_pct_14_day_moving_avg and mean_air_temp_30_day_moving_avg
+x_range <- seq(0, 14, length.out = 50)  # total_nighttime_rh_above_90_pct_14_day_moving_avg (0-14)
+y_range <- seq(16, 26, length.out = 50)  # mean_air_temp_30_day_moving_avg (16-26)
 
-library(plotly)
-library(httr)
-library(jsonlite)
+# Create a mesh grid of x and y
+grid <- expand.grid(x = x_range, y = y_range)
 
-# Sample Data
-# Sample Data
-n <- 5
-temp <- seq(9.58, 20.580000, length.out = n)  # Adjusted for example
-humidity <- seq(82.310000, 99.5, length.out = n)  # Adjusted for example
-total_rh <- seq(4.01, 14.9, length.out = n)  # Adjusted for example
+# API URL
+url <- "https://connect.doit.wisc.edu/forecasting_corn_disease/predict_tarspot_risk"
 
-# Create a grid of all combinations
-grid <- expand.grid(temp = temp, humidity = humidity, total_rh = total_rh)
+# Initialize a vector to store predictions
+z_grid <- rep(NA, nrow(grid))
 
-# Function to call the API and get the probability (assuming it's defined as before)
-get_probability <- function(temp, humidity, total_rh) {
-  url <- "https://connect.doit.wisc.edu/forecasting_corn_disease/predict"
-  body <- list(
-    growth_stage = 'R1',
-    fungicide_applied = 'no',
-    risk_threshold = 35, 
-    mean_air_temp_30_day_moving_avg = temp,
-    max_relative_humidity_30_day_moving_avg = humidity,
-    total_nighttime_rh_above_90_pct_14_day_moving_avg = total_rh
+# Loop through the grid and predict z for each (x, y) combination
+for (i in 1:nrow(grid)) {
+  x_val <- grid$x[i]
+  y_val <- grid$y[i]
+  
+  # Prepare API data
+  api_data <- list(
+    growth_stage = 'R1',  # Static value
+    fungicide_applied = 'no',  # Static value
+    risk_threshold = 50,  # Static value
+    meanAT = y_val,
+    maxRH = 95.72,  # Static value for maxRH
+    rh90_night_tot = x_val
   )
   
-  # Convert body to JSON and send the POST request
-  body_json <- jsonlite::toJSON(body, auto_unbox = TRUE)
-  response <- httr::POST(url, body = body_json, httr::content_type_json())
+  # Make the POST request
+  response <- POST(url, body = toJSON(api_data), encode = "json")
   
-  # Check the response status and handle errors
-  if (httr::status_code(response) == 200) {
-    content_raw <- httr::content(response, 'text', encoding = "UTF-8")
-    probability <- as.numeric(jsonlite::fromJSON(content_raw)['probability'])
-    #jsonlite::fromJSON(content_raw))
-    return(probability)
+  # Parse the response if successful
+  if (status_code(response) == 200) {
+    response_json <- content(response, as = "parsed", type = "application/json")
+    prediction <- response_json$probability[[1]]  # Extract the probability from the response
+    z_grid[i] <- prediction  # Store the prediction in the z_grid
   } else {
-    warning(paste("API call failed with status code:", httr::status_code(response)))
-    return(NA)
+    print(paste("Request failed at index", i))
   }
 }
 
-# Use mapply to call the API for each row and store the result in a new column 'z'
-# Capture warnings to check failed API calls
-grid$z <- tryCatch({
-  mapply(get_probability, grid$temp, grid$humidity, grid$total_rh)
-}, warning = function(w) {
-  message("Warning caught: ", conditionMessage(w))
-  return(rep(NA, nrow(grid)))  # Return NAs in case of failure
-}, error = function(e) {
-  message("Error caught: ", conditionMessage(e))
-  return(rep(NA, nrow(grid)))  # Return NAs in case of error
-})
+# Reshape the data for 3D plotting (z_grid must be in matrix form for plotly)
+z_matrix <- matrix(z_grid, nrow = length(y_range), ncol = length(x_range))
 
-print(grid)
+# Create a 3D surface plot
+fig <- plot_ly(
+  x = x_range, y = y_range, z = z_matrix, 
+  type = "surface"
+)
 
-###############################################################################
-# Ensure you have plotly installed
-if (!require(plotly)) install.packages("plotly")
-library(plotly)
-
-
-
-# Number of unique temperatures and humidities
-n_temp <- length(unique(grid$temp))
-n_humidity <- length(unique(grid$humidity))
-
-# Reshape the z values to a matrix for surface plot
-z_matrix <- matrix(grid$z, nrow = n_temp, ncol = n_humidity)
-
-# Reshape temp and humidity to grids (optional, but for clarity)
-temp_grid <- matrix(grid$temp, nrow = n_temp, ncol = n_humidity)
-humidity_grid <- matrix(grid$humidity, nrow = n_temp, ncol = n_humidity)
-
-# Create the 3D surface plot
-plot <- plot_ly(x= ~humidity_grid, y = ~temp_grid, z = ~z_matrix, type = "surface") %>%
-  layout(
-    scene = list(
-      xaxis = list(title = "Max Relative Humidity (30-day Moving Avg)"),
-      yaxis = list(title = "Mean Air Temp (30-day Moving Avg)"),
-      zaxis = list(title = "Probability")
-    ),
-    title = "3D Surface Plot of Corn Disease Probability"
+# Customize layout
+fig <- fig %>% layout(
+  title = '3D Surface Plot of Tar Spot Prediction',
+  scene = list(
+    xaxis = list(title = 'Total Nighttime RH > 90% (14-day Moving Avg)'),
+    yaxis = list(title = 'Mean Air Temperature (30-day Moving Avg)'),
+    zaxis = list(title = 'Prediction')
   )
+)
 
-# Display the plot
-plot
+# Show the plot
+fig
+#saved as: example/plots/tarspot_example_api_call.png
