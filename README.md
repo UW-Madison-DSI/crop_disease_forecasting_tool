@@ -1,6 +1,6 @@
 # **Forecasting Model API**
 
-This API leverages the power of environmental data—such as air temperature, humidity, and dew point—to predict the likelihood of diseases like Tarspot, Apothecia and Gray Leaf Spot on corn crops. 
+This API leverages the power of environmental data to predict the likelihood of diseases like Tarspot, Spore and Gray Leaf Spot on corn crops. 
 
 
 ### Reference:
@@ -17,13 +17,11 @@ This API leverages the power of environmental data—such as air temperature, hu
 ## API Endpoints
 API [ULR](https://connect.doit.wisc.edu/forecasting_corn_disease/)
 
-/predict_tarspot
+/predict_tarspot_risk
 
 /predict_gray_leaf_spot
 
-/calculate_non_irrigated_sporecaster
-
-/calculate_irrigated_sporecaster
+/predict_sporecaster_risk
 
 
 Method: POST

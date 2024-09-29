@@ -1,12 +1,19 @@
-# Var names
-VariableNamesSchema <- list(
-  growth_stage = "growth_stage",
-  fungicide_applied = "fungicide_applied",
-  risk_threshold = "risk_threshold",
-  mean_air_temp_30_day_moving_avg = "mean_air_temp_30_day_moving_avg",
-  max_relative_humidity_30_day_moving_avg = "max_relative_humidity_30_day_moving_avg",
-  total_nighttime_rh_above_90_pct_14_day_moving_avg = "total_nighttime_rh_above_90_pct_14_day_moving_avg",
-  minAT21 = "minAT21",
-  minDP30 = "minDP30"
-)
+
+# Function to convert a list of variables to numeric
+convert_to_numeric <- function(data, variables) {
+  for (var in variables) {
+    # Check if the variable exists in the data (environment)
+    if (exists(var, envir = data)) {
+      # Convert the variable to numeric, handling non-convertible values as NA
+      assign(var, as.numeric(get(var, envir = data)), envir = data)
+      
+      # Optionally, print a message for confirmation
+      message(paste("Converted", var, "to numeric"))
+    } else {
+      # Print a warning if the variable is not found in the environment
+      warning(paste("Variable", var, "not found"))
+    }
+  }
+}
+
 
