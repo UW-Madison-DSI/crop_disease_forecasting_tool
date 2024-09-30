@@ -19,7 +19,7 @@ This API leverages the power of environmental data to predict the likelihood of 
 ├── README.md          <- The top-level README for developers using this project.
 ├── plumber.R          <- API endpoints definitions.
 ├── R                  <- Core API logic functions.
-├── cleaning          <- Cleaning phase, the outputs are the ones in ready_for_analysis
+├── example          <- Example of how to call this API.  
 ├── test             <- Unit test
 ├── .github/workflows             <- CI-CD logic for deployment.
 ```
