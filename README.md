@@ -13,6 +13,16 @@ This API leverages the power of environmental data to predict the likelihood of 
 - Customizable action thresholds that allow users to define risk levels for interventions.
 - Returns the probability and risk classification for the given thresholds.
 
+## Project Structure
+```plaintext
+├── LICENSE.md          <- The top-level LICENSE for developers using this project.
+├── README.md          <- The top-level README for developers using this project.
+├── plumber.R          <- API endpoints definitions.
+├── R                  <- Core API logic functions.
+├── cleaning          <- Cleaning phase, the outputs are the ones in ready_for_analysis
+├── test             <- Unit test
+├── .github/workflows             <- CI-CD logic for deployment.
+```
 
 ## API Endpoints
 API [ULR](https://connect.doit.wisc.edu/forecasting_corn_disease/)
