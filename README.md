@@ -2,9 +2,14 @@
 
 This API leverages the power of environmental data to predict the likelihood of diseases like Tarspot, Spore and Gray Leaf Spot on corn crops. 
 
+## To install
+```bash
+git clone https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git
+cd corn_disease_forecast_api
+```
 
-### Reference:
-- Original paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
+## Usage
+See example of the api call [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/example/example_api_call.R)
 
 
 ## Features
@@ -25,24 +30,29 @@ This API leverages the power of environmental data to predict the likelihood of 
 ```
 
 ## API Endpoints
-API [ULR](https://connect.doit.wisc.edu/forecasting_corn_disease/)
 
-/predict_tarspot_risk
+**Base URL**: [Forecast Crop Disease API](https://connect.doit.wisc.edu/forecasting_crop_disease/)
 
-/predict_gray_leaf_spot_risk
+### Endpoints:
 
-/predict_sporecaster_risk
+- `/predict_tarspot_risk`  
+  Predicts the probability and risk level for **Tarspot**.
+
+- `/predict_gray_leaf_spot_risk`  
+  Predicts the probability and risk level for **Gray Leaf Spot**.
+
+- `/predict_sporecaster_risk`  
+  Predicts the probability and risk level for **Spore**.
 
 
-Method: POST
-
+Method: `POST` 
 
 Response: A JSON object containing the predicted probability of tar spot incidence and the associated risk level.
 
-See example of the api call [LINK](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/example/example_api_call.R)
+## Reference:
+- Original paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
 
-
-### License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
