@@ -56,11 +56,11 @@ fig <- plot_ly(
 
 # Customize layout
 fig <- fig %>% layout(
-  title = '3D Surface Plot of Tar Spot Prediction',
+  title = 'Tar Spot Prediction',
   scene = list(
-    xaxis = list(title = 'Total Nighttime RH > 90% (14-day Moving Avg)'),
-    yaxis = list(title = 'Mean Air Temperature (30-day Moving Avg)'),
-    zaxis = list(title = 'Prediction')
+    xaxis = list(title = 'Total Nigh RH > 90% (14d MA)'),
+    yaxis = list(title = 'Mean AT (30d MA)'),
+    zaxis = list(title = 'Risk')
   )
 )
 

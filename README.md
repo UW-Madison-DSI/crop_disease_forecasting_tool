@@ -29,7 +29,7 @@ API [ULR](https://connect.doit.wisc.edu/forecasting_corn_disease/)
 
 /predict_tarspot_risk
 
-/predict_gray_leaf_spot
+/predict_gray_leaf_spot_risk
 
 /predict_sporecaster_risk
 
@@ -39,9 +39,14 @@ Method: POST
 
 Response: A JSON object containing the predicted probability of tar spot incidence and the associated risk level.
 
-See example of the api call (here)[https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/example/example_api_call.R]
+See example of the api call [LINK](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/example/example_api_call.R)
 
 
 ### License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+
+### Acknowledgements
+
+This software was created by the [Data Science Institute](https://datascience.wisc.edu) at the [University of Wisconsin-Madison](https://www.wisc.edu)
