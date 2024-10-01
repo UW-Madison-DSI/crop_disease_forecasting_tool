@@ -79,12 +79,13 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 60,
 }
 
 #* Calculate sporecaster risk in irrigated and non-irrigated fields
-#* @param maxAT30MA Numeric: 30-day moving average of maximum air temperature (°C)
-#* @param maxWS30MA Numeric: 30-day moving average of maximum wind speed (m/s)
-#* @param maxRH30MA Numeric: 30-day moving average of relative humidity (only for irrigated fields)
+#* @param growth_stage Character: The growth stage of the crop ("R1", "R2", "R3")
 #* @param risk_threshold Numeric: Risk threshold (default = 40%)
 #* @param row_spacing Numeric: Row spacing in inches (either 15 or 30)
 #* @param irrigated Character: "yes" if the field was irrigated in the last 14 days, "no" otherwise
+#* @param maxAT30MA Numeric: 30-day moving average of maximum air temperature (°C)
+#* @param maxWS30MA Numeric: 30-day moving average of maximum wind speed (m/s)
+#* @param maxRH30MA Numeric: 30-day moving average of relative humidity (only for irrigated fields)
 #* @post /predict_sporecaster_risk
 calculate_sporecaster_risk <- function(maxAT30MA, maxWS30MA, maxRH30MA = NULL, 
                                        irrigated, row_spacing, risk_threshold = 40) {
@@ -98,7 +99,9 @@ calculate_sporecaster_risk <- function(maxAT30MA, maxWS30MA, maxRH30MA = NULL,
   if (!irrigated %in% c("yes", "no")) {
     return(list(error = "Invalid value for 'irrigated'. Please specify 'yes' or 'no'."))
   }
-  
+  if (!growth_stage %in% c("R1", "R2", "R3")) {
+    return(list(error = "Invalid value for 'growth stage'."))
+  }
   # Conditional logic for irrigated and non-irrigated fields
   if (irrigated == "no") {
     # Calculate risk for non-irrigated fields
