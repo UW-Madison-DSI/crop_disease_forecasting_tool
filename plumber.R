@@ -33,7 +33,7 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 35,
   
   # Ensure risk threshold is between 20 and 50
   if (risk_threshold < 20 || risk_threshold > 50) {
-    return(list(error = "Threshold must be between 20 and 50"))
+    return(list(valid = FALSE, message = "Invalid risk_threshold input", reason = "Allowed values are between 20 and 50"))
   }
   
   # Call the tarspot risk calculation function
@@ -69,14 +69,14 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 60,
   
   # Ensure risk threshold is between 50 and 70
   if (risk_threshold < 50 || risk_threshold > 70) {
-    return(list(error = "Threshold must be between 50 and 70"))
+    return(list(valid = FALSE, message = "Invalid risk_threshold input", reason = "Allowed values are between 50 and 70"))
+  } else {
+    # Call the gray leaf spot risk calculation function
+    result <- calculate_gray_leaf_spot_risk(min_air_temp_21d_ma, min_dewpoint_30d_ma, risk_threshold)
+    
+    # Return the result as JSON
+    return(result)
   }
-  
-  # Call the gray leaf spot risk calculation function
-  result <- calculate_gray_leaf_spot_risk(min_air_temp_21d_ma, min_dewpoint_30d_ma, risk_threshold)
-  
-  # Return the result as JSON
-  return(result)
 }
 
 
@@ -104,7 +104,7 @@ calculate_sporecaster_risk <- function(row_spacing, irrigated,
   # Check for valid irrigated value
   irrigated <- tolower(irrigated)
   if (!irrigated %in% c("yes", "no")) {
-    return(list(error = "Invalid value for 'irrigated'. Please specify 'yes' or 'no'."))
+    return(list(code='error', error = "Invalid value for 'irrigated'. Please specify 'yes' or 'no'."))
   }
   
   # Initialize result
@@ -118,7 +118,7 @@ calculate_sporecaster_risk <- function(row_spacing, irrigated,
   } else if (irrigated == "yes") {
     # Ensure max_rh_30d_ma is provided for irrigated fields
     if (is.null(max_rh_30d_ma)) {
-      return(list(error = "max_rh_30d_ma must be provided for irrigated fields."))
+      return(list(code='error', error = "max_rh_30d_ma must be provided for irrigated fields."))
     }
     
     # Convert additional numeric variables for irrigated fields

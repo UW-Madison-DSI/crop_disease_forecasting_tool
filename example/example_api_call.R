@@ -9,7 +9,7 @@ library(httr)
 
 url <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 
-#################################### Tarspot
+############################################################################ Tarspot
 # Define the URL for the API
 url_ts <- paste0(url, "/predict_tarspot_risk")
 
@@ -36,7 +36,7 @@ print(content)
 #[1] "{\"disease\":[\"TarSpot\"],\"probability\":[6.92],\"risk_class\":[\"Low\"]}"
 
 
-#################################### Gray Leaf Spot
+############################################################################ Gray Leaf Spot
 url_gls <- paste0(url, "/predict_gray_leaf_spot_risk")
 
 
@@ -58,7 +58,7 @@ print(content)
 
 #[1] "{\"disease\":[\"GrayLeaf\"],\"probability\":[42.79],\"risk_class\":[\"Medium\"]}"
 
-#################################### Sporecaster
+############################################################################ Sporecaster
 url_sc <- paste0(url, "/predict_sporecaster_risk")
 
 # Define the data to be sent in the POST request
@@ -83,7 +83,8 @@ for (irr in c("yes","no")){
   print(content)
 }
 
+
 #No encoding supplied: defaulting to UTF-8.
-#[1] "{\"disease\":[\"Sporecaster (Irrigated)\"],\"probability\":[33.32],\"risk_class\":[\"Low\"]}"
+#[1] "{\"disease\":[\"Sporecaster-Irr\"],\"probability\":[33.32],\"risk_class\":[\"NoClass\"]}"
 #No encoding supplied: defaulting to UTF-8.
-#[1] "{\"disease\":[\"Sporecaster (Non-Irrigated)\"],\"probability\":[83.47],\"risk_class\":[\"High\"]}"
+#[1] "{\"disease\":[\"Sporecaster-NIrr\"],\"probability\":[83.47],\"risk_class\":[\"NoClass\"]}"
