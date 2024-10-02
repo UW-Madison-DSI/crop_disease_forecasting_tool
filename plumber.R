@@ -12,15 +12,16 @@ source("R/var_schema.R")
 #* @param growth_stage Character: The growth stage of the crop ("V10", "R1", "R2", "R3")
 #* @param fungicide_applied Character: "yes" if fungicide was applied in the last 14 days, "no" otherwise
 #* @param risk_threshold Numeric: Action threshold (default = 35%). Threshold must be between 20 and 50
-#* @param meanAT Numeric: 30-day moving average of mean air temperature (°C)
-#* @param maxRH Numeric: 30-day moving average of max relative humidity (%)
-#* @param rh90_night_tot Numeric: 14-day moving average of nighttime RH > 90%
+#* @param mean_air_temp_30d_ma Numeric: 30-day moving average of mean air temperature (°C)
+#* @param max_rh_30d_ma Numeric: 30-day moving average of max relative humidity (%)
+#* @param tot_hrs_rh90_14d_ma Numeric: 14-day moving average of total nighttime hours with 90% relative humidity or above for each day
 #* @post /predict_tarspot_risk
 function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 35,
-         meanAT, maxRH, rh90_night_tot) {
+         mean_air_temp_30d_ma, max_rh_30d_ma, tot_hrs_rh90_14d_ma) {
   
   # Validate inputs
-  numeric_vars <- c("risk_threshold", "meanAT", "maxRH", "rh90_night_tot")
+  numeric_vars <- c("risk_threshold", "mean_air_temp_30d_ma", 
+                    "max_rh_30d_ma", "tot_hrs_rh90_14d_ma")
   
   # Convert these variables to numeric
   convert_to_numeric(environment(), numeric_vars)
@@ -36,9 +37,9 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 35,
   }
   
   # Call the tarspot risk calculation function
-  result <- calculate_tarspot_risk(meanAT, 
-                                   maxRH, 
-                                   rh90_night_tot, 
+  result <- calculate_tarspot_risk(mean_air_temp_30d_ma, 
+                                   max_rh_30d_ma, 
+                                   tot_hrs_rh90_14d_ma, 
                                    risk_threshold)
   
   # Return the result as JSON
@@ -78,20 +79,24 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 60,
   return(result)
 }
 
+
 #* Calculate sporecaster risk in irrigated and non-irrigated fields
-#* @param growth_stage Character: The growth stage of the crop ("R1", "R2", "R3")
-#* @param risk_threshold Numeric: Risk threshold (default = 40%)
 #* @param row_spacing Numeric: Row spacing in inches (either 15 or 30)
 #* @param irrigated Character: "yes" if the field was irrigated in the last 14 days, "no" otherwise
 #* @param maxAT30MA Numeric: 30-day moving average of maximum air temperature (°C)
 #* @param maxWS30MA Numeric: 30-day moving average of maximum wind speed (m/s)
 #* @param maxRH30MA Numeric: 30-day moving average of relative humidity (only for irrigated fields)
 #* @post /predict_sporecaster_risk
-calculate_sporecaster_risk <- function(maxAT30MA, maxWS30MA, maxRH30MA = NULL, 
-                                       irrigated, row_spacing, risk_threshold = 40) {
+calculate_sporecaster_risk <- function(row_spacing, irrigated,   
+                                       maxAT30MA, maxWS30MA, maxRH30MA = NULL) {
   
   # Convert shared numeric variables
-  numeric_vars <- c("risk_threshold", "maxAT30MA", "maxWS30MA")
+  numeric_vars <- c("maxAT30MA", "maxWS30MA")
+  convert_to_numeric <- function(env, vars) {
+    for (var in vars) {
+      assign(var, as.numeric(get(var, envir = env)), envir = env)
+    }
+  }
   convert_to_numeric(environment(), numeric_vars)
   
   # Check for valid irrigated value
@@ -99,28 +104,33 @@ calculate_sporecaster_risk <- function(maxAT30MA, maxWS30MA, maxRH30MA = NULL,
   if (!irrigated %in% c("yes", "no")) {
     return(list(error = "Invalid value for 'irrigated'. Please specify 'yes' or 'no'."))
   }
-  if (!growth_stage %in% c("R1", "R2", "R3")) {
-    return(list(error = "Invalid value for 'growth stage'."))
-  }
+  
+  # Initialize result
+  result <- NULL
+  
   # Conditional logic for irrigated and non-irrigated fields
   if (irrigated == "no") {
     # Calculate risk for non-irrigated fields
-    result <- calculate_non_irrigated_risk(maxAT30MA, maxWS30MA, risk_threshold)
+    result <- calculate_non_irrigated_risk(maxAT30MA, maxWS30MA)
     
   } else if (irrigated == "yes") {
     # Ensure maxRH30MA is provided for irrigated fields
     if (is.null(maxRH30MA)) {
-      stop("maxRH30MA must be provided for irrigated fields.")
+      return(list(error = "maxRH30MA must be provided for irrigated fields."))
     }
     
     # Convert additional numeric variables for irrigated fields
-    numeric_vars_irrigated <- c("row_spacing", "maxRH30MA")
+    numeric_vars_irrigated <- c("maxRH30MA")
     convert_to_numeric(environment(), numeric_vars_irrigated)
     
     # Calculate risk for irrigated fields
-    result <- calculate_irrigated_risk(maxAT30MA, maxRH30MA, row_spacing, risk_threshold)
+    result <- calculate_irrigated_risk(maxAT30MA, maxRH30MA, row_spacing)
   }
   
-  # Return the result
+  # Return the result or an error if something went wrong
+  if (is.null(result)) {
+    return(list(error = "An error occurred while calculating risk."))
+  }
+  
   return(result)
 }

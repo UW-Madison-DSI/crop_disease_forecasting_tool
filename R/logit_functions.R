@@ -51,8 +51,8 @@ calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35
 
 # Function to calculate risk for Gray Leaf Spot
 calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold = 60) {
-  # Logistic regression formula for the model
-  logit_LR <- 32.06987 - (0.89471 * minAT21) - (0.14373 * minDP30)
+  # Logistic regression formula for the model LR4
+  logit_LR <- -2.9467-(0.03729 * minAT21) + (0.6534 * minDP30)
   
   # Calculate risk using the general disease risk function
   return(calculate_disease_risk(
@@ -63,33 +63,33 @@ calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold = 60) {
   ))
 }
 
-# Function to calculate risk for non-irrigated fields
-calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA, threshold = 40) {
+# Example for non-irrigated risk calculation
+calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA, threshold = 35, thresholds = c(1.0, 1.0, 0)) {
   # Logistic regression formula for non-irrigated model
   logit_mu <- (-0.47 * maxAT30MA) - (1.01 * maxWS30MA) + 16.65
   
-  # Calculate risk using the general disease risk function
+  # Calculate disease risk using the general disease risk function
   return(calculate_disease_risk(
     logit_values = c(logit_mu),
-    thresholds = c(0.40, 0.20, 0),  #NO thresholds - need input here
-    disease_name = "Apothecial(Non-Irrigated)",
+    thresholds = thresholds,  
+    disease_name = "Sporecaster (Non-Irrigated)",
     threshold = threshold
   ))
 }
 
-# Function to calculate risk for irrigated fields
-calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing, threshold = 50) {
+# Example for irrigated risk calculation
+calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing, threshold = 35, thresholds = c(1.0, 1.0, 0)) {
   # Determine row value (0 for 15-inch, 1 for 30-inch)
   row <- ifelse(row_spacing == 30, 1, 0)
   
   # Logistic regression formula for irrigated model
   logit_mu <- (-2.38 * row) + (0.65 * maxAT30MA) + (0.38 * maxRH30MA) - 52.65
   
-  # Calculate risk using the general disease risk function
+  # Calculate disease risk using the general disease risk function
   return(calculate_disease_risk(
     logit_values = c(logit_mu),
-    thresholds = c(0.50, 0.30, 0),  # NO thresholds - need input here
-    disease_name = "Apothecial(Irrigated)",
+    thresholds = thresholds,  
+    disease_name = "Sporecaster (Irrigated)",
     threshold = threshold
   ))
 }
