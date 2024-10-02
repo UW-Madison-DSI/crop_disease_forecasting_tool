@@ -13,13 +13,46 @@ url <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 # Define the URL for the API
 url_ts <- paste0(url, "/predict_tarspot_risk")
 
+n<-10
+mean_air_temp_range <- seq(16, 26, length.out = n)
+tot_hrs_rh90_range <- seq(5, 20, length.out = n)  # Range of total hours RH>90%
 
-# Define the data to be sent in the POST request
+for (th in tot_hrs_rh90_range){
+  for (mat in mean_air_temp_range){
+    # Define the data to be sent in the POST request
+    body <- list(
+      growth_stage = 'R1',
+      fungicide_applied = 'no',
+      risk_threshold = 35, 
+      mean_air_temp_30d_ma = mat,
+      max_rh_30d_ma = 95.72,
+      tot_hrs_rh90_14d_ma = th
+    )
+    
+    # Make the POST request
+    response <- POST(url_ts, body = body, encode = "json")
+    
+    # Check the status code
+    if (status_code(response) == 200) {
+      # Parse the content as JSON
+      response_content <- content(response, as = "parsed", type = "application/json")
+      
+      # Access the 'probability' field from the parsed response
+      print(paste(th, mat,response_content$probability[[1]]))
+    } else {
+      print(paste("Request failed with status code", status_code(response)))
+    }
+  }
+}
+# Result
+#[1] "{\"disease\":[\"TarSpot\"],\"probability\":[6.92],\"risk_class\":[\"Low\"]}"
+
+
 body <- list(
   growth_stage = 'R1',
   fungicide_applied = 'no',
   risk_threshold = 35, 
-  mean_air_temp_30d_ma = 23.6,
+  mean_air_temp_30d_ma = 16,
   max_rh_30d_ma = 95.72,
   tot_hrs_rh90_14d_ma = 4.4
 )
@@ -31,11 +64,6 @@ response <- POST(url_ts, body = body, encode = "json")
 status_code(response)
 content <- content(response, 'text')
 print(content)
-
-# Result
-#[1] "{\"disease\":[\"TarSpot\"],\"probability\":[6.92],\"risk_class\":[\"Low\"]}"
-
-
 ############################################################################ Gray Leaf Spot
 url_gls <- paste0(url, "/predict_gray_leaf_spot_risk")
 
