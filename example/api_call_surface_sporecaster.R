@@ -38,9 +38,9 @@ for (i in 1:nrow(grid)) {
     row_spacing=15,
     irrigated='no',
     risk_threshold = 100, 
-    maxAT30MA = x_val,
-    maxWS30MA = y_val,
-    maxRH30MA = 96.358333
+    max_air_temp_30d_ma = x_val,
+    max_windspeed_30d_ma = y_val,
+    max_rh_30d_ma = 96.358333
   )
   # Make the POST request
   response <- POST(url_sporec, body = body_sc, encode = "json")

@@ -36,8 +36,8 @@ for (i in 1:nrow(grid)) {
     growth_stage = 'R1',
     fungicide_applied = 'no',
     risk_threshold = 60, 
-    minAT21 = x_val,
-    minDP30 = y_val
+    min_air_temp_21d_ma = x_val,
+    min_dewpoint_30d_ma = y_val
   )
   # Make the POST request
   response <- POST(url_gls, body = api_data, encode = "json")
