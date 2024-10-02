@@ -15,16 +15,19 @@ classify_risk <- function(probability, high_threshold, medium_threshold, low_thr
 }
 
 # General function to calculate risk for any disease
-calculate_disease_risk <- function(logit_values, thresholds = c(0.40, 0.20, 0), disease_name, threshold = 35) {
-  # Calculate probabilities using logistic transformation
+calculate_disease_risk <- function(logit_values, thresholds, disease_name, threshold) {
+  # Check if there are multiple logit values
   probabilities <- sapply(logit_values, logistic)
-  
-  # Ensemble the probabilities by averaging
   ensemble_prob <- mean(probabilities)
   
-  # Classify risk based on thresholds and the user-defined action threshold
-  risk_class <- classify_risk(ensemble_prob, threshold / 100, thresholds[1], thresholds[2])
-  
+  if (threshold == -1) {
+    # Return results as a list
+    risk_class <- 'NoClass'
+  } else {
+    # Ensure the classify_risk function is properly defined
+    risk_class <- classify_risk(ensemble_prob, threshold / 100, thresholds[1], thresholds[2])
+  }
+    
   # Return results as a list
   return(list(
     disease = disease_name,
@@ -36,8 +39,8 @@ calculate_disease_risk <- function(logit_values, thresholds = c(0.40, 0.20, 0), 
 # Function to calculate risk for Tar Spot based on two logistic regression models
 calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35) {
   # Logistic regression formulas for the two models
-  logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH)
-  logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot)
+  logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH) #paper page5
+  logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot) #paper page5
   
   # Calculate risk using the general disease risk function
   return(calculate_disease_risk(
@@ -52,44 +55,44 @@ calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35
 # Function to calculate risk for Gray Leaf Spot
 calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold = 60) {
   # Logistic regression formula for the model LR4
-  logit_LR <- -2.9467-(0.03729 * minAT21) + (0.6534 * minDP30)
+  logit_GLS <- -2.9467-(0.03729 * minAT21) + (0.6534 * minDP30)
   
   # Calculate risk using the general disease risk function
   return(calculate_disease_risk(
-    logit_values = c(logit_LR),
+    logit_values = c(logit_GLS),
     thresholds = c(0.40, 0), 
-    disease_name = "GrayLeaf",
+    disease_name = "GrayLeafSpot",
     threshold = threshold
   ))
 }
 
 # Example for non-irrigated risk calculation
-calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA, threshold = 35, thresholds = c(1.0, 1.0, 0)) {
+calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA) {
   # Logistic regression formula for non-irrigated model
-  logit_mu <- (-0.47 * maxAT30MA) - (1.01 * maxWS30MA) + 16.65
+  logit_nirr <- (-0.47 * maxAT30MA) - (1.01 * maxWS30MA) + 16.65
   
   # Calculate disease risk using the general disease risk function
   return(calculate_disease_risk(
-    logit_values = c(logit_mu),
-    thresholds = thresholds,  
-    disease_name = "Sporecaster (Non-Irrigated)",
-    threshold = threshold
+    logit_values = c(logit_nirr),
+    thresholds = c(1.0, 1.0), #no threshold here, no class, just probab 
+    disease_name = "Sporecaster-NIrr",
+    threshold = -1 #no threshold here, no class, just probab
   ))
 }
 
 # Example for irrigated risk calculation
-calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing, threshold = 35, thresholds = c(1.0, 1.0, 0)) {
+calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing) {
   # Determine row value (0 for 15-inch, 1 for 30-inch)
   row <- ifelse(row_spacing == 30, 1, 0)
   
   # Logistic regression formula for irrigated model
-  logit_mu <- (-2.38 * row) + (0.65 * maxAT30MA) + (0.38 * maxRH30MA) - 52.65
+  logit_irr <- (-2.38 * row) + (0.65 * maxAT30MA) + (0.38 * maxRH30MA) - 52.65
   
   # Calculate disease risk using the general disease risk function
   return(calculate_disease_risk(
-    logit_values = c(logit_mu),
-    thresholds = thresholds,  
-    disease_name = "Sporecaster (Irrigated)",
-    threshold = threshold
+    logit_values = c(logit_irr),
+    thresholds = c(1.0, 1.0),  #no threshold here, no class, just probab
+    disease_name = "Sporecaster-Irr",
+    threshold = -1 #no threshold here, no class, just probab
   ))
 }

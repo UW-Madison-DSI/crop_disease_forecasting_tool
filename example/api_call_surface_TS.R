@@ -11,8 +11,8 @@ url_ts <- paste0(url, "/predict_tarspot_risk")
 ####### SETTINGS
 # Generate the grid for total_nighttime_rh_above_90_pct_14_day_moving_avg and mean_air_temp_30_day_moving_avg
 n<-50
-x_range <- seq(2, 14, length.out = n)  # total_nighttime_rh_above_90_pct_14_day_moving_avg (0-14)
-y_range <- seq(14, 26, length.out = n)  # mean_air_temp_30_day_moving_avg (16-26)
+x_range <- seq(2, 14, length.out = n)  # total_nighttime_rh_above_90_pct_14_day_moving_avg 
+y_range <- seq(14, 26, length.out = n)  # mean_air_temp_30_day_moving_avg 
 
 # Create a mesh grid of x and y
 grid <- expand.grid(x = x_range, y = y_range)
