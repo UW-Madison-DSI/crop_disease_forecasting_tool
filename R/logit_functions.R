@@ -30,6 +30,7 @@ calculate_disease_risk <- function(logit_values, thresholds, disease_name, thres
     
   # Return results as a list
   return(list(
+    code='ok',
     disease = disease_name,
     probability = round(ensemble_prob * 100, 2),  # Convert probability to percentage
     risk_class = risk_class
@@ -38,7 +39,7 @@ calculate_disease_risk <- function(logit_values, thresholds, disease_name, thres
 
 # Function to calculate risk for Tar Spot based on two logistic regression models
 calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35) {
-  # Logistic regression formulas for the two models
+  # Logistic regression formulas for the two models, no irrigation total needed
   logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH) #paper page5
   logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot) #paper page5
   
@@ -54,7 +55,7 @@ calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35
 
 # Function to calculate risk for Gray Leaf Spot
 calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold = 60) {
-  # Logistic regression formula for the model LR4
+  # Logistic regression formula, no rrigation needed
   logit_GLS <- -2.9467-(0.03729 * minAT21) + (0.6534 * minDP30)
   
   # Calculate risk using the general disease risk function
