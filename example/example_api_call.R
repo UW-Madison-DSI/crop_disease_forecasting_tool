@@ -33,8 +33,7 @@ content <- content(response, 'text')
 print(content)
 
 # Result
-# [1] "{\"disease\":[\"TarSpot\"],\"probability\":[6.92],\"risk_class\":[\"Low\"]}"
-
+#[1] "{\"disease\":[\"TarSpot\"],\"probability\":[6.92],\"risk_class\":[\"Low\"]}"
 
 
 #################################### Gray Leaf Spot
@@ -46,8 +45,8 @@ body <- list(
   growth_stage = 'R1',
   fungicide_applied = 'no',
   risk_threshold = 60, 
-  minAT21 = 25.342857,
-  minDP30 = 5.511667
+  min_air_temp_21d_ma = 25.342857,
+  min_dewpoint_30d_ma = 5.511667
 )
 # Make the POST request
 response <- POST(url_gls, body = body, encode = "json")
@@ -62,7 +61,6 @@ print(content)
 #################################### Sporecaster
 url_sc <- paste0(url, "/predict_sporecaster_risk")
 
-
 # Define the data to be sent in the POST request
 for (irr in c("yes","no")){
   body_sc <- list(
@@ -71,9 +69,9 @@ for (irr in c("yes","no")){
     row_spacing=15,
     irrigated=irr,
     risk_threshold = 35, 
-    maxAT30MA = 23.6,
-    maxWS30MA = 3.9,
-    maxRH30MA = 96.358333
+    max_air_temp_30d_ma = 23.6,
+    max_windspeed_30d_ma = 3.9,
+    max_rh_30d_ma = 96.358333
   )
   
   # Make the POST request
@@ -86,6 +84,6 @@ for (irr in c("yes","no")){
 }
 
 #No encoding supplied: defaulting to UTF-8.
-#[1] "{\"disease\":[\"Sporecaster (Irrigated)\"],\"probability\":[0],\"risk_class\":[\"Low\"]}"
+#[1] "{\"disease\":[\"Sporecaster (Irrigated)\"],\"probability\":[33.32],\"risk_class\":[\"Low\"]}"
 #No encoding supplied: defaulting to UTF-8.
 #[1] "{\"disease\":[\"Sporecaster (Non-Irrigated)\"],\"probability\":[83.47],\"risk_class\":[\"High\"]}"
