@@ -9,7 +9,7 @@ cd corn_disease_forecast_api
 ```
 
 ## Usage
-See example of the api call [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/example/example_api_call.R)
+See example of the api call [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/example/example_api_call.R)
 
 
 ## Features
@@ -41,6 +41,7 @@ Response: A JSON object containing the predicted probability of tar spot inciden
 
 ## Reference:
 - Original paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
+- See the codebook of the variables used  [here](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/docs/codebook - API-variablesuse.R)
 
 ## License
 
