@@ -9,7 +9,7 @@ cd corn_disease_forecast_api
 ```
 
 ## Usage
-See example of the api call [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/example/example_api_call.R)
+See example of how to do an api call [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/example/example_api_call.R)
 
 
 ## Features
