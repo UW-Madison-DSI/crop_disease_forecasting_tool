@@ -1,0 +1,12 @@
+name: forecasting_tools
+title: forecasting_tools
+username: moros2
+account: moros2
+server: connect.doit.wisc.edu
+hostUrl: https://connect.doit.wisc.edu/__api__
+appId: 367
+bundleId: 2247
+url: https://connect.doit.wisc.edu/content/f1945bb5-a38b-4ee9-96d6-c4cc13be58f6/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
