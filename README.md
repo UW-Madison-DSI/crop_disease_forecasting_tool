@@ -18,9 +18,16 @@ See example of how to do an api call on this tool [HERE](https://github.com/UW-M
 - Customizable action thresholds that allow users to define risk levels for interventions.
 - Returns the probability and risk classification for the given thresholds.
 
-## Dashboard 
-
-[Visualization](https://connect.doit.wisc.edu/tarspot_forecasting_app/)
+## Project Structure
+```plaintext
+├── LICENSE.md          <- The top-level LICENSE for developers using this project.
+├── README.md          <- The top-level README for developers using this project.
+├── plumber.R          <- API endpoints definitions.
+├── R                  <- Core API logic functions.
+├── example          <- Example of how to call this API.  
+├── test             <- Unit test
+├── .github/workflows             <- CI-CD logic for deployment.
+```
 
 ## API Endpoints
 
