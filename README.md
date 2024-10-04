@@ -1,4 +1,4 @@
-# **Forecasting Model API**
+# **Forecasting Model Tools: API and Dashboard**
 
 This API leverages the power of environmental data to predict the likelihood of diseases like Tarspot, Spore and Gray Leaf Spot on corn crops. 
 

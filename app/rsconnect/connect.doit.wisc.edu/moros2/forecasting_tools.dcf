@@ -5,8 +5,8 @@ account: moros2
 server: connect.doit.wisc.edu
 hostUrl: https://connect.doit.wisc.edu/__api__
 appId: 367
-bundleId: 2256
-url: https://connect.doit.wisc.edu/content/f1945bb5-a38b-4ee9-96d6-c4cc13be58f6/
+bundleId: 2276
+url: https://connect.doit.wisc.edu/tarspot_forecasting_app/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
