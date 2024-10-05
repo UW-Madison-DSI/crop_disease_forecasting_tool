@@ -4,6 +4,15 @@ library(httr)
 library(jsonlite)
 library(zoo)
 
+# Get today's date
+today <- Sys.time()
+
+# Subtract 3 months from today
+three_months_ago <- today - months(3)
+
+# Convert both dates to Unix timestamps in GMT
+start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
+end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
 
 api_call_wisconet <- function(station, start_time, end_time) {
   
@@ -77,18 +86,6 @@ api_call_wisconet <- function(station, start_time, end_time) {
   }
 }
 
-
-###################### plug in this with forecasting api
-
-# Get today's date
-today <- Sys.time()
-
-# Subtract 3 months from today
-three_months_ago <- today - months(3)
-
-# Convert both dates to Unix timestamps in GMT
-start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
-end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
 #1728011869,
 #start_time = 1726715869
 
@@ -101,3 +98,15 @@ cat("End time (today):", (end_time), "\n")
 a <- api_call_wisconet('ALTN', start_time, end_time)
 print(class(a))  # Should print "data.frame"
 print(head(a))   # Display the first few rows of the data frame
+
+
+library(ggplot2)
+
+ggplot(a, aes(x = collection_time)) +
+  geom_line(aes(y = air_temp_avg_c, color = "Daily Average")) +
+  geom_line(aes(y = air_temp_avg_c_30d_ma, color = "30-day Moving Average")) +
+  labs(title = "Average Temperature (Celsius)",
+       x = "Date",
+       y = "Temperature (°C)",
+       color = "Legend") +
+  theme_minimal()
