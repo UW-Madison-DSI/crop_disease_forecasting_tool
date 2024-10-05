@@ -1,9 +1,3 @@
-# install.packages("shiny")
-# install.packages("leaflet")
-# install.packages("httr")
-# install.packages("jsonlite")
-# install.packages("dplyr")
-
 library(shiny)
 library(leaflet)
 library(shinydashboard)
@@ -12,54 +6,10 @@ library(shinyWidgets)
 library(httr)
 library(jsonlite)
 library(dplyr)
+library(flexdashboard)
 
 # Load functions and station data
 source("functions/stations.R")
-
-# API call function
-api_call_wisconet <- function(station) {
-  base_url <- 'https://wisconet.wisc.edu'
-  endpoint <- paste0('/api/v1/stations/', station$station_id, '/measures')
-  
-  params <- list(
-    end_time = 1728011869,
-    start_time = 1726715869,
-    fields = 'daily_air_temp_f_max,daily_air_temp_f_min,daily_relative_humidity_pct_max'
-  )
-  
-  response <- GET(url = paste0(base_url, endpoint), query = params)
-  
-  if (response$status_code == 200) {
-    data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
-    data <- data1$data
-    
-    extracted_data <- lapply(data, function(entry) {
-      air_temp_max <- NA
-      air_temp_min <- NA
-      rh_max <- NA
-      
-      for (measure in entry$measures) {
-        if (measure[1] == 4) air_temp_max <- measure[2]  # Air Temp Max
-        if (measure[1] == 6) air_temp_min <- measure[2]  # Air Temp Min
-        if (measure[1] == 20) rh_max <- measure[2]       # Relative Humidity Max
-      }
-      
-      return(data.frame(
-        collection_time = as.POSIXct(entry$collection_time, origin = "1970-01-01"),
-        air_temp_avg = mean(c(air_temp_max, air_temp_min), na.rm = TRUE),
-        rh_max = rh_max
-      ))
-    })
-    
-    df <- bind_rows(extracted_data)
-    print(df)
-    return(df)
-    
-  } else {
-    print(paste("Error: ", response$status_code))
-    return(NULL)
-  }
-}
 
 # Vector where station names are displayed with "All" option
 station_choices <- c("All" = "all", setNames(names(stations), sapply(stations, function(station) station$name)))
@@ -102,13 +52,20 @@ ui <- dashboardPage(
                     .navbar {background-color: #006939 !important;}")),
     
     sidebarMenu(
-      h2(strong("Crop Characteristics"), style = "font-size:18px;"),
+      h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Crop Characteristics")), style = "font-size:18px;"),
+      selectInput("custom_station_code", "Please Select a Station", 
+                  choices = station_choices),
       selectInput("fungicide_applied", "Did you apply fungicide in the last 14 days?", 
                   choices = c("Yes", "No")),
       selectInput("crop_growth_stage", "What is the growth stage of your crop?", 
                   choices = c("V10-V15", "R1", "R2", "R3")),
-      selectInput("custom_station_code", "Please Select a Station", 
-                  choices = station_choices)  # Added "All" option
+      
+      # Adding the gauge only if a single station is selected
+      conditionalPanel(
+        condition = "input.custom_station_code != 'all'",  # Gauge only appears when a single station is selected
+        h2(strong("Risk Gauge"), style = "font-size:18px;"),
+        gaugeOutput("gauge")
+      )
     )
   ),
   
@@ -147,8 +104,6 @@ server <- function(input, output, session) {
     station_code <- input$custom_station_code
     if (station_code != "all") {
       station <- stations[[station_code]]
-      df<-api_call_wisconet(station)  # Call the API function
-      print(df)
     } else {
       return(NULL)
     }
@@ -183,7 +138,7 @@ server <- function(input, output, session) {
   output$station_info <- renderText({
     station_code <- input$custom_station_code
     if (station_code == "all") {
-      return("You have selected all stations.")
+      return("You have selected all stations. Please select one to see the risk of tarspot. If you have applied a fungicide in the last 14 days to your crop, we can not estimate a probability of tarspot.")
     } else {
       station <- stations[[station_code]]
       paste("You have selected", station$name, "in", station$state)
@@ -193,6 +148,21 @@ server <- function(input, output, session) {
   # Display the fetched weather data in a table
   output$weather_data <- renderTable({
     weather_data()  # Show weather data from API
+  })
+  
+  # Render the gauge based on the risk value
+  output$gauge <- renderGauge({
+    risk_value <- 30  # Example risk value, replace this with the actual risk calculation
+    
+    gauge(risk_value, 
+          min = 0, 
+          max = 100, 
+          sectors = gaugeSectors(
+            success = c(0, 20),  # Green (below 20)
+            warning = c(20, 35),  # Yellow (20 to 35)
+            danger = c(35, 100)  # Red (above 35)
+          )
+    )
   })
 }
 

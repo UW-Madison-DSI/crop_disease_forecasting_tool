@@ -11,6 +11,24 @@ cd corn_disease_forecast_api
 ## Usage
 See example of how to do an api call on this tool [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/example/example_api_call.R)
 
+## Project Structure 
+```
+├── LICENSE
+├── README.md          <- The top-level README for developers using this project.
+├── data
+│   ├── external       <- Data from third party sources.
+├── docs               <- A default Sphinx project; see sphinx-doc.org for details
+│
+├── models             <- Trained and serialized models, model predictions, or model summaries
+│
+├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
+│                         the creator's initials, and a short `-` delimited description, e.g.
+│                         `1.0-jqp-initial-data-exploration`.
+│
+├── R          <- Source code for use in this project.
+│   ├── __init__.py    <- Makes src a Python module
+│   │
+ ```
 
 ## Features
 
