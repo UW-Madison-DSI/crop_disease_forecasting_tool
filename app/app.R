@@ -1,15 +1,65 @@
-# Install necessary packages if not installed
 # install.packages("shiny")
 # install.packages("leaflet")
+# install.packages("httr")
+# install.packages("jsonlite")
+# install.packages("dplyr")
 
 library(shiny)
 library(leaflet)
 library(shinydashboard)
 library(scales)
 library(shinyWidgets)
+library(httr)
+library(jsonlite)
+library(dplyr)
 
 # Load functions and station data
 source("functions/stations.R")
+
+# API call function
+api_call_wisconet <- function(station) {
+  base_url <- 'https://wisconet.wisc.edu'
+  endpoint <- paste0('/api/v1/stations/', station$station_id, '/measures')
+  
+  params <- list(
+    end_time = 1728011869,
+    start_time = 1726715869,
+    fields = 'daily_air_temp_f_max,daily_air_temp_f_min,daily_relative_humidity_pct_max'
+  )
+  
+  response <- GET(url = paste0(base_url, endpoint), query = params)
+  
+  if (response$status_code == 200) {
+    data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
+    data <- data1$data
+    
+    extracted_data <- lapply(data, function(entry) {
+      air_temp_max <- NA
+      air_temp_min <- NA
+      rh_max <- NA
+      
+      for (measure in entry$measures) {
+        if (measure[1] == 4) air_temp_max <- measure[2]  # Air Temp Max
+        if (measure[1] == 6) air_temp_min <- measure[2]  # Air Temp Min
+        if (measure[1] == 20) rh_max <- measure[2]       # Relative Humidity Max
+      }
+      
+      return(data.frame(
+        collection_time = as.POSIXct(entry$collection_time, origin = "1970-01-01"),
+        air_temp_avg = mean(c(air_temp_max, air_temp_min), na.rm = TRUE),
+        rh_max = rh_max
+      ))
+    })
+    
+    df <- bind_rows(extracted_data)
+    print(df)
+    return(df)
+    
+  } else {
+    print(paste("Error: ", response$status_code))
+    return(NULL)
+  }
+}
 
 # Vector where station names are displayed with "All" option
 station_choices <- c("All" = "all", setNames(names(stations), sapply(stations, function(station) station$name)))
@@ -36,7 +86,7 @@ ui <- dashboardPage(
   ),
   
   dashboardSidebar(
-    width = 460,
+    width = 350,
     
     # Custom CSS for controlling appearance
     tags$style(HTML(".js-irs-0 .irs-single,
@@ -66,7 +116,13 @@ ui <- dashboardPage(
     fluidRow(
       box(
         leafletOutput("mymap", height = "600px"),
+        width = 12
+      )
+    ),
+    fluidRow(
+      box(
         textOutput("station_info"),
+        tableOutput("weather_data"),  # Output to show weather data
         width = 12
       )
     )
@@ -83,6 +139,18 @@ server <- function(input, output, session) {
       return(stations)  # Return all stations if "All" is selected
     } else {
       return(list(station_code = stations[[station_code]]))  # Return the selected station as a named list
+    }
+  })
+  
+  # Fetch station weather data from API when a station is selected
+  weather_data <- reactive({
+    station_code <- input$custom_station_code
+    if (station_code != "all") {
+      station <- stations[[station_code]]
+      df<-api_call_wisconet(station)  # Call the API function
+      print(df)
+    } else {
+      return(NULL)
     }
   })
   
@@ -120,6 +188,11 @@ server <- function(input, output, session) {
       station <- stations[[station_code]]
       paste("You have selected", station$name, "in", station$state)
     }
+  })
+  
+  # Display the fetched weather data in a table
+  output$weather_data <- renderTable({
+    weather_data()  # Show weather data from API
   })
 }
 
