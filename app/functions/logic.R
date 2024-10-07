@@ -1,13 +1,14 @@
-# Load necessary package for date manipulation
+# Load necessary packages
 library(lubridate)
 library(httr)
 library(jsonlite)
 library(zoo)
+library(ggplot2)
+library(dplyr)  # Load dplyr for the pipe operator
+library(httr)
 
-
-api_call_wisconet <- function(station, start_time, end_time) {
-  
-  
+# Function to get weather data from the API
+api_call_wisconet_data <- function(station, start_time, end_time) {
   base_url <- 'https://wisconet.wisc.edu'
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
@@ -18,6 +19,7 @@ api_call_wisconet <- function(station, start_time, end_time) {
   )
   
   response <- GET(url = paste0(base_url, endpoint), query = params)
+  
   if (response$status_code == 200) {
     data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
     data <- data1$data
@@ -58,46 +60,210 @@ api_call_wisconet <- function(station, start_time, end_time) {
     # Calculate 30-day moving averages
     result_df$air_temp_min_c_30d_ma <- rollmean(result_df$air_temp_min_c, k = 30, fill = NA, align = "right")
     result_df$air_temp_max_c_30d_ma <- rollmean(result_df$air_temp_max_c, k = 30, fill = NA, align = "right")
-    
     result_df$air_temp_avg_c_30d_ma <- rollmean(result_df$air_temp_avg_c, k = 30, fill = NA, align = "right")
     result_df$rh_max_30d_ma <- rollmean(result_df$rh_max, k = 30, fill = NA, align = "right")
     
-    
     # Rearrange columns for better readability
-    result_df <- result_df[c("collection_time","air_temp_avg_c", "air_temp_min_c_30d_ma","air_temp_max_c_30d_ma",
-                             "air_temp_avg_c_30d_ma", "rh_max_30d_ma",
-                             "rh_max")]
+    result_df <- result_df[c("collection_time", "air_temp_avg_c", "air_temp_min_c_30d_ma",
+                             "air_temp_max_c_30d_ma", "air_temp_avg_c_30d_ma",
+                             "rh_max_30d_ma", "rh_max")]
+    #print(result_df)
+    #api_call_wisconet_plot(result_df)
     
-    print(head(result_df))
+    current_time <- Sys.time()
+    result_df1 <- result_df %>%
+      arrange(abs(difftime(collection_time, current_time, units = "secs"))) %>%  # Sort by proximity to current date
+      slice(1)
     
-    return(result_df)
+    
+    return(result_df1)
   } else {
     print(paste("Error: ", response$status_code))
     return(NULL)
   }
 }
 
+# Function to plot the data
+api_call_wisconet_plot <- function(df) {
+  ggplot(df, aes(x = collection_time)) +
+    geom_line(aes(y = air_temp_avg_c, color = "Daily Average")) +
+    geom_line(aes(y = air_temp_avg_c_30d_ma, color = "30-day Moving Average")) +
+    labs(title = "Average Temperature (Celsius)",
+         x = "Date",
+         y = "Temperature (°C)",
+         color = "Legend") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+}
 
-###################### plug in this with forecasting api
+# Function to fetch and plot data
+fetch_at <- function(station) {
+  # Get today's date
+  today <- Sys.time()
+  three_months_ago <- today - months(3)
+  
+  # Convert both dates to Unix timestamps in GMT
+  start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
+  end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
+  
+  print(start_time)
+  
+  # Fetch the data using the API function
+  data_df <- api_call_wisconet_data(station, start_time, end_time)
+  
+  # Plot the data if it is not NULL
+  if (!is.null(data_df)) {
+    return(data_df)
+  } else {
+    cat("No data returned for the specified station.\n")
+    return(NULL)
+  }
+}
 
-# Get today's date
-today <- Sys.time()
+# Load necessary packages
+# Function to get 60-minute relative humidity data
+api_call_wisconet_data_rh <- function(station, start_time, end_time) {
+  base_url <- 'https://wisconet.wisc.edu'
+  endpoint <- paste0('/api/v1/stations/', station, '/measures')
+  
+  params <- list(
+    end_time = end_time,
+    start_time = start_time,
+    fields = '60min_relative_humidity_pct_avg'
+  )
+  
+  response <- GET(url = paste0(base_url, endpoint), query = params)
+  
+  if (response$status_code == 200) {
+    data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
+    data <- data1$data
+    
+    # Create the result data frame
+    result_df <- data.frame(
+      collection_time = as.POSIXct(data$collection_time, origin = "1970-01-01"),
+      rh_avg = NA,  # Placeholder for relative humidity values
+      stringsAsFactors = FALSE
+    )
+    #print(data$measures)
+    # Process measures to get '60min_relative_humidity_pct_avg'
+    for (i in seq_along(data$measures)) {
+      measures <- data$measures[[i]]
+      for (j in seq_len(length(measures))) {
+        print(measures[[j]])
+        result_df$rh_avg[i] <- measures[[j]][1]
+      }
+    }
+    print(result_df)
+    # Filter rows where RH > 90%
+    rh_greater_than_90 <- result_df %>%
+      filter(rh_avg > 90)
+    
+    # Group by day and count the number of hours where RH > 90 for each day
+    daily_rh_above_90 <- rh_greater_than_90 %>%
+      mutate(date = as.Date(collection_time)) %>%
+      group_by(date) %>%
+      summarise(hours_rh_above_90 = n())
+    
+    # Print the result
+    print(daily_rh_above_90)
+    
+    return(list(
+      data = result_df,
+      daily_rh_above_90 = daily_rh_above_90
+    ))
+  } else {
+    print(paste("Error: ", response$status_code))
+    return(NULL)
+  }
+}
 
-# Subtract 3 months from today
-three_months_ago <- today - months(3)
+# Function to fetch and print the number of hours with RH > 90% per day
+fetch_rh_above_90_daily <- function(station) {
+  # Get today's date
+  today <- Sys.time()
+  three_months_ago <- today - months(3)
+  
+  # Convert both dates to Unix timestamps in GMT
+  start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
+  end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
+  
+  # Fetch the data using the API function
+  rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
+  
+  data<-rh_data$daily_rh_above_90
+  data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, k = 14, fill = NA, align = "right")
+  print(tail(data))
+  current_time <- Sys.time()
+  rh_above_90_daily1 <- data %>%
+    arrange(abs(difftime(date, current_time, units = "secs"))) %>%  # Sort by proximity to current date
+    slice(1)
+  
+  # Return the data if it's not NULL
+  if (!is.null(rh_data)) {
+    return(rh_above_90_daily1)
+  } else {
+    cat("No data returned for the specified station.\n")
+    return(NULL)
+  }
+}
 
-# Convert both dates to Unix timestamps in GMT
-start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
-end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
-#1728011869,
-#start_time = 1726715869
 
-# Print the results
-cat("Start time (3 months ago):", (start_time), "\n") 
-cat("End time (today):", (end_time), "\n") 
-#1728089192
-#1720140392
-# Test the function
-a <- api_call_wisconet('ALTN', start_time, end_time)
-print(class(a))  # Should print "data.frame"
-print(head(a))   # Display the first few rows of the data frame
+
+get_risk_probability <- function(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url) {
+  cat('here....',mat_30dma, max_rh_30dma,th_rh90_14ma)
+  url_ts <- paste0(url, "/predict_tarspot_risk")
+  body <- list(
+    growth_stage = 'R1',
+    fungicide_applied = 'no',
+    risk_threshold = 35, 
+    mean_air_temp_30d_ma = mat_30dma,
+    max_rh_30d_ma = max_rh_30dma,  
+    tot_hrs_rh90_14d_ma = th_rh90_14ma
+  )
+  
+  # Make the POST request
+  response <- POST(url_ts, body = body, encode = "json")
+  
+  print(response)
+  if (status_code(response) == 200) {
+    response_content <- content(response, as = "parsed", type = "application/json")
+    
+    probability <- response_content$probability[[1]]
+    risk_class <- response_content$risk_class[[1]]
+    
+    return(data.frame(
+      station_id = station_id,
+      mean_air_temp_30d_ma=mat_30dma,
+      max_rh_30d_ma=max_rh_30dma,
+      tot_hrs_rh90_14d_ma=th_rh90_14ma,
+      risk_probability = probability,
+      risk_class=risk_class
+    ))
+  } else {
+    return(data.frame(
+      station_id = station_id,
+      mean_air_temp_30d_ma=NA,
+      max_rh_30d_ma=NA,
+      tot_hrs_rh90_14d_ma=NA,
+      risk_probability = NA,
+      risk_class = NA
+    ))
+  }
+}
+
+call_tarspot_for_station <- function(station_id){
+  rh_above_90_daily <- fetch_rh_above_90_daily(station_id)
+  th_rh90_14ma <- rh_above_90_daily$rh_above_90_daily_14d_ma[1] 
+  
+  at<-fetch_at(station_id)
+  
+  mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
+  max_rh_30dma <- at$rh_max_30d_ma[1]
+  
+  url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
+  cat(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
+  result <- get_risk_probability(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
+  
+  print(result)
+}
+

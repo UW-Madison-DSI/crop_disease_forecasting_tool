@@ -8,10 +8,9 @@ library(jsonlite)
 library(dplyr)
 library(flexdashboard)
 
-# Load functions and station data
 source("functions/stations.R")
+source("functions/logic.R")
 
-# Vector where station names are displayed with "All" option
 station_choices <- c("All" = "all", setNames(names(stations), sapply(stations, function(station) station$name)))
 
 # Define UI
@@ -58,18 +57,22 @@ ui <- dashboardPage(
       selectInput("fungicide_applied", "Did you apply fungicide in the last 14 days?", 
                   choices = c("Yes", "No")),
       selectInput("crop_growth_stage", "What is the growth stage of your crop?", 
-                  choices = c("V10-V15", "R1", "R2", "R3")),
-      
-      # Adding the gauge only if a single station is selected
-      conditionalPanel(
-        condition = "input.custom_station_code != 'all'",  # Gauge only appears when a single station is selected
-        h2(strong("Risk Gauge"), style = "font-size:18px;"),
-        gaugeOutput("gauge")
-      )
+                  choices = c("V10-V15", "R1", "R2", "R3"))
     )
   ),
   
   dashboardBody(
+    fluidRow(
+      # Add a box for the Risk Gauge
+      conditionalPanel(
+        condition = "input.custom_station_code != 'all' && input.fungicide_applied == 'No'",  # Refined condition
+        box(
+          h2(strong("Tarspot Risk"), style = "font-size:18px;"),
+          gaugeOutput("gauge"),
+          width = 12  # Full width for visibility
+        )
+      )
+    ),
     fluidRow(
       box(
         leafletOutput("mymap", height = "600px"),
@@ -99,11 +102,14 @@ server <- function(input, output, session) {
     }
   })
   
-  # Fetch station weather data from API when a station is selected
+  # Fetch station weather data and risk probability when a station is selected
   weather_data <- reactive({
     station_code <- input$custom_station_code
     if (station_code != "all") {
       station <- stations[[station_code]]
+      # Call the API or function to get the data
+      result <- call_tarspot_for_station(station_code)  # Fetch data
+      return(result)
     } else {
       return(NULL)
     }
@@ -111,8 +117,8 @@ server <- function(input, output, session) {
   
   # Render the leaflet map
   output$mymap <- renderLeaflet({
-    leaflet() %>%
-      addTiles() %>%
+    leaflet() %>% 
+      addTiles() %>% 
       setView(lng = -89.758205, lat = 44.769571, zoom = 7)  # Default map view over Wisconsin
   })
   
@@ -125,7 +131,7 @@ server <- function(input, output, session) {
     # Loop through each station and add a marker
     for (station_code in names(station_data)) {
       station <- station_data[[station_code]]
-      leafletProxy("mymap") %>%
+      leafletProxy("mymap") %>% 
         addMarkers(lng = station$longitude, lat = station$latitude,
                    popup = paste0("<strong>", station$name, "</strong><br>",
                                   station$location, "<br>",
@@ -138,7 +144,10 @@ server <- function(input, output, session) {
   output$station_info <- renderText({
     station_code <- input$custom_station_code
     if (station_code == "all") {
-      return("You have selected all stations. Please select one to see the risk of tarspot. If you have applied a fungicide in the last 14 days to your crop, we can not estimate a probability of tarspot.")
+      return("You have selected all stations. 
+             Please select one to see the risk of tarspot. 
+             If you have applied a fungicide in the last 14 days to your crop, 
+             we can not estimate a probability of tarspot.")
     } else {
       station <- stations[[station_code]]
       paste("You have selected", station$name, "in", station$state)
@@ -150,19 +159,24 @@ server <- function(input, output, session) {
     weather_data()  # Show weather data from API
   })
   
-  # Render the gauge based on the risk value
+  # Render the gauge based on the risk value from weather_data
   output$gauge <- renderGauge({
-    risk_value <- 30  # Example risk value, replace this with the actual risk calculation
-    
-    gauge(risk_value, 
-          min = 0, 
-          max = 100, 
-          sectors = gaugeSectors(
-            success = c(0, 20),  # Green (below 20)
-            warning = c(20, 35),  # Yellow (20 to 35)
-            danger = c(35, 100)  # Red (above 35)
-          )
-    )
+    weather <- weather_data()
+    if (!is.null(weather)) {
+      risk_value <- weather$risk_probability  # Use the actual risk probability from the API
+      
+      gauge(risk_value, 
+            min = 0, 
+            max = 100, 
+            sectors = gaugeSectors(
+              success = c(0, 20),  # Green (below 20)
+              warning = c(20, 35),  # Yellow (20 to 35)
+              danger = c(35, 100)  # Red (above 35)
+            )
+      )
+    } else {
+      gauge(0, min = 0, max = 100)  # Default to 0 if no data available
+    }
   })
 }
 
