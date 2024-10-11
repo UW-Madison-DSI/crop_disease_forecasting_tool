@@ -7,9 +7,12 @@ library(ggplot2)
 library(dplyr)  # Load dplyr for the pipe operator
 library(httr)
 
+
+base_url <- 'https://wisconet.wisc.edu'
+url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
+
 # Function to get weather data from the API
 api_call_wisconet_data <- function(station, start_time, end_time) {
-  base_url <- 'https://wisconet.wisc.edu'
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
   params <- list(
@@ -121,7 +124,7 @@ fetch_at <- function(station) {
 # Load necessary packages
 # Function to get 60-minute relative humidity data
 api_call_wisconet_data_rh <- function(station, start_time, end_time) {
-  base_url <- 'https://wisconet.wisc.edu'
+  
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
   params <- list(
@@ -154,7 +157,7 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
     # Filter rows where RH > 90% and within night hours (20:00-06:00)
     result_df <- result_df %>%
       mutate(hour = hour(collection_time)) %>%
-      filter(rh_avg > 90 & (hour >= 20 | hour < 6))
+      filter(rh_avg >= 90 & (hour >= 20 | hour <= 6))
     
     # Group by day and count the number of hours where RH > 90 for each day
     daily_rh_above_90 <- result_df %>%
@@ -186,7 +189,8 @@ fetch_rh_above_90_daily <- function(station) {
   rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
   
   data <- rh_data$daily_rh_above_90
-  data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, k = 14, fill = NA, align = "right")
+  data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, 
+                                            k = 14, fill = NA, align = "right")
   print(tail(data))
   current_time <- Sys.time()
   rh_above_90_daily1 <- data %>%
@@ -204,13 +208,13 @@ fetch_rh_above_90_daily <- function(station) {
 
 
 
-get_risk_probability <- function(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url) {
-  cat('here....',mat_30dma, max_rh_30dma,th_rh90_14ma)
+get_risk_probability <- function(station_id, station_name,risk_threshold,
+                                 mat_30dma, max_rh_30dma,th_rh90_14ma, url) {
   url_ts <- paste0(url, "/predict_tarspot_risk")
   body <- list(
     growth_stage = 'R1',
     fungicide_applied = 'no',
-    risk_threshold = 35, 
+    risk_threshold = risk_threshold*100, 
     mean_air_temp_30d_ma = mat_30dma,
     max_rh_30d_ma = max_rh_30dma,  
     tot_hrs_rh90_14d_ma = th_rh90_14ma
@@ -227,26 +231,26 @@ get_risk_probability <- function(station_id, mat_30dma, max_rh_30dma,th_rh90_14m
     risk_class <- response_content$risk_class[[1]]
     
     return(data.frame(
-      station_id = station_id,
-      mean_air_temp_30d_ma=mat_30dma,
-      max_rh_30d_ma=max_rh_30dma,
-      tot_hrs_rh90_14d_ma=th_rh90_14ma,
-      risk_probability = probability,
-      risk_class=risk_class
+      Station = station_name,
+      AirTemp_C_30dma=mat_30dma,
+      Max_RH_pct_30dma=max_rh_30dma,
+      Tot_Nhrs_RHab90_14dma=th_rh90_14ma,
+      Risk = probability,
+      Risk_Class=risk_class
     ))
   } else {
     return(data.frame(
-      station_id = station_id,
-      mean_air_temp_30d_ma=NA,
-      max_rh_30d_ma=NA,
-      tot_hrs_rh90_14d_ma=NA,
-      risk_probability = NA,
-      risk_class = NA
+      Station = station_id,
+      AirTemp_C_30dma=NA,
+      Max_RH_pct_30dma=NA,
+      Tot_Nhrs_RHab90_14dma=NA,
+      Risk = NA,
+      Risk_Class = NA
     ))
   }
 }
 
-call_tarspot_for_station <- function(station_id){
+call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
   rh_above_90_daily <- fetch_rh_above_90_daily(station_id)
   th_rh90_14ma <- rh_above_90_daily$rh_above_90_daily_14d_ma[1] 
   
@@ -255,9 +259,10 @@ call_tarspot_for_station <- function(station_id){
   mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
   max_rh_30dma <- at$rh_max_30d_ma[1]
   
-  url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
   cat(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
-  result <- get_risk_probability(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
+  result <- get_risk_probability(station_id, station_name, risk_threshold, 
+                                 mat_30dma, max_rh_30dma,th_rh90_14ma, 
+                                 url_ts)
   
   print(result)
 }
