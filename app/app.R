@@ -51,13 +51,15 @@ ui <- dashboardPage(
                     .navbar {background-color: #006939 !important;}")),
     
     sidebarMenu(
-      h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Crop Characteristics")), style = "font-size:18px;"),
-      selectInput("custom_station_code", "Please Select an Station", 
+      h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Settings")), style = "font-size:18px;"),
+      selectInput("custom_station_code", "Please Select a Station", 
                   choices = station_choices),
       selectInput("fungicide_applied", "Did you apply fungicide in the last 14 days?", 
                   choices = c("Yes", "No")),
       selectInput("crop_growth_stage", "What is the growth stage of your crop?", 
-                  choices = c("V1-V10","V10-V15", "R1-R3", "Other"))
+                  choices = c("V1-V10","V10-V15", "R1-R3", "Other")),
+      sliderInput("risk_threshold", "Set Risk Threshold (%)", 
+                  min = 20, max = 50, value = 35, step = 1)
     )
   ),
   
@@ -107,8 +109,11 @@ server <- function(input, output, session) {
     station_code <- input$custom_station_code
     if (station_code != "all") {
       station <- stations[[station_code]]
+      station_name <- station$name  # Get station name
+      risk_threshold <- input$risk_threshold / 100  # Convert risk threshold to a percentage
+      
       # Call the API or function to get the data
-      result <- call_tarspot_for_station(station_code)  # Fetch data
+      result <- call_tarspot_for_station(station_code, station_name, risk_threshold)  # Fetch data
       return(result)
     } else {
       return(NULL)
@@ -147,8 +152,7 @@ server <- function(input, output, session) {
       return("You have selected all stations. 
              Please select one to see the risk of tarspot. 
              If you have applied a fungicide in the last 14 days to your crop, 
-             we can not estimate a probability of tarspot. The Tarspot model was only tested in V10-V15 and R1-R3 growth stages. 
-             Other growth stages won't display a risk of tarspot.")
+             we can not estimate a probability of tarspot.")
     } else {
       station <- stations[[station_code]]
       paste("You have selected", station$name, "in", station$state)
@@ -157,14 +161,32 @@ server <- function(input, output, session) {
   
   # Display the fetched weather data in a table
   output$weather_data <- renderTable({
-    weather_data()  # Show weather data from API
-  })
+    data <- weather_data()
+    
+    if (!is.null(data)) {
+      # Customizing the variable names and adding units
+      custom_table <- data.frame(
+        Variable = c( 
+                     "Air Temperature (30-day moving average)", 
+                     "Max Relative Humidity (30-day moving average)", 
+                     "Total Night Hours with RH > 90% (14-day moving average)"),
+        Unit = c("", "°C", "%", "hours"),
+        Value = c( 
+                  data$AirTemp_C_30dma, 
+                  data$Max_RH_pct_30dma, 
+                  data$Tot_Nhrs_RHab90_14dma)
+      )
+      
+      return(custom_table)
+    }
+  }, rownames = FALSE)
+  
   
   # Render the gauge based on the risk value from weather_data
   output$gauge <- renderGauge({
     weather <- weather_data()
     if (!is.null(weather)) {
-      risk_value <- weather$risk_probability  # Use the actual risk probability from the API
+      risk_value <- weather$Risk  # Use the actual risk probability from the API
       
       gauge(risk_value, 
             min = 0, 
