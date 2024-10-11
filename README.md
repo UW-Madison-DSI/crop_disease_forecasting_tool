@@ -2,34 +2,6 @@
 
 This API leverages the power of environmental data to predict the likelihood of diseases like Tarspot, Spore and Gray Leaf Spot on corn crops. 
 
-## To install
-```bash
-git clone https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git
-cd corn_disease_forecast_api
-```
-
-## Usage
-See example of how to do an api call on this tool [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/example/example_api_call.R)
-
-## Project Structure 
-```
-├── LICENSE
-├── README.md          <- The top-level README for developers using this project.
-├── plumber.R          <- Logic to create API
-├── R          <- Main functionalities for API
-│   ├── crop_mangm_validations.R    <- Crop management validations
-│   ├── logit_function.R    <- Core functions for forecasting disease api
-│   ├── var_schema.R    <- Variables schema
-├── materials               <- Examples of API calls and plug in with Wisconet
-│   ├── call_wisconet    <- Wisconet call example
-│   ├── docs    <- Documentation of the schema
-│   ├── example    <- Examples to call the API
-├── app  <- Shinny dashboard code.
-│   ├── app.R    <- app logic, ui and server
-│   ├── functions    <- API functions
-├── test          <- Code Testing modules
- ```
-
 ## Features
 
 - Predicts the probability of disease incidence based on key environmental variables.
@@ -58,6 +30,34 @@ Visit our [dashboard here](https://connect.doit.wisc.edu/tarspot_forecasting_app
 Method: `POST` 
 
 Response: A JSON object containing the predicted probability of tar spot incidence and the associated risk level.
+
+## To install
+```bash
+git clone https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git
+cd corn_disease_forecast_api
+```
+
+## Usage
+See example of how to do an api call on this tool [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/example/example_api_call.R)
+
+## Project Structure 
+```
+├── LICENSE
+├── README.md          <- The top-level README for developers using this project.
+├── plumber.R          <- Logic to create API
+├── R          <- Main functionalities for API
+│   ├── crop_mangm_validations.R    <- Crop management validations
+│   ├── logit_function.R    <- Core functions for forecasting disease api
+│   ├── var_schema.R    <- Variables schema
+├── materials               <- Examples of API calls and plug in with Wisconet
+│   ├── call_wisconet    <- Wisconet call example
+│   ├── docs    <- Documentation of the schema
+│   ├── example    <- Examples to call the API
+├── app  <- Shinny dashboard code.
+│   ├── app.R    <- app logic, ui and server
+│   ├── functions    <- API functions
+├── test          <- Code Testing modules
+ ```
 
 ## Reference:
 - Original paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
