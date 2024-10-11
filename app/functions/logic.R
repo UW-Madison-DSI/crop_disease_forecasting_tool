@@ -67,8 +67,6 @@ api_call_wisconet_data <- function(station, start_time, end_time) {
     result_df <- result_df[c("collection_time", "air_temp_avg_c", "air_temp_min_c_30d_ma",
                              "air_temp_max_c_30d_ma", "air_temp_avg_c_30d_ma",
                              "rh_max_30d_ma", "rh_max")]
-    #print(result_df)
-    #api_call_wisconet_plot(result_df)
     
     current_time <- Sys.time()
     result_df1 <- result_df %>%
@@ -144,29 +142,26 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
       rh_avg = NA,  # Placeholder for relative humidity values
       stringsAsFactors = FALSE
     )
-    #print(data$measures)
+
     # Process measures to get '60min_relative_humidity_pct_avg'
     for (i in seq_along(data$measures)) {
       measures <- data$measures[[i]]
       for (j in seq_len(length(measures))) {
-        print(measures[[j]])
         result_df$rh_avg[i] <- measures[[j]][1]
       }
     }
-    print(result_df)
-    # Filter rows where RH > 90%
-    rh_greater_than_90 <- result_df %>%
-      filter(rh_avg > 90)
+    
+    # Filter rows where RH > 90% and within night hours (20:00-06:00)
+    result_df <- result_df %>%
+      mutate(hour = hour(collection_time)) %>%
+      filter(rh_avg > 90 & (hour >= 20 | hour < 6))
     
     # Group by day and count the number of hours where RH > 90 for each day
-    daily_rh_above_90 <- rh_greater_than_90 %>%
+    daily_rh_above_90 <- result_df %>%
       mutate(date = as.Date(collection_time)) %>%
       group_by(date) %>%
       summarise(hours_rh_above_90 = n())
-    
-    # Print the result
-    print(daily_rh_above_90)
-    
+
     return(list(
       data = result_df,
       daily_rh_above_90 = daily_rh_above_90
@@ -190,7 +185,7 @@ fetch_rh_above_90_daily <- function(station) {
   # Fetch the data using the API function
   rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
   
-  data<-rh_data$daily_rh_above_90
+  data <- rh_data$daily_rh_above_90
   data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, k = 14, fill = NA, align = "right")
   print(tail(data))
   current_time <- Sys.time()
