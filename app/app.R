@@ -57,7 +57,7 @@ ui <- dashboardPage(
       selectInput("fungicide_applied", "Did you apply fungicide in the last 14 days?", 
                   choices = c("Yes", "No")),
       selectInput("crop_growth_stage", "What is the growth stage of your crop?", 
-                  choices = c("V10-V15", "R1", "R2", "R3"))
+                  choices = c("V1-V10","V10-V15", "R1-R3", "Other"))
     )
   ),
   
@@ -65,7 +65,7 @@ ui <- dashboardPage(
     fluidRow(
       # Add a box for the Risk Gauge
       conditionalPanel(
-        condition = "input.custom_station_code != 'all' && input.fungicide_applied == 'No'",  # Refined condition
+        condition = "input.custom_station_code != 'all' && input.fungicide_applied == 'No' && (input.crop_growth_stage == 'V10-V15' || input.crop_growth_stage == 'R1-R3')",  # Refined condition
         box(
           h2(strong("Tarspot Risk"), style = "font-size:18px;"),
           gaugeOutput("gauge"),
@@ -147,7 +147,8 @@ server <- function(input, output, session) {
       return("You have selected all stations. 
              Please select one to see the risk of tarspot. 
              If you have applied a fungicide in the last 14 days to your crop, 
-             we can not estimate a probability of tarspot.")
+             we can not estimate a probability of tarspot. The Tarspot model was only tested in V10-V15 and R1-R3 growth stages. 
+             Other growth stages won't display a risk of tarspot.")
     } else {
       station <- stations[[station_code]]
       paste("You have selected", station$name, "in", station$state)
