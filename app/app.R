@@ -166,12 +166,12 @@ server <- function(input, output, session) {
     if (!is.null(data)) {
       # Customizing the variable names and adding units
       custom_table <- data.frame(
-        Variable = c("Station", 
+        Variable = c( 
                      "Air Temperature (30-day moving average)", 
                      "Max Relative Humidity (30-day moving average)", 
                      "Total Night Hours with RH > 90% (14-day moving average)"),
         Unit = c("", "°C", "%", "hours"),
-        Value = c(data$Station, 
+        Value = c( 
                   data$AirTemp_C_30dma, 
                   data$Max_RH_pct_30dma, 
                   data$Tot_Nhrs_RHab90_14dma)
