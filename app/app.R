@@ -52,7 +52,7 @@ ui <- dashboardPage(
     
     sidebarMenu(
       h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Crop Characteristics")), style = "font-size:18px;"),
-      selectInput("custom_station_code", "Please Select a Station", 
+      selectInput("custom_station_code", "Please Select an Station", 
                   choices = station_choices),
       selectInput("fungicide_applied", "Did you apply fungicide in the last 14 days?", 
                   choices = c("Yes", "No")),
