@@ -164,22 +164,15 @@ server <- function(input, output, session) {
     data <- weather_data()
     
     if (!is.null(data)) {
-      # Customizing the variable names and adding units
-      custom_table <- data.frame(
-        Variable = c( 
-                     "Air Temperature (30-day moving average)", 
-                     "Max Relative Humidity (30-day moving average)", 
-                     "Total Night Hours with RH > 90% (14-day moving average)"),
-        Unit = c("", "°C", "%", "hours"),
-        Value = c( 
-                  data$AirTemp_C_30dma, 
-                  data$Max_RH_pct_30dma, 
-                  data$Tot_Nhrs_RHab90_14dma)
-      )
+      # Use dplyr to select specific columns
+      selected_data <- data %>%
+        dplyr::select(Station, AirTemp_C_30dma, Max_RH_pct_30dma, Tot_Nhrs_RHab90_14dma)  # Replace with actual column names
       
-      return(custom_table)
+      return(selected_data)
     }
-  }, rownames = FALSE)
+  })
+  
+    
   
   
   # Render the gauge based on the risk value from weather_data
