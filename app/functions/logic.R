@@ -8,11 +8,21 @@ library(dplyr)  # Load dplyr for the pipe operator
 library(httr)
 
 
+###################################### Preparation
+
 base_url <- 'https://wisconet.wisc.edu'
 url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 
-# Function to get weather data from the API
-api_call_wisconet_data <- function(station, start_time, end_time) {
+# Get today's date
+today <- Sys.time()
+three_months_ago <- today - months(3)
+
+# Convert both dates to Unix timestamps in GMT
+start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
+end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
+
+###################################### Function to get weather data from the API
+api_call_wisconet_data <- function(station) {
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
   params <- list(
@@ -84,7 +94,7 @@ api_call_wisconet_data <- function(station, start_time, end_time) {
   }
 }
 
-# Function to plot the data
+###################################### Function to plot the data
 api_call_wisconet_plot <- function(df) {
   ggplot(df, aes(x = collection_time)) +
     geom_line(aes(y = air_temp_avg_c, color = "Daily Average")) +
@@ -99,18 +109,9 @@ api_call_wisconet_plot <- function(df) {
 
 # Function to fetch and plot data
 fetch_at <- function(station) {
-  # Get today's date
-  today <- Sys.time()
-  three_months_ago <- today - months(3)
-  
-  # Convert both dates to Unix timestamps in GMT
-  start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
-  end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
-  
-  print(start_time)
   
   # Fetch the data using the API function
-  data_df <- api_call_wisconet_data(station, start_time, end_time)
+  data_df <- api_call_wisconet_data(station)
   
   # Plot the data if it is not NULL
   if (!is.null(data_df)) {
@@ -121,9 +122,8 @@ fetch_at <- function(station) {
   }
 }
 
-# Load necessary packages
-# Function to get 60-minute relative humidity data
-api_call_wisconet_data_rh <- function(station, start_time, end_time) {
+###################################### Function to get 60-minute relative humidity data
+api_call_wisconet_data_rh <- function(station) {
   
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
@@ -175,18 +175,10 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
   }
 }
 
-# Function to fetch and print the number of hours with RH > 90% per day
+###################################### Function to fetch and print the number of Night hours with RH > 90% per day
 fetch_rh_above_90_daily <- function(station) {
-  # Get today's date
-  today <- Sys.time()
-  three_months_ago <- today - months(3)
-  
-  # Convert both dates to Unix timestamps in GMT
-  start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
-  end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
-  
   # Fetch the data using the API function
-  rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
+  rh_data <- api_call_wisconet_data_rh(station)
   
   data <- rh_data$daily_rh_above_90
   data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, 
@@ -206,9 +198,8 @@ fetch_rh_above_90_daily <- function(station) {
   }
 }
 
-
-
-get_risk_probability <- function(station_id, station_name,risk_threshold,
+###################################### Call Tarspot API
+get_risk_probability <- function(station_id, station_name, risk_threshold,
                                  mat_30dma, max_rh_30dma,th_rh90_14ma, url) {
   url_ts <- paste0(url, "/predict_tarspot_risk")
   body <- list(
@@ -250,6 +241,7 @@ get_risk_probability <- function(station_id, station_name,risk_threshold,
   }
 }
 
+###################################### Prpeare the relevant data for Tarspot
 call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
   rh_above_90_daily <- fetch_rh_above_90_daily(station_id)
   th_rh90_14ma <- rh_above_90_daily$rh_above_90_daily_14d_ma[1] 
@@ -264,6 +256,6 @@ call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
                                  mat_30dma, max_rh_30dma,th_rh90_14ma, 
                                  url_ts)
   
-  print(result)
+  return(result)
 }
 

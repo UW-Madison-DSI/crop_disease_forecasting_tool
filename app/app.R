@@ -70,7 +70,8 @@ ui <- dashboardPage(
         condition = "input.custom_station_code != 'all' && input.fungicide_applied == 'No' && (input.crop_growth_stage == 'V10-V15' || input.crop_growth_stage == 'R1-R3')",  # Refined condition
         box(
           h2(strong("Tarspot Risk"), style = "font-size:18px;"),
-          gaugeOutput("gauge"),
+          gaugeOutput("gauge"),  # Risk gauge
+          textOutput("risk_class_text"),  # Risk class text output
           width = 12  # Full width for visibility
         )
       )
@@ -172,14 +173,12 @@ server <- function(input, output, session) {
     }
   })
   
-    
-  
-  
   # Render the gauge based on the risk value from weather_data
   output$gauge <- renderGauge({
     weather <- weather_data()
     if (!is.null(weather)) {
       risk_value <- weather$Risk  # Use the actual risk probability from the API
+      risk_class <- weather$Risk_Class
       
       gauge(risk_value, 
             min = 0, 
@@ -194,6 +193,16 @@ server <- function(input, output, session) {
       gauge(0, min = 0, max = 100)  # Default to 0 if no data available
     }
   })
+  
+  output$risk_class_text <- renderText({
+    weather <- weather_data()
+    if (!is.null(weather)) {
+      paste("Risk Class:", weather$Risk_Class)
+    } else {
+      "No data available"
+    }
+  })
+  
 }
 
 # Run the application
