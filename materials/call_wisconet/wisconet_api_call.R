@@ -63,12 +63,26 @@ api_call_wisconet_data <- function(station, start_time, end_time) {
     result_df$air_temp_avg_c_30d_ma <- rollmean(result_df$air_temp_avg_c, k = 30, fill = NA, align = "right")
     result_df$rh_max_30d_ma <- rollmean(result_df$rh_max, k = 30, fill = NA, align = "right")
     
+    api_call_wisconet_plot(result_df)
+    
+    plot1 <- ggplot(result_df, aes(x = collection_time)) +
+      geom_line(aes(y = rh_max, color = "Max Relative Humidity (%)")) +
+      geom_line(aes(y = rh_max_30d_ma, color = "30-day MA of Max RH"), linetype = "dashed") +
+      labs(title = "Max Relative Humidity (%) - Arlington Station",
+           x = "Date",
+           y = "Max Relative Humidity (%)",
+           color = "Legend") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+    
+    print(plot1)
+    
     # Rearrange columns for better readability
     result_df <- result_df[c("collection_time", "air_temp_avg_c", "air_temp_min_c_30d_ma",
                              "air_temp_max_c_30d_ma", "air_temp_avg_c_30d_ma",
                              "rh_max_30d_ma", "rh_max")]
-    #print(result_df)
-    #api_call_wisconet_plot(result_df)
+    print(result_df)
+    
     
     current_time <- Sys.time()
     result_df1 <- result_df %>%
@@ -85,22 +99,29 @@ api_call_wisconet_data <- function(station, start_time, end_time) {
 
 # Function to plot the data
 api_call_wisconet_plot <- function(df) {
-  ggplot(df, aes(x = collection_time)) +
+  plot <- ggplot(df, aes(x = collection_time)) +
     geom_line(aes(y = air_temp_avg_c, color = "Daily Average")) +
-    geom_line(aes(y = air_temp_avg_c_30d_ma, color = "30-day Moving Average")) +
-    labs(title = "Average Temperature (Celsius)",
+    geom_line(aes(y = air_temp_max_c_30d_ma, color = "30-day Moving Average Max A Temp"), linetype = "dashed") +
+    geom_line(aes(y = air_temp_avg_c_30d_ma, color = "30-day Moving Average Mean A Temp"), linetype = "dashed") +
+    geom_line(aes(y = air_temp_min_c_30d_ma, color = "30-day Moving Average Min A Temp"), linetype = "dashed") +
+    geom_line(aes(y = air_temp_max_c, color = "Daily Max Temp"), alpha = 0.6) +
+    geom_line(aes(y = air_temp_min_c, color = "Daily Min Temp"), alpha = 0.6) +
+    labs(title = "Air Temperature (°C) - Arlington Station",
          x = "Date",
          y = "Temperature (°C)",
          color = "Legend") +
     theme_minimal() +
     theme(legend.position = "bottom")
+  
+  print(plot)  # Explicitly print the plot
 }
+
 
 # Function to fetch and plot data
 fetch_at <- function(station) {
   # Get today's date
   today <- Sys.time()
-  three_months_ago <- today - months(3)
+  three_months_ago <- today - months(12)
   
   # Convert both dates to Unix timestamps in GMT
   start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
@@ -155,8 +176,11 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
     }
     print(result_df)
     # Filter rows where RH > 90%
-    rh_greater_than_90 <- result_df %>%
-      filter(rh_avg > 90)
+    result_df <- result_df %>%
+      mutate(hour = hour(collection_time)) %>%
+      filter(rh_avg >= 90 & (hour >= 20 | hour <= 6))
+    
+    rh_greater_than_90 <- result_df
     
     # Group by day and count the number of hours where RH > 90 for each day
     daily_rh_above_90 <- rh_greater_than_90 %>%
@@ -181,7 +205,7 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
 fetch_rh_above_90_daily <- function(station) {
   # Get today's date
   today <- Sys.time()
-  three_months_ago <- today - months(3)
+  three_months_ago <- today - months(12)
   
   # Convert both dates to Unix timestamps in GMT
   start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
@@ -191,7 +215,23 @@ fetch_rh_above_90_daily <- function(station) {
   rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
   
   data<-rh_data$daily_rh_above_90
+  print(colnames(data))
   data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, k = 14, fill = NA, align = "right")
+  
+  plot2 <- ggplot(data, aes(x = date)) +
+    geom_line(aes(y = hours_rh_above_90, color = "Tot Night hrs RH>=90(%)")) +
+    geom_line(aes(y = rh_above_90_daily_14d_ma, color = "14-day MA of Tot Night hrs RH>=90(%)"), linetype = "dashed") +
+    labs(title = "Tot Night hrs RH(%)>= 90 - Arlington Station",
+         x = "Date",
+         y = "Tot Night hrs RH>=90 (%)",
+         color = "Legend") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+  
+  print(plot2)
+  ggsave("materials/call_wisconet/RH_above_90_plot.png", plot = plot2, width = 8, height = 6, dpi = 300)
+  
+  
   print(tail(data))
   current_time <- Sys.time()
   rh_above_90_daily1 <- data %>%
