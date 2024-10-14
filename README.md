@@ -61,7 +61,7 @@ See example of how to do an api call on this tool [HERE](https://github.com/UW-M
 
 ## Reference:
 - Original paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
-- See the codebook of the variables used  [here](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/docs/codebook - API-variablesuse.R)
+- See the codebook of the variables used  [here](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/docs/codebook)  - API-variablesuse.R
 
 ## License
 
