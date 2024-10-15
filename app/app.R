@@ -52,12 +52,11 @@ ui <- dashboardPage(
     
     sidebarMenu(
       h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Settings")), style = "font-size:18px;"),
-      selectInput("custom_station_code", "Please Select a Station", 
+      selectInput("custom_station_code", "Please Select an Station", 
                   choices = station_choices),
-      selectInput("fungicide_applied", "No Fungicide in the last 14 days?", 
-                  choices = c("Yes", "No")),
-      selectInput("crop_growth_stage", "Growth stage within V10-R3?", 
-                  choices = c("Yes", "No")),
+      checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE),  # Changed to checkbox
+      checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE),  # Changed to checkbox
+      
       sliderInput("risk_threshold", "Set Risk Threshold (%)", 
                   min = 20, max = 50, value = 35, step = 1)
     )
@@ -67,7 +66,7 @@ ui <- dashboardPage(
     fluidRow(
       # Add a box for the Risk Gauge
       conditionalPanel(
-        condition = "input.custom_station_code != 'all' && input.fungicide_applied == 'Yes' && input.crop_growth_stage == 'Yes'",  # Refined condition
+        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage",  # Refined condition
         box(
           h2(strong("Tarspot Risk"), style = "font-size:18px;"),
           gaugeOutput("gauge"),  # Risk gauge
