@@ -14,14 +14,14 @@ source("R/var_schema.R")
 #* @param risk_threshold Numeric: Action threshold (default = 35%). Threshold must be between 20 and 50
 #* @param mean_air_temp_30d_ma Numeric: 30-day moving average of mean air temperature (°C)
 #* @param max_rh_30d_ma Numeric: 30-day moving average of max relative humidity (%)
-#* @param tot_hrs_rh90_14d_ma Numeric: 14-day moving average of total nighttime hours with 90% relative humidity or above for each day
+#* @param tot_nhrs_rh90_14d_ma Numeric: 14-day moving average of total nighttime hours with 90% relative humidity or above for each day
 #* @post /predict_tarspot_risk
 function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 35,
-         mean_air_temp_30d_ma, max_rh_30d_ma, tot_hrs_rh90_14d_ma) {
+         mean_air_temp_30d_ma, max_rh_30d_ma, tot_nhrs_rh90_14d_ma) {
   
   # Validate inputs
   numeric_vars <- c("risk_threshold", "mean_air_temp_30d_ma", 
-                    "max_rh_30d_ma", "tot_hrs_rh90_14d_ma")
+                    "max_rh_30d_ma", "tot_nhrs_rh90_14d_ma")
   
   # Convert these variables to numeric
   convert_to_numeric(environment(), numeric_vars)
@@ -39,7 +39,7 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 35,
   # Call the tarspot risk calculation function
   result <- calculate_tarspot_risk(mean_air_temp_30d_ma, 
                                    max_rh_30d_ma, 
-                                   tot_hrs_rh90_14d_ma, 
+                                   tot_nhrs_rh90_14d_ma, 
                                    risk_threshold)
   
   # Return the result as JSON
