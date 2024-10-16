@@ -61,16 +61,12 @@ See example of how to do an api call on this tool [HERE](https://github.com/UW-M
 ├── test                            <- Code Testing modules
  ```
 
-## Reference:
-- The models presented are based on plant pathology research in the University of Madison Wisconsin, paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
-- This is part of an open-source initiative from the [Open Source Program Office at the University](https://ospo.wisc.edu) of Madison Wisconsin, aimed at fostering collaboration and innovation in forecasting tools.
-- See the codebook of the variables used  [here](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/docs/codebook)  - API-variablesuse.R
-
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 
 ### Acknowledgements
-
-This software was created by the [Data Science Institute](https://datascience.wisc.edu) at the [University of Wisconsin-Madison](https://www.wisc.edu)
+- This innitiative is part of an Open-Source initiative from the [Open Source Program Office at the University of Madison Wisconsin](https://ospo.wisc.edu), aimed at fostering collaboration and innovation in forecasting tools.
+- The models presented are based on plant pathology research in the University of Madison Wisconsin, paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
+- This software was created by the [Data Science Institute](https://datascience.wisc.edu) at the [University of Wisconsin-Madison](https://www.wisc.edu)
