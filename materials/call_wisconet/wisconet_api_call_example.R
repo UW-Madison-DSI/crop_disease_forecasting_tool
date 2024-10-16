@@ -7,9 +7,28 @@ library(ggplot2)
 library(dplyr)  # Load dplyr for the pipe operator
 library(httr)
 
+base_url <- 'https://wisconet.wisc.edu'
+url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
+# Get today's date
+today <- Sys.time()
+three_months_ago <- today - months(12)
+cat('today: ',today, ' three_months_ago: ',three_months_ago)
+
+# Convert both dates to Unix timestamps in GMT
+start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
+end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
+
+
+cat('start time: ',start_time, ' end time: ',end_time)
+
+# Convert Fahrenheit to Celsius
+fahrenheit_to_celsius <- function(temp_f) {
+  (temp_f - 32) * 5/9
+}
+
 # Function to get weather data from the API
 api_call_wisconet_data <- function(station, start_time, end_time) {
-  base_url <- 'https://wisconet.wisc.edu'
+  
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
   params <- list(
@@ -41,11 +60,6 @@ api_call_wisconet_data <- function(station, start_time, end_time) {
         if (measures[j, 1] == 6) result_df$air_temp_min_f[i] <- measures[j, 2]
         if (measures[j, 1] == 20) result_df$rh_max[i] <- measures[j, 2]
       }
-    }
-    
-    # Convert Fahrenheit to Celsius
-    fahrenheit_to_celsius <- function(temp_f) {
-      (temp_f - 32) * 5/9
     }
     
     result_df$air_temp_max_c <- fahrenheit_to_celsius(result_df$air_temp_max_f)
@@ -119,16 +133,6 @@ api_call_wisconet_plot <- function(df) {
 
 # Function to fetch and plot data
 fetch_at <- function(station) {
-  # Get today's date
-  today <- Sys.time()
-  three_months_ago <- today - months(12)
-  
-  # Convert both dates to Unix timestamps in GMT
-  start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
-  end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
-  
-  print(start_time)
-  
   # Fetch the data using the API function
   data_df <- api_call_wisconet_data(station, start_time, end_time)
   
@@ -144,7 +148,6 @@ fetch_at <- function(station) {
 # Load necessary packages
 # Function to get 60-minute relative humidity data
 api_call_wisconet_data_rh <- function(station, start_time, end_time) {
-  base_url <- 'https://wisconet.wisc.edu'
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
   params <- list(
@@ -203,14 +206,6 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
 
 # Function to fetch and print the number of hours with RH > 90% per day
 fetch_rh_above_90_daily <- function(station) {
-  # Get today's date
-  today <- Sys.time()
-  three_months_ago <- today - months(12)
-  
-  # Convert both dates to Unix timestamps in GMT
-  start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
-  end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
-  
   # Fetch the data using the API function
   rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
   
@@ -250,7 +245,6 @@ fetch_rh_above_90_daily <- function(station) {
 
 
 get_risk_probability <- function(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url) {
-  cat('here....',mat_30dma, max_rh_30dma,th_rh90_14ma)
   url_ts <- paste0(url, "/predict_tarspot_risk")
   body <- list(
     growth_stage = 'R1',
@@ -300,7 +294,6 @@ call_tarspot_for_station <- function(station_id){
   mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
   max_rh_30dma <- at$rh_max_30d_ma[1]
   
-  url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
   cat(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
   result <- get_risk_probability(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
   
@@ -309,3 +302,31 @@ call_tarspot_for_station <- function(station_id){
 
 station_id <- 'ALTN'
 call_tarspot_for_station(station_id)
+
+
+
+
+endpoint <- paste0('/api/v1/stations/', station, '/measures')
+
+params <- list(
+  end_time = end_time,
+  start_time = start_time,
+  fields = 'daily_air_temp_f_max,daily_air_temp_f_min,daily_relative_humidity_pct_max'
+)
+
+response <- GET(url = paste0(base_url, endpoint), query = params)
+
+today <- Sys.time()
+three_months_ago <- today - months(12)
+
+# Convert both dates to Unix timestamps in GMT
+start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
+end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
+cat(start_time, end_time)
+
+if (response$status_code == 200) {
+  data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
+  data <- data1$data
+  cat(data)
+}
+  

@@ -5,6 +5,7 @@ stations<-list(
     longitude = -89.3843,
     location = "Arlington Agricultural Research Station",
     region = "South Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   BBCK = list(
@@ -13,6 +14,7 @@ stations<-list(
     longitude = -90.269,
     location = "Amundson Cranberry Inc",
     region = "Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   BLCR = list(
@@ -21,6 +23,7 @@ stations<-list(
     longitude = -88.4059,
     location = "Fallen Timbers Environmental Center",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   WCRS = list(
@@ -29,6 +32,7 @@ stations<-list(
     longitude = -90.7428,
     location = "Black River Falls",
     region = "West Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   BRLN = list(
@@ -37,6 +41,7 @@ stations<-list(
     longitude = -88.051,
     location = "Dallmann East River Dairy LLC",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   BSTL = list(
@@ -45,6 +50,7 @@ stations<-list(
     longitude = -88.045,
     location = "Kenosha County Center",
     region = "Southeast",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   CLLK = list(
@@ -53,6 +59,7 @@ stations<-list(
     longitude = -92.3213,
     location = "Bull Brook Keep",
     region = "Northwest",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   COSP = list(
@@ -61,6 +68,7 @@ stations<-list(
     longitude = -88.7372,
     location = "Cold Spring",
     region = "South Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   CTLR = list(
@@ -69,6 +77,7 @@ stations<-list(
     longitude = -90.256,
     location = "Cutler Cranberry",
     region = "Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   DEPR = list(
@@ -77,6 +86,7 @@ stations<-list(
     longitude = -87.966,
     location = "Calf Source LLC",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   EGHA = list(
@@ -85,6 +95,7 @@ stations<-list(
     longitude = -87.2598,
     location = "Egg Harbor",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   GFTN = list(
@@ -93,6 +104,7 @@ stations<-list(
     longitude = -87.9321,
     location = "Grafton Little League",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   GNWD = list(
@@ -101,6 +113,7 @@ stations<-list(
     longitude = -90.5966,
     location = "Greenwood",
     region = "North Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   HNCK = list(
@@ -109,6 +122,7 @@ stations<-list(
     longitude = -89.5333,
     location = "Not set",
     region = "Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   KSKM = list(
@@ -117,6 +131,7 @@ stations<-list(
     longitude = -88.2527,
     location = "Blind Cow Dairy",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   KWNE = list(
@@ -125,6 +140,7 @@ stations<-list(
     longitude = -87.6646,
     location = "Kewaunee",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   KNGT = list(
@@ -133,6 +149,7 @@ stations<-list(
     longitude = -90.436,
     location = "Crawford Road Gravel Pit",
     region = "North Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   LAFG = list(
@@ -141,6 +158,7 @@ stations<-list(
     longitude = -90.626,
     location = "Kickapoo Valley Reserve Visitor Center",
     region = "Western",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   LNCT = list(
@@ -149,6 +167,7 @@ stations<-list(
     longitude = -90.7882,
     location = "Not set",
     region = "Southwest",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   LXBG = list(
@@ -157,6 +176,7 @@ stations<-list(
     longitude = -87.6543,
     location = "Casco",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   MNWT = list(
@@ -165,6 +185,7 @@ stations<-list(
     longitude = -89.8383,
     location = "Bartling&apos;s Manitowish Cranberry Company",
     region = "North Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   MRFD = list(
@@ -173,6 +194,7 @@ stations<-list(
     longitude = -90.0978,
     location = "Not set",
     region = "North Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   NASE = list(
@@ -181,6 +203,7 @@ stations<-list(
     longitude = -87.4561,
     location = "Nasewaupee",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   NBLN = list(
@@ -189,6 +212,7 @@ stations<-list(
     longitude = -88.12,
     location = "New Berlin City Hall",
     region = "Southeast",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   PARS = list(
@@ -197,6 +221,7 @@ stations<-list(
     longitude = -87.3296,
     location = "Sturgeon Bay",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   FFEC = list(
@@ -205,6 +230,7 @@ stations<-list(
     longitude = -89.5207,
     location = "Food and Farm Exploration Center",
     region = "Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   GLCP = list(
@@ -213,6 +239,7 @@ stations<-list(
     longitude = -89.173,
     location = "Gibbs Lake County Park",
     region = "Southern",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   DFRC = list(
@@ -221,6 +248,7 @@ stations<-list(
     longitude = -89.7117,
     location = "Prairie du Sac",
     region = "Southwest",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   RNLD = list(
@@ -229,6 +257,7 @@ stations<-list(
     longitude = -89.2682,
     location = "Not set",
     region = "North Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   RCHD = list(
@@ -237,6 +266,7 @@ stations<-list(
     longitude = -90.383,
     location = "Richland County Highway Department",
     region = "Southern",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   RIPN = list(
@@ -245,6 +275,7 @@ stations<-list(
     longitude = -88.8467,
     location = "Vines and Rushes Winery",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   SIBA = list(
@@ -253,6 +284,7 @@ stations<-list(
     longitude = -87.0662,
     location = "Sister Bay",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   SODO = list(
@@ -261,6 +293,7 @@ stations<-list(
     longitude = -87.3556,
     location = "Sturgeon Bay",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   SPNR = list(
@@ -269,6 +302,7 @@ stations<-list(
     longitude = -91.8614,
     location = "Not set",
     region = "Northwest",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   OJNR = list(
@@ -277,6 +311,7 @@ stations<-list(
     longitude = -89.5367,
     location = "Verona",
     region = "South Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   DUDA = list(
@@ -285,6 +320,7 @@ stations<-list(
     longitude = -88.64,
     location = "Blooming Duda&apos;s Flower Farm",
     region = "Southeast",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   WRNS = list(
@@ -293,6 +329,7 @@ stations<-list(
     longitude = -90.4121,
     location = "Weatherby Cranberry Company",
     region = "West Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   WJPT = list(
@@ -301,6 +338,7 @@ stations<-list(
     longitude = -87.2335,
     location = "West Jacksonport",
     region = "East Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   WNTEST1 = list(
@@ -309,6 +347,7 @@ stations<-list(
     longitude = -89.3582,
     location = "Poultry Barn",
     region = "South Central",
+    time_zone = "America/Chicago",
     state = "WI"),
   
   KEMP = list(
@@ -317,5 +356,6 @@ stations<-list(
     longitude = -89.6678,
     location = "Woodruff",
     region = "North Central",
+    time_zone = "America/Chicago",
     state = "WI")
 )

@@ -16,8 +16,12 @@ source("R/var_schema.R")
 #* @param max_rh_30d_ma Numeric: 30-day moving average of max relative humidity (%)
 #* @param tot_nhrs_rh90_14d_ma Numeric: 14-day moving average of total nighttime hours with 90% relative humidity or above for each day
 #* @post /predict_tarspot_risk
-function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 35,
-         mean_air_temp_30d_ma, max_rh_30d_ma, tot_nhrs_rh90_14d_ma) {
+function(growth_stage = "R1", 
+         fungicide_applied = "no", 
+         risk_threshold = 35,
+         mean_air_temp_30d_ma, 
+         max_rh_30d_ma, 
+         tot_nhrs_rh90_14d_ma) {
   
   # Validate inputs
   numeric_vars <- c("risk_threshold", "mean_air_temp_30d_ma", 
@@ -53,8 +57,11 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 35,
 #* @param min_air_temp_21d_ma Numeric: 21-day moving average of minimum air temperature
 #* @param min_dewpoint_30d_ma Numeric: 30-day moving average of minimum dew point
 #* @post /predict_gray_leaf_spot_risk
-function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 60,
-         min_air_temp_21d_ma, min_dewpoint_30d_ma) {
+function(growth_stage = "R1", 
+         fungicide_applied = "no", 
+         risk_threshold = 60,
+         min_air_temp_21d_ma, 
+         min_dewpoint_30d_ma) {
   
   # Validate inputs
   numeric_vars <- c("risk_threshold", "min_air_temp_21d_ma", "min_dewpoint_30d_ma")
@@ -80,17 +87,18 @@ function(growth_stage = "R1", fungicide_applied = "no", risk_threshold = 60,
 }
 
 
-#* Calculate sporecaster risk in irrigated and non-irrigated fields
+#* Calculate Sporecaster risk in irrigated and non-irrigated fields
 #* @param row_spacing Numeric: Row spacing in inches (either 15 or 30)
 #* @param irrigated Character: "yes" if the field was irrigated, "no" otherwise
 #* @param max_air_temp_30d_ma Numeric: 30-day moving average of maximum air temperature (°C)
 #* @param max_windspeed_30d_ma Numeric: 30-day moving average of maximum wind speed (m/s)
 #* @param max_rh_30d_ma Numeric: 30-day moving average of relative humidity (only for irrigated fields)
 #* @post /predict_sporecaster_risk
-calculate_sporecaster_risk <- function(row_spacing, irrigated,   
-                                       max_air_temp_30d_ma, 
-                                       max_windspeed_30d_ma, 
-                                       max_rh_30d_ma = NULL) {
+function(row_spacing, 
+         irrigated,
+         max_air_temp_30d_ma,
+         max_windspeed_30d_ma,
+         max_rh_30d_ma = NULL) {
   
   # Convert shared numeric variables
   numeric_vars <- c("max_air_temp_30d_ma", "max_windspeed_30d_ma")
