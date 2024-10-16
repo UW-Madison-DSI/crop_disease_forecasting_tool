@@ -43,20 +43,20 @@ See example of how to do an api call on this tool [HERE](https://github.com/UW-M
 ## Project Structure 
 ```
 ├── LICENSE
-├── README.md          <- The top-level README for developers using this project.
-├── plumber.R          <- Logic to create API
-├── R          <- Main functionalities for API
+├── README.md                       <- The top-level README for developers using this project.
+├── plumber.R                       <- Logic to create API
+├── R                               <- Main functionalities for API
 │   ├── crop_mangm_validations.R    <- Crop management validations
-│   ├── logit_function.R    <- Core functions for forecasting disease api
-│   ├── var_schema.R    <- Variables schema
-├── materials               <- Examples of API calls and plug in with Wisconet
-│   ├── call_wisconet    <- Wisconet call example
-│   ├── docs    <- Documentation of the schema
-│   ├── example    <- Examples to call the API
-├── app  <- Shinny dashboard code.
-│   ├── app.R    <- app logic, ui and server
-│   ├── functions    <- API functions
-├── test          <- Code Testing modules
+│   ├── logit_function.R            <- Core functions for forecasting disease api
+│   ├── var_schema.R                <- Variables schema
+├── materials                       <- Examples of API calls and plug in with Wisconet
+│   ├── call_wisconet               <- Wisconet call example
+│   ├── docs                        <- Documentation of the schema
+│   ├── example                     <- Examples to call the API
+├── app                             <- Shinny dashboard code.
+│   ├── app.R                       <- app logic, ui and server
+│   ├── functions                   <- API functions
+├── test                            <- Code Testing modules
  ```
 
 ## Reference:
