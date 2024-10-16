@@ -13,13 +13,43 @@ library(httr)
 base_url <- 'https://wisconet.wisc.edu'
 url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 
-# Get today's date
-today <- Sys.time()
-three_months_ago <- today - months(3)
 
+################# Dates
+# Function to convert Fahrenheit to Celsius
+fahrenheit_to_celsius <- function(temp_f) {
+  (temp_f - 32) * 5/9
+}
+
+# Function to convert current time to GMT and subtract a number of months
+from_ct_to_gmt <- function(current_time, mo){
+  # Subtract months from the current time in Central Time
+  past_time_ct <- current_time - months(mo)
+  
+  cat('current: CT', current_time, mo, 'months ago CT', past_time_ct, '\n')
+  
+  # Convert both dates to Unix timestamps in GMT
+  start_time <- as.integer(as.POSIXct(past_time_ct, tz = "GMT"))
+  end_time <- as.integer(as.POSIXct(current_time, tz = "GMT"))
+  
+  cat('Start time (GMT):', start_time, 'End time (GMT):', end_time, '\n')
+  
+  return(list(
+    start_time_gmt = start_time,
+    end_time_gmt = end_time
+  ))
+}
+
+
+current <- Sys.time()
+today_ct <- with_tz(current, tzone = "America/Chicago")
+
+# Example: 2 months ago
+mo <- 6
+out <- from_ct_to_gmt(today_ct, mo)
 # Convert both dates to Unix timestamps in GMT
-start_time <- as.integer(as.POSIXct(three_months_ago, tz = "GMT"))
-end_time <- as.integer(as.POSIXct(today, tz = "GMT"))
+start_time <- out$start_time_gmt
+end_time <- out$end_time_gmt
+
 
 ###################################### Function to get weather data from the API
 api_call_wisconet_data <- function(station) {
@@ -57,10 +87,6 @@ api_call_wisconet_data <- function(station) {
     }
     
     # Convert Fahrenheit to Celsius
-    fahrenheit_to_celsius <- function(temp_f) {
-      (temp_f - 32) * 5/9
-    }
-    
     result_df$air_temp_max_c <- fahrenheit_to_celsius(result_df$air_temp_max_f)
     result_df$air_temp_min_c <- fahrenheit_to_celsius(result_df$air_temp_min_f)
     
