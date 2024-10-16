@@ -2,16 +2,61 @@
 ################### API CALL EXAMPLE - single point ############################
 ################################################################################
 
-install.packages("httr")
-
-# Load the required package
+# Load the required library
 library(httr)
 
-url <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
+# Base URL for the API
+base_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
+
+# Query parameters as a list
+params <- list(
+  growth_stage = 'R1',
+  fungicide_applied = 'no',
+  risk_threshold = 35,  # percentage
+  mean_air_temp_30d_ma = 14.55833,
+  max_rh_30d_ma = 97.56667,
+  tot_nhrs_rh90_14d_ma = 6.142857
+)
+
+# Make the GET request
+response <- POST(url = base_url, query = params)
+
+# Check if the request was successful
+if (status_code(response) == 200) {
+  # Parse the content as JSON
+  result <- content(response, as = "parsed", type = "application/json")
+  
+  # Retrieve only the probability value
+  probability <- result$probability[[1]]  # Accessing the first element in the list
+  cat("Probability:", probability, "\n")
+  
+} else {
+  # Print error if the request fails
+  cat("Error: API request failed with status code", status_code(response), "\n")
+  print(content(response, as = "text"))
+}
 
 ############################################################################ Tarspot
 # Define the URL for the API
 url_ts <- paste0(url, "/predict_tarspot_risk")
+
+body <- list(
+  growth_stage = 'R1',
+  fungicide_applied = 'no',
+  risk_threshold = 35, 
+  mean_air_temp_30d_ma = 16,
+  max_rh_30d_ma = 95.72,
+  tot_hrs_rh90_14d_ma = 4.4
+)
+
+# Make the POST request
+response <- POST(url_ts, body = body, encode = "json")
+
+# Check status code and print response content
+status_code(response)
+content <- content(response, 'text')
+print(content)
+
 
 n<-10
 mean_air_temp_range <- seq(16, 26, length.out = n)
@@ -48,22 +93,7 @@ for (th in tot_hrs_rh90_range){
 #[1] "{\"disease\":[\"TarSpot\"],\"probability\":[6.92],\"risk_class\":[\"Low\"]}"
 
 
-body <- list(
-  growth_stage = 'R1',
-  fungicide_applied = 'no',
-  risk_threshold = 35, 
-  mean_air_temp_30d_ma = 16,
-  max_rh_30d_ma = 95.72,
-  tot_hrs_rh90_14d_ma = 4.4
-)
 
-# Make the POST request
-response <- POST(url_ts, body = body, encode = "json")
-
-# Check status code and print response content
-status_code(response)
-content <- content(response, 'text')
-print(content)
 ############################################################################ Gray Leaf Spot
 url_gls <- paste0(url, "/predict_gray_leaf_spot_risk")
 

@@ -8,13 +8,8 @@ library(dplyr)  # Load dplyr for the pipe operator
 library(httr)
 
 
-###################################### Preparation
 
-base_url <- 'https://wisconet.wisc.edu'
-url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
-
-
-################# Dates
+################################################################ Dates
 # Function to convert Fahrenheit to Celsius
 fahrenheit_to_celsius <- function(temp_f) {
   (temp_f - 32) * 5/9
@@ -39,6 +34,11 @@ from_ct_to_gmt <- function(current_time, mo){
   ))
 }
 
+################################################################ Preparation
+
+base_url <- 'https://wisconet.wisc.edu'
+url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
+
 
 current <- Sys.time()
 today_ct <- with_tz(current, tzone = "America/Chicago")
@@ -50,8 +50,9 @@ out <- from_ct_to_gmt(today_ct, mo)
 start_time <- out$start_time_gmt
 end_time <- out$end_time_gmt
 
+cat(start_time, end_time)
 
-###################################### Function to get weather data from the API
+################################################################ Function to get weather data from the API
 api_call_wisconet_data <- function(station) {
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
@@ -120,7 +121,7 @@ api_call_wisconet_data <- function(station) {
   }
 }
 
-###################################### Function to plot the data
+################################################################ Function to plot the data
 api_call_wisconet_plot <- function(df) {
   ggplot(df, aes(x = collection_time)) +
     geom_line(aes(y = air_temp_avg_c, color = "Daily Average")) +
@@ -148,7 +149,7 @@ fetch_at <- function(station) {
   }
 }
 
-###################################### Function to get 60-minute relative humidity data
+################################################################ Function to get 60-minute relative humidity data
 api_call_wisconet_data_rh <- function(station) {
   
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
@@ -201,7 +202,7 @@ api_call_wisconet_data_rh <- function(station) {
   }
 }
 
-###################################### Function to fetch and print the number of Night hours with RH > 90% per day
+################################################################ Function to fetch and print the number of Night hours with RH > 90% per day
 fetch_rh_above_90_daily <- function(station) {
   # Fetch the data using the API function
   rh_data <- api_call_wisconet_data_rh(station)
@@ -224,28 +225,40 @@ fetch_rh_above_90_daily <- function(station) {
   }
 }
 
-###################################### Call Tarspot API
-get_risk_probability <- function(station_id, station_name, risk_threshold,
-                                 mat_30dma, max_rh_30dma,th_rh90_14ma, url) {
-  url_ts <- paste0(url, "/predict_tarspot_risk")
+################################################################ Call Tarspot API
+################################################################################
+################### API CALL EXAMPLE - single point ############################
+################################################################################
+get_risk_probability <- function(station_id, station_name, 
+                                 risk_threshold,
+                                 mat_30dma, max_rh_30dma,
+                                 th_rh90_14ma, url_ts) {
+  
+  base_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
+  
   body <- list(
     growth_stage = 'R1',
     fungicide_applied = 'no',
-    risk_threshold = risk_threshold*100, 
+    risk_threshold = risk_threshold * 100,  # Ensure it's in percentage format
     mean_air_temp_30d_ma = mat_30dma,
     max_rh_30d_ma = max_rh_30dma,  
-    tot_hrs_rh90_14d_ma = th_rh90_14ma
+    tot_nhrs_rh90_14d_ma = th_rh90_14ma
   )
   
-  # Make the POST request
-  response <- POST(url_ts, body = body, encode = "json")
+  #response <- POST(url_tspot, body = toJSON(body), encode = "json")
+  response <- POST(url = base_url, query = params)
+  cat('mean_air_temp_30d_ma', mat_30dma)
+  cat('max_rh_30d_ma', max_rh_30dma)
+  cat('tot_nhrs_rh90_14d_ma',th_rh90_14ma)
   
-  print(response)
+  # Check if the request was successful
   if (status_code(response) == 200) {
-    response_content <- content(response, as = "parsed", type = "application/json")
+    # Parse the content as JSON
+    result <- content(response, as = "parsed", type = "application/json")
     
-    probability <- response_content$probability[[1]]
-    risk_class <- response_content$risk_class[[1]]
+    # Retrieve only the probability value
+    probability <- result$probability[[1]]
+    probability_class <- result$risk_class[[1]]
     
     return(data.frame(
       Station = station_name,
@@ -253,9 +266,12 @@ get_risk_probability <- function(station_id, station_name, risk_threshold,
       Max_RH_pct_30dma=max_rh_30dma,
       Tot_Nhrs_RHab90_14dma=th_rh90_14ma,
       Risk = probability,
-      Risk_Class=risk_class
+      Risk_Class=probability_class
     ))
   } else {
+    # Print error if the request fails
+    cat("Error: API request failed with status code", status_code(response), "\n")
+    print(content(response, as = "text"))
     return(data.frame(
       Station = station_id,
       AirTemp_C_30dma=NA,
@@ -277,11 +293,13 @@ call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
   mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
   max_rh_30dma <- at$rh_max_30d_ma[1]
   
-  cat(station_id, mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
+  #cat('==== Station id ====',station_id) 
+  #cat('==== Vars ====', mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
   result <- get_risk_probability(station_id, station_name, risk_threshold, 
                                  mat_30dma, max_rh_30dma,th_rh90_14ma, 
                                  url_ts)
   
+  cat('====Risk====',result$Risk, result$Risk_Class)
   return(result)
 }
 

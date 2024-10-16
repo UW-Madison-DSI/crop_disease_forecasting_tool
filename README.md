@@ -46,19 +46,20 @@ See example of how to do an api call on this tool [HERE](https://github.com/UW-M
 ├── README.md                       <- The top-level README for developers using this project.
 ├── plumber.R                       <- Logic to create API
 ├── R                               <- Main functionalities for API
-│   ├── crop_mangm_validations.R    <- Crop management validations
-│   ├── logit_function.R            <- Core functions for forecasting disease api
-│   ├── var_schema.R                <- Variables schema
+│   ├── crop_mangm_validations.R      <- Crop management validations
+│   ├── logit_function.R              <- Core functions for forecasting disease api
+│   ├── var_schema.R                  <- Variables schema
 ├── materials                       <- Examples of API calls and plug in with Wisconet
-│   ├── call_wisconet               <- Wisconet call example
-│   ├── docs                        <- Documentation of the schema
-│   ├── example                     <- Examples to call the API
+│   ├── call_wisconet                 <- Wisconet call example
+│   ├── docs                          <- Documentation of the schema
+│   ├── example                       <- Examples to call the API
 ├── app                             <- Shinny dashboard code.
-│   ├── app.R                       <- app logic, ui and server
-│   ├── functions                   <- API functions
+│   ├── app.R                         <- app logic, ui and server
+│   ├── functions                     <- API functions
 │   │   ├── logic.R                       <- Logic to call the Wisconet Station weather data and call the forecasting models on the preparation of the inputs
 │   │   ├── stations.R                    <- List of stations currently active from Wisconet  
 ├── test                            <- Code Testing modules
+│   ├── testthat.R    
  ```
 
 ## License
@@ -67,6 +68,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 
 ### Acknowledgements
-- This innitiative is part of an Open-Source initiative from the [Open Source Program Office at the University of Madison Wisconsin](https://ospo.wisc.edu), aimed at fostering collaboration and innovation in forecasting tools.
+- This work is part of an Open-Source initiative from the [Open Source Program Office at the University of Madison Wisconsin](https://ospo.wisc.edu), aimed at fostering collaboration and innovation in forecasting tools.
 - The models presented are based on plant pathology research in the University of Madison Wisconsin, paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
 - This software was created by the [Data Science Institute](https://datascience.wisc.edu) at the [University of Wisconsin-Madison](https://www.wisc.edu)

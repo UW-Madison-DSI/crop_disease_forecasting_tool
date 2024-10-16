@@ -15,13 +15,13 @@ station_choices <- c("All" = "all", setNames(names(stations), sapply(stations, f
 
 # Define UI
 ui <- dashboardPage(
-  title = "Tarspot Forecasting App",
+  title = "Tarspot Forecasting App (Beta)",
   
   dashboardHeader(
     titleWidth = 450
   ) |> tagAppendChild(
     div(
-      "Tarspot Forecasting App",
+      "Tarspot Forecasting App (Beta)",
       style = "
       display: block;
       font-size: 1.5em;
@@ -36,19 +36,34 @@ ui <- dashboardPage(
   
   dashboardSidebar(
     width = 350,
+    tags$head(
+      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap")
+    ),
     
     # Custom CSS for controlling appearance
-    tags$style(HTML(".js-irs-0 .irs-single,
-                    .js-irs-0 .irs-bar-edge,
-                    .js-irs-0 .irs-bar {background: #006939},
-                    .skin-blue .main-header .logo {
-                              background-color: #006939;
-                    }
-                    .skin-blue .main-header .navbar .sidebar-toggle:hover {
-                              background-color: #006939;
-                    }
-                    .logo {background-color: #006939 !important;}
-                    .navbar {background-color: #006939 !important;}")),
+    tags$style(HTML("
+      body, h1, h2, h3, h4, h5, h6 {
+        font-family: 'Public Sans', sans-serif;
+      }
+      .main-header .logo {
+        font-family: 'Public Sans', sans-serif;
+        font-weight: 700;
+      }
+      .skin-blue .main-header .navbar {
+        font-family: 'Public Sans', sans-serif;
+        font-weight: 600;
+      }
+      .sidebar-menu h2 {
+        font-family: 'Public Sans', sans-serif;
+        font-weight: 600;
+        font-size: 18px;
+      }
+      .box h2 {
+        font-family: 'Public Sans', sans-serif;
+        font-weight: 700;
+        font-size: 18px;
+      }
+    ")),
     
     sidebarMenu(
       h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Settings")), style = "font-size:18px;"),
@@ -114,6 +129,7 @@ server <- function(input, output, session) {
       
       # Call the API or function to get the data
       result <- call_tarspot_for_station(station_code, station_name, risk_threshold)  # Fetch data
+      #print(result)
       return(result)
     } else {
       return(NULL)
