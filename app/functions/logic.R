@@ -236,7 +236,7 @@ get_risk_probability <- function(station_id, station_name,
   
   base_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
   
-  body <- list(
+  params <- list(
     growth_stage = 'R1',
     fungicide_applied = 'no',
     risk_threshold = risk_threshold * 100,  # Ensure it's in percentage format
