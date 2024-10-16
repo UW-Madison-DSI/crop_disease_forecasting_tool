@@ -43,8 +43,9 @@ url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 current <- Sys.time()
 today_ct <- with_tz(current, tzone = "America/Chicago")
 
-mo <- 6 # how much mo to consider
+mo <- 6 # historical data in terms of num of months
 out <- from_ct_to_gmt(today_ct, mo)
+
 # Convert both dates to Unix timestamps in GMT
 start_time <- out$start_time_gmt
 end_time <- out$end_time_gmt
@@ -65,9 +66,13 @@ api_call_wisconet_data <- function(station) {
     data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
     data <- data1$data
     
+    ctime <- as.POSIXct(data$collection_time, origin = "1970-01-01")
+    collection_time_chicago <- with_tz(ctime, tzone = "America/Chicago")
+    
     # Create the result data frame
     result_df <- data.frame(
-      collection_time = as.POSIXct(data$collection_time, origin = "1970-01-01"),
+      o_collection_time = ctime,
+      collection_time = collection_time_chicago,
       air_temp_max_f = NA,
       air_temp_min_f = NA,
       rh_max = NA,
@@ -108,8 +113,6 @@ api_call_wisconet_data <- function(station) {
     current_time <- Sys.time()
     result_df1 <- result_df %>%
       arrange(abs(difftime(collection_time, current_time, units = "secs")))  # Sort by proximity to current date
-      
-    
     
     return(result_df1)
   } else {
@@ -163,9 +166,13 @@ api_call_wisconet_data_rh <- function(station) {
     data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
     data <- data1$data
     
+    ctime <- as.POSIXct(data$collection_time, origin = "1970-01-01")
+    collection_time_chicago <- with_tz(ctime, tzone = "America/Chicago")
+    
     # Create the result data frame
     result_df <- data.frame(
-      collection_time = as.POSIXct(data$collection_time, origin = "1970-01-01"),
+      o_collection_time = ctime,
+      collection_time = collection_time_chicago,
       rh_avg = NA,  # Placeholder for relative humidity values
       stringsAsFactors = FALSE
     )
@@ -243,16 +250,14 @@ get_risk_probability <- function(station_id, station_name,
   
   #response <- POST(url_tspot, body = toJSON(body), encode = "json")
   response <- POST(url = base_url, query = params)
-  cat('mean_air_temp_30d_ma', mat_30dma)
-  cat('max_rh_30d_ma', max_rh_30dma)
-  cat('tot_nhrs_rh90_14d_ma',th_rh90_14ma)
+
   
   # Check if the request was successful
   if (status_code(response) == 200) {
     # Parse the content as JSON
     result <- content(response, as = "parsed", type = "application/json")
     
-    # Retrieve only the probability value
+    # Retrieve relevant values
     probability <- result$probability[[1]]
     probability_class <- result$risk_class[[1]]
     
@@ -294,13 +299,12 @@ call_tarspot_7days <- function(station_id, station_name, risk_threshold){
   
   # Step 2: Join the tables using the floored date
   table_7days <- left_join(at0, rh_above_90_daily, by = "date_day") 
-  print("================+++++====================")
-  print(table_7days)
-  
-  
   fintable7d_ma<- table_7days%>%
     select(collection_time,date, air_temp_avg_c_30d_ma, rh_max_30d_ma, 
            rh_above_90_daily_14d_ma)%>% slice(8)
+  
+  print("================+++++====================")
+  print(head(fintable7d_ma,10))
 
   return(fintable7d_ma)
   
@@ -319,9 +323,12 @@ call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
   mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
   max_rh_30dma <- at$rh_max_30d_ma[1]
   
-  #cat('==== Vars ====', mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
-  result <- get_risk_probability(station_id, station_name, risk_threshold, 
-                                 mat_30dma, max_rh_30dma,th_rh90_14ma, 
+  result <- get_risk_probability(station_id, 
+                                 station_name, 
+                                 risk_threshold, 
+                                 mat_30dma, 
+                                 max_rh_30dma,
+                                 th_rh90_14ma, 
                                  url_ts)
   
   cat('====Risk====',result$Risk, result$Risk_Class)
