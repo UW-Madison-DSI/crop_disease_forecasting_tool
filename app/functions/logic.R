@@ -43,8 +43,9 @@ url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 current <- Sys.time()
 today_ct <- with_tz(current, tzone = "America/Chicago")
 
-mo <- 6 # how much mo to consider
+mo <- 6 # historical data in terms of num of months
 out <- from_ct_to_gmt(today_ct, mo)
+
 # Convert both dates to Unix timestamps in GMT
 start_time <- out$start_time_gmt
 end_time <- out$end_time_gmt
