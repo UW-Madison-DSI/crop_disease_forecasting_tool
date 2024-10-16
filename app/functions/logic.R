@@ -43,14 +43,11 @@ url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 current <- Sys.time()
 today_ct <- with_tz(current, tzone = "America/Chicago")
 
-# Example: 2 months ago
-mo <- 6
+mo <- 6 # how much mo to consider
 out <- from_ct_to_gmt(today_ct, mo)
 # Convert both dates to Unix timestamps in GMT
 start_time <- out$start_time_gmt
 end_time <- out$end_time_gmt
-
-cat(start_time, end_time)
 
 ################################################################ Function to get weather data from the API
 api_call_wisconet_data <- function(station) {
@@ -110,8 +107,8 @@ api_call_wisconet_data <- function(station) {
     
     current_time <- Sys.time()
     result_df1 <- result_df %>%
-      arrange(abs(difftime(collection_time, current_time, units = "secs"))) %>%  # Sort by proximity to current date
-      slice(1)
+      arrange(abs(difftime(collection_time, current_time, units = "secs")))  # Sort by proximity to current date
+      
     
     
     return(result_df1)
@@ -210,11 +207,10 @@ fetch_rh_above_90_daily <- function(station) {
   data <- rh_data$daily_rh_above_90
   data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, 
                                             k = 14, fill = NA, align = "right")
-  print(tail(data))
   current_time <- Sys.time()
   rh_above_90_daily1 <- data %>%
-    arrange(abs(difftime(date, current_time, units = "secs"))) %>%  # Sort by proximity to current date
-    slice(1)
+    arrange(abs(difftime(date, current_time, units = "secs"))) # Sort by proximity to current date
+    
   
   # Return the data if it's not NULL
   if (!is.null(rh_data)) {
@@ -284,16 +280,45 @@ get_risk_probability <- function(station_id, station_name,
 }
 
 ###################################### Prpeare the relevant data for Tarspot
+call_tarspot_7days <- function(station_id, station_name, risk_threshold){
+  rh_above_90_daily <- fetch_rh_above_90_daily(station_id) 
+  rh_above_90_daily1 <- rh_above_90_daily %>% mutate(date_day = floor_date(date, unit='days')) 
+  
+  print(head(rh_above_90_daily,10))
+  
+  at0 <- fetch_at(station_id)
+  at0 <- at0 %>% mutate(date_day = floor_date(collection_time, unit='days')) 
+  
+  print(head(at0,10))
+  
+  
+  # Step 2: Join the tables using the floored date
+  table_7days <- left_join(at0, rh_above_90_daily, by = "date_day") 
+  print("================+++++====================")
+  print(table_7days)
+  
+  
+  fintable7d_ma<- table_7days%>%
+    select(collection_time,date, air_temp_avg_c_30d_ma, rh_max_30d_ma, 
+           rh_above_90_daily_14d_ma)%>% slice(8)
+
+  return(fintable7d_ma)
+  
+}
+
+
 call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
-  rh_above_90_daily <- fetch_rh_above_90_daily(station_id)
-  th_rh90_14ma <- rh_above_90_daily$rh_above_90_daily_14d_ma[1] 
+  rh_above_90_daily <- fetch_rh_above_90_daily(station_id) 
+  rh_above_90_daily <- rh_above_90_daily %>% mutate(date_day = floor_date(date, unit='days')) 
   
-  at<-fetch_at(station_id)
+  rh_above_90_daily1 <- rh_above_90_daily %>% slice(8)
+  th_rh90_14ma <- rh_above_90_daily1$rh_above_90_daily_14d_ma[1] 
   
+  at0 <- fetch_at(station_id)
+  at <- at0%>% slice(1)
   mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
   max_rh_30dma <- at$rh_max_30d_ma[1]
   
-  #cat('==== Station id ====',station_id) 
   #cat('==== Vars ====', mat_30dma, max_rh_30dma,th_rh90_14ma, url_ts)
   result <- get_risk_probability(station_id, station_name, risk_threshold, 
                                  mat_30dma, max_rh_30dma,th_rh90_14ma, 
