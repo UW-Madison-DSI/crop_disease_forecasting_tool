@@ -56,11 +56,14 @@ See example of how to do an api call on this tool [HERE](https://github.com/UW-M
 ├── app                             <- Shinny dashboard code.
 │   ├── app.R                       <- app logic, ui and server
 │   ├── functions                   <- API functions
+│   │   ├── logic.R                       <- Logic to call the Wisconet Station weather data and call the forecasting models on the preparation of the inputs
+│   │   ├── stations.R                    <- List of stations currently active from Wisconet  
 ├── test                            <- Code Testing modules
  ```
 
 ## Reference:
-- Original paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
+- The models presented are based on plant pathology research in the University of Madison Wisconsin, paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
+- This is part of an open-source initiative from the [Open Source Program Office at the University](https://ospo.wisc.edu) of Madison Wisconsin, aimed at fostering collaboration and innovation in forecasting tools.
 - See the codebook of the variables used  [here](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/docs/codebook)  - API-variablesuse.R
 
 ## License
