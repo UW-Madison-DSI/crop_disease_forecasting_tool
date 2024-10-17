@@ -7,6 +7,7 @@ library(httr)
 library(jsonlite)
 library(dplyr)
 library(flexdashboard)
+library(lubridate)
 
 source("functions/stations.R")
 source("functions/logic.R")
@@ -79,13 +80,13 @@ ui <- dashboardPage(
   
   dashboardBody(
     fluidRow(
-      # Add a box for the Risk Gauge
+      # Show the Risk trend plot conditionally (no Risk gauge)
       conditionalPanel(
-        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage",  # Refined condition
+        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage",
         box(
-          h2(strong("Tarspot Risk"), style = "font-size:18px;"),
-          gaugeOutput("gauge"),  # Risk gauge
-          textOutput("risk_class_text"),  # Risk class text output
+          h2(strong("Tarspot Risk in the last 7 days"), style = "font-size:18px;"),
+          plotOutput("risk_trend"),  # Show the Risk trend plot here
+          textOutput("risk_class_text"),  # Risk class text output (optional)
           width = 12  # Full width for visibility
         )
       )
@@ -129,7 +130,8 @@ server <- function(input, output, session) {
       
       # Call the API or function to get the data
       result <- call_tarspot_for_station(station_code, station_name, risk_threshold)  # Fetch data
-      #print(result)
+      print("===========here ")
+      print(result)
       return(result)
     } else {
       return(NULL)
@@ -176,45 +178,24 @@ server <- function(input, output, session) {
   })
   
   # Display the fetched weather data in a table
-  output$weather_data <- renderTable({
-    data <- weather_data()
+  # Render the line plot showing the trend of Risk over Date
+  output$risk_trend <- renderPlot({
+    data <- weather_data()   # Select the columns of interest
     
     if (!is.null(data)) {
-      # Use dplyr to select specific columns
-      selected_data <- data %>%
-        dplyr::select(Station, AirTemp_C_30dma, Max_RH_pct_30dma, Tot_Nhrs_RHab90_14dma)  # Replace with actual column names
-      
-      return(selected_data)
-    }
-  })
-  
-  # Render the gauge based on the risk value from weather_data
-  output$gauge <- renderGauge({
-    weather <- weather_data()
-    if (!is.null(weather)) {
-      risk_value <- weather$Risk  # Use the actual risk probability from the API
-      risk_class <- weather$Risk_Class
-      
-      gauge(risk_value, 
-            min = 0, 
-            max = 100, 
-            sectors = gaugeSectors(
-              success = c(0, 20),  # Green (below 20)
-              warning = c(20, 35),  # Yellow (20 to 35)
-              danger = c(35, 100)  # Red (above 35)
-            )
-      )
+      df<-data%>%
+        mutate(Date = ymd(date_day)) %>%    # Convert date_day to Date
+        dplyr::select(Date, Risk, Risk_Class)
+      ggplot(df, aes(x = Date, y = Risk)) +
+        geom_line(color = "blue") +    # Line plot for Risk trend
+        geom_point(color = "red") +    # Optional: Add points for better visualization
+        labs(title = "Risk Trend Over Time",
+             x = "Date",
+             y = "Risk Probability") +
+        theme_minimal()  # Horizontal line at Risk = 35
     } else {
-      gauge(0, min = 0, max = 100)  # Default to 0 if no data available
-    }
-  })
-  
-  output$risk_class_text <- renderText({
-    weather <- weather_data()
-    if (!is.null(weather)) {
-      paste("Risk Class:", weather$Risk_Class)
-    } else {
-      "No data available"
+      # Handle the case when there's no data available
+      return(NULL)
     }
   })
   
