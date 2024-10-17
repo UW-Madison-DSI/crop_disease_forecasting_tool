@@ -8,7 +8,6 @@ library(dplyr)  # Load dplyr for the pipe operator
 library(httr)
 
 
-
 ################################################################ Dates
 # Function to convert Fahrenheit to Celsius
 fahrenheit_to_celsius <- function(temp_f) {
@@ -51,7 +50,7 @@ start_time <- out$start_time_gmt
 end_time <- out$end_time_gmt
 
 ################################################################ Function to get weather data from the API
-api_call_wisconet_data <- function(station) {
+api_call_wisconet_data_daily <- function(station) {
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
   params <- list(
@@ -106,9 +105,13 @@ api_call_wisconet_data <- function(station) {
     result_df$rh_max_30d_ma <- rollmean(result_df$rh_max, k = 30, fill = NA, align = "right")
     
     # Rearrange columns for better readability
-    result_df <- result_df[c("collection_time", "air_temp_avg_c", "air_temp_min_c_30d_ma",
-                             "air_temp_max_c_30d_ma", "air_temp_avg_c_30d_ma",
-                             "rh_max_30d_ma", "rh_max")]
+    result_df <- result_df[c("collection_time", 
+                             "air_temp_avg_c", 
+                             "air_temp_min_c_30d_ma",
+                             "air_temp_max_c_30d_ma", 
+                             "air_temp_avg_c_30d_ma",
+                             "rh_max_30d_ma", 
+                             "rh_max")]
     
     current_time <- Sys.time()
     result_df1 <- result_df %>%
@@ -138,7 +141,7 @@ api_call_wisconet_plot <- function(df) {
 fetch_at <- function(station) {
   
   # Fetch the data using the API function
-  data_df <- api_call_wisconet_data(station)
+  data_df <- api_call_wisconet_data_daily(station)
   
   # Plot the data if it is not NULL
   if (!is.null(data_df)) {
@@ -185,17 +188,35 @@ api_call_wisconet_data_rh <- function(station) {
       }
     }
     
-    # Filter rows where RH > 90% and within night hours (20:00-06:00)
+    # Add a new column that counts the night hours where RH >= 90
     result_df <- result_df %>%
-      mutate(hour = hour(collection_time)) %>%
-      filter(rh_avg >= 90 & (hour >= 20 | hour <= 6))
+      mutate(
+        hour = hour(collection_time),  # Extract hour
+        collection_time_ct = with_tz(collection_time, tzone = "America/Chicago"),
+        # Adjust date: only hours between 00:00 and 06:00 should belong to the previous day
+        # Adjust date: If the hour is between 00:00 and 06:00, assign to the previous day
+        adjusted_date = if_else(hour >= 0 & hour <= 6, 
+                                floor_date(collection_time_ct - days(1), unit = "day"),  # Subtract 1 day for early morning hours
+                                floor_date(collection_time_ct, unit = "day")),
+        
+        rh_night_above_90 = if_else(rh_avg >= 90 & (hour >= 20 | hour <= 6), 1, 0)
+      )
+    print("---------------------------------------------------------------------")
+    print(tail(result_df,20))
     
-    # Group by day and count the number of hours where RH > 90 for each day
+    # Group by date and sum the counts of night hours where RH >= 90 for each day
     daily_rh_above_90 <- result_df %>%
-      mutate(date = as.Date(collection_time)) %>%
-      group_by(date) %>%
-      summarise(hours_rh_above_90 = n())
-
+      group_by(adjusted_date) %>%
+      summarise(hours_rh_above_90 = sum(rh_night_above_90, na.rm = TRUE)) %>%
+      ungroup()
+    
+    print("----------------------- +++++ --- +++++ ---------------------------------")
+    # Calculate 14-day rolling mean for RH >= 90 hours
+    daily_rh_above_90$rh_above_90_daily_14d_ma <- rollmean(daily_rh_above_90$hours_rh_above_90,
+                                                           k = 14, fill = NA, align = "right")
+    
+    print(daily_rh_above_90)
+    
     return(list(
       data = result_df,
       daily_rh_above_90 = daily_rh_above_90
@@ -214,10 +235,7 @@ fetch_rh_above_90_daily <- function(station) {
   data <- rh_data$daily_rh_above_90
   data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, 
                                             k = 14, fill = NA, align = "right")
-  current_time <- Sys.time()
-  rh_above_90_daily1 <- data %>%
-    arrange(abs(difftime(date, current_time, units = "secs"))) # Sort by proximity to current date
-    
+  rh_above_90_daily1 <- data %>% arrange(adjusted_date) # Sort by proximity to current date
   
   # Return the data if it's not NULL
   if (!is.null(rh_data)) {
@@ -230,7 +248,6 @@ fetch_rh_above_90_daily <- function(station) {
 
 ################################################################ Call Tarspot API
 ################################################################################
-################### API CALL EXAMPLE - single point ############################
 ################################################################################
 get_risk_probability <- function(station_id, station_name, 
                                  risk_threshold,
@@ -267,7 +284,7 @@ get_risk_probability <- function(station_id, station_name,
       Max_RH_pct_30dma=max_rh_30dma,
       Tot_Nhrs_RHab90_14dma=th_rh90_14ma,
       Risk = probability,
-      Risk_Class=probability_class
+      Risk_Class = probability_class
     ))
   } else {
     # Print error if the request fails
@@ -285,53 +302,77 @@ get_risk_probability <- function(station_id, station_name,
 }
 
 ###################################### Prpeare the relevant data for Tarspot
-call_tarspot_7days <- function(station_id, station_name, risk_threshold){
-  rh_above_90_daily <- fetch_rh_above_90_daily(station_id) 
-  rh_above_90_daily1 <- rh_above_90_daily %>% mutate(date_day = floor_date(date, unit='days')) 
-  
-  print(head(rh_above_90_daily,10))
-  
-  at0 <- fetch_at(station_id)
-  at0 <- at0 %>% mutate(date_day = floor_date(collection_time, unit='days')) 
-  
-  print(head(at0,10))
-  
-  
-  # Step 2: Join the tables using the floored date
-  table_7days <- left_join(at0, rh_above_90_daily, by = "date_day") 
-  fintable7d_ma<- table_7days%>%
-    select(collection_time,date, air_temp_avg_c_30d_ma, rh_max_30d_ma, 
-           rh_above_90_daily_14d_ma)%>% slice(8)
-  
-  print("================+++++====================")
-  print(head(fintable7d_ma,10))
-
-  return(fintable7d_ma)
-  
-}
-
-
 call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
-  rh_above_90_daily <- fetch_rh_above_90_daily(station_id) 
-  rh_above_90_daily <- rh_above_90_daily %>% mutate(date_day = floor_date(date, unit='days')) 
-  
-  rh_above_90_daily1 <- rh_above_90_daily %>% slice(8)
-  th_rh90_14ma <- rh_above_90_daily1$rh_above_90_daily_14d_ma[1] 
+  cat("Station id ", station_id, station_name)
+  rh_above_90_daily <- fetch_rh_above_90_daily(station_id)
+  rh_above_90_daily1 <- rh_above_90_daily %>% mutate(date_day = as.Date(adjusted_date),
+                        date_day1 = floor_date(as.Date(adjusted_date), unit='days')) %>%
+    arrange(desc(date_day))
   
   at0 <- fetch_at(station_id)
-  at <- at0%>% slice(1)
+  at0 <- at0 %>% mutate(date_day1 = floor_date(collection_time, unit='days'),
+                        date_day = as.Date(collection_time)-1) 
+
+  # Single variables
+  th_rh90_14ma <- rh_above_90_daily1$rh_above_90_daily_14d_ma[1]
+  at <- at0 %>% slice(1)
   mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
   max_rh_30dma <- at$rh_max_30d_ma[1]
   
-  result <- get_risk_probability(station_id, 
-                                 station_name, 
-                                 risk_threshold, 
-                                 mat_30dma, 
-                                 max_rh_30dma,
-                                 th_rh90_14ma, 
-                                 url_ts)
+  print("----------->>> here in rh above")
+  print(head(rh_above_90_daily1,10))
   
-  cat('====Risk====',result$Risk, result$Risk_Class)
-  return(result)
+  print("----------------------------->> Daily variables, Input API")
+  print(at0)
+  
+  print("----------------------------->> Merge of the datasets")
+  cat(colnames(rh_above_90_daily1))
+  print("--------")
+  cat(colnames(at0))
+
+  merged_ds <- merge(x = rh_above_90_daily1,
+                     y = at0, 
+                     by.x = "date_day", 
+                     by.y = "date_day") %>% 
+    arrange(desc(date_day)) %>% 
+    select(c('date_day',  # Use 'date_day' if that's the correct column name instead of 'Date'
+             'rh_above_90_daily_14d_ma', 'rh_max','rh_max_30d_ma',
+             'air_temp_avg_c_30d_ma', 'air_temp_avg_c')) %>% 
+    slice(1:8)
+  
+  
+  print("----------------------------->> Input API, single values")
+  cat('mat_30dma: ',mat_30dma, 
+      'max_rh_30dma: ', max_rh_30dma,
+      'th_rh90_14ma: ',th_rh90_14ma)
+  
+  merged_ds <- merged_ds %>%
+    rowwise() %>%
+    mutate(risk_output = list(get_risk_probability(station_id = "station_id_value", # replace with actual station_id
+                                                   station_name = "station_name_value", # replace with actual station_name
+                                                   risk_threshold = 0.5,  # replace with your threshold value
+                                                   mat_30dma = air_temp_avg_c_30d_ma,
+                                                   max_rh_30dma = rh_max_30d_ma,
+                                                   th_rh90_14ma = rh_above_90_daily_14d_ma,
+                                                   url_ts = url_ts)), # replace with actual URL if needed
+           Risk = risk_output$Risk,
+           Risk_Class = risk_output$Risk_Class,
+           Station = risk_output$station_name) %>%
+    select(-risk_output)  # Remove the intermediate list column if not needed
+  
+  # Print the dataset with the new Risk and Risk_Class columns
+  print("--------------------------")
+  print(merged_ds)
+  
+  #result <- get_risk_probability(station_id, 
+  #                               station_name, 
+  #                               risk_threshold, 
+  #                               mat_30dma, 
+  #                               max_rh_30dma,
+  #                               th_rh90_14ma, 
+  #                               url_ts)
+  
+  #cat('====Risk====',result$Risk, result$Risk_Class)
+  return(merged_ds)
 }
 

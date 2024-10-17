@@ -72,9 +72,15 @@ api_call_wisconet_data_rh <- function(station_id, start_time, end_time) {
         hour = hour(collection_time),  # Extract hour
         collection_time_ct = with_tz(collection_time, tzone = "America/Chicago"),
         # Adjust date: only hours between 00:00 and 06:00 should belong to the previous day
-        adjusted_date = floor_date(collection_time_ct, unit = "day"),
+        # Adjust date: If the hour is between 00:00 and 06:00, assign to the previous day
+        adjusted_date = if_else(hour >= 0 & hour <= 6, 
+                                floor_date(collection_time_ct - days(1), unit = "day"),  # Subtract 1 day for early morning hours
+                                floor_date(collection_time_ct, unit = "day")),
+        
         rh_night_above_90 = if_else(rh_avg >= 90 & (hour >= 20 | hour <= 6), 1, 0)
       )
+    print("---------------------------------------------------------------------")
+    print(tail(result_df,20))
     
     # Group by date and sum the counts of night hours where RH >= 90 for each day
     daily_rh_above_90 <- result_df %>%
@@ -82,15 +88,11 @@ api_call_wisconet_data_rh <- function(station_id, start_time, end_time) {
       summarise(hours_rh_above_90 = sum(rh_night_above_90, na.rm = TRUE)) %>%
       ungroup()
     
-    # Ensure all days are included, even if no hours where RH >= 90, using 0
-    all_dates <- seq(min(result_df$adjusted_date), max(result_df$adjusted_date), by = "day")
-    
-    daily_rh_above_90 <- daily_rh_above_90 %>%
-      complete(adjusted_date = all_dates, fill = list(hours_rh_above_90 = 0))
-    
+    print("----------------------- +++++ --- +++++ ---------------------------------")
     # Calculate 14-day rolling mean for RH >= 90 hours
     daily_rh_above_90$rh_above_90_daily_14d_ma <- rollmean(daily_rh_above_90$hours_rh_above_90,
                                                            k = 14, fill = NA, align = "right")
+    print(tail(daily_rh_above_90, 10))
     
     return(list(
       data = result_df,
@@ -121,6 +123,7 @@ if (!is.null(result)) {
   table <- result$data_rh90
   
   # Print the last 20 rows and first 15 rows
+  print("--------------------------========-----------------------------------------")
   tail(table, 20)
   head(table, 15)
 }
