@@ -1,3 +1,5 @@
+install.packages("lubridate")
+library(lubridate)
 library(httr)
 library(jsonlite)
 
@@ -7,9 +9,9 @@ base_url <- 'https://wisconet.wisc.edu'
 current <- Sys.time()
 today_ct <- with_tz(current, tzone = "America/Chicago")
 
-three_months_ago <- as.Date(today_ct) - 8
+#three_months_ago <- as.Date(today_ct) - 8
 
-out<-from_ct_to_gmt(today_ct, 1)
+out<-from_ct_to_gmt(today_ct, 3)
 # Assigning start and end time from 'out' object (assumed to exist)
 start_time <- out$start_time_gmt
 end_time <- out$end_time_gmt
@@ -98,7 +100,7 @@ process_response <- function(response) {
     
     # Rearrange columns for better readability
     result_df <- result_df[c("collection_time", 
-                             "air_temp_avg_c", 
+                             "air_temp_avg_c", "air_temp_min_c","air_temp_max_c",
                              "air_temp_min_c_30d_ma",
                              "air_temp_max_c_30d_ma", 
                              "air_temp_avg_c_30d_ma",
@@ -110,6 +112,7 @@ process_response <- function(response) {
     result_df1 <- result_df %>%
       arrange(abs(difftime(collection_time, current_time, units = "secs")))  # Sort by closest to current time
     
+    
     return(result_df1)
   } else {
     cat("Error: Failed to fetch data. Status:", response$status_code, "\n")
@@ -120,3 +123,56 @@ process_response <- function(response) {
 
 a<-process_response(response)
 print(a)
+
+
+weather_plot <- a %>%
+  ggplot(aes(x = collection_time)) +
+  
+  # Min temperature and its 30-day moving average
+  geom_line(aes(y = air_temp_min_c, color = "Min Temp (C)")) +
+  geom_line(aes(y = air_temp_min_c_30d_ma, color = "Min Temp (C) (30d MA)"), linetype = "dashed") +
+  
+  # Avg temperature and its 30-day moving average
+  geom_line(aes(y = air_temp_avg_c, color = "Avg Temp (C)")) +
+  geom_line(aes(y = air_temp_avg_c_30d_ma, color = "Avg Temp (C) (30d MA)"), linetype = "dashed") +
+  
+  # Max temperature and its 30-day moving average
+  geom_line(aes(y = air_temp_max_c, color = "Max Temp (C)")) +
+  geom_line(aes(y = air_temp_max_c_30d_ma, color = "Max Temp (C) (30d MA)"), linetype = "dashed") +
+  
+  # Add RH to the plot using the secondary y-axis
+  #geom_line(aes(y = rh_max, color = "Max RH (%)"), linetype = "solid") +
+  
+  # Primary y-axis for temperature
+  #scale_y_continuous(
+  #  name = "Temperature (C)",  # Label for the primary y-axis
+  #  sec.axis = sec_axis(~ ., name = "Relative Humidity (%)")  # Secondary y-axis for RH
+  #) +
+  
+  # Title, labels, and theme
+labs(title = paste("Air Temperature (C) for", station),
+     x = "Date",y='Air Temperature (C)') +
+  
+  # Minimal theme
+  theme_minimal() +
+  
+  # Move the legend below the plot
+  theme(
+    legend.position = "bottom",         # Position the legend below the plot
+    legend.direction = "horizontal",    # Arrange the legend items horizontally
+    legend.title = element_blank(),     # Remove the legend title
+    legend.text = element_text(size = 10)  # Customize legend text size
+  ) +
+  
+  # Color manual assignment
+  scale_color_manual(values = c(
+    "Min Temp (C)" = "blue", 
+    "Min Temp (C) (30d MA)" = "lightblue",
+    "Avg Temp (C)" = "green", 
+    "Avg Temp (C) (30d MA)" = "lightgreen",
+    "Max Temp (C)" = "red",
+    "Max Temp (C) (30d MA)" = "pink"#,
+    #"Max RH (%)" = "purple"  # Color for RH
+  ))
+
+print(weather_plot)
