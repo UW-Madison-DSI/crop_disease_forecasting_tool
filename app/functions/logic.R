@@ -334,11 +334,12 @@ call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
                      y = at0, 
                      by.x = "date_day", 
                      by.y = "date_day") %>% 
+    mutate(date_day = date_day + 1) %>%
     arrange(desc(date_day)) %>% 
     select(c('date_day',  # Use 'date_day' if that's the correct column name instead of 'Date'
              'rh_above_90_daily_14d_ma', 'rh_max','rh_max_30d_ma',
              'air_temp_avg_c_30d_ma', 'air_temp_avg_c')) %>% 
-    slice(1:8)
+    slice(1:7)
   
   
   print("----------------------------->> Input API, single values")
