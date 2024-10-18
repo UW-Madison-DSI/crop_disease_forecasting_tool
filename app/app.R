@@ -181,18 +181,25 @@ server <- function(input, output, session) {
   # Render the line plot showing the trend of Risk over Date
   output$risk_trend <- renderPlot({
     data <- weather_data()   # Select the columns of interest
+    station_code <- input$custom_station_code
+    station <- stations[[station_code]]
     
     if (!is.null(data)) {
-      df<-data%>%
+      df <- data %>%
         mutate(Date = ymd(date_day)) %>%    # Convert date_day to Date
         dplyr::select(Date, Risk, Risk_Class)
+      
       ggplot(df, aes(x = Date, y = Risk)) +
-        geom_line(color = "blue") +    # Line plot for Risk trend
-        geom_point(color = "red") +    # Optional: Add points for better visualization
-        labs(title = "Risk Trend Over Time",
+        geom_line(color = "blue") +        # Line plot for Risk trend
+        geom_point(color = "red") +        # Add points for better visualization
+        geom_text(aes(label = Risk_Class),  # Add Risk_Class labels at each point
+                  vjust = -0.5,             # Adjust vertical position of labels
+                  color = "black") +        # Set label color
+        labs(title = paste(station$name," Station, ", station$region,"Region,", station$state),
              x = "Date",
-             y = "Risk Probability") +
-        theme_minimal()  # Horizontal line at Risk = 35
+             y = "Probability of Tarspot") +
+        theme_minimal()
+      # Horizontal line at Risk = 35
     } else {
       # Handle the case when there's no data available
       return(NULL)
