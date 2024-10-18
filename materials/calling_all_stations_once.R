@@ -1,84 +1,53 @@
+# Initialize an empty dataframe to store the results, including station coordinates, name, code, and date
+probability_results <- data.frame(
+  Station_Code = character(),
+  Station_Name = character(),
+  Latitude = numeric(),
+  Longitude = numeric(),
+  Date = as.Date(character()),  # Add the date field
+  Probability = numeric(),
+  Risk_Class = character(),
+  stringsAsFactors = FALSE
+)
+
+# Loop through all station codes
 for (station_code in names(stations)) {
   station <- stations[[station_code]]
   
-  # Get station name
+  # Get station name and coordinates
   station_name <- station$name
+  station_lat <- station$latitude
+  station_lon <- station$longitude
+  
   cat("================== ", station_name, station_code, "\n")
   
-  # Fetch relative humidity data
-  rh_above_90_daily <- fetch_rh_above_90_daily(station_code)
+  # Set the risk threshold (ensure it's between 0 and 1)
+  risk_threshold <- 0.35
   
-  # Check if rh_above_90_daily is NULL
-  if (is.null(rh_above_90_daily)) {
+  # Call the function to get the probability and other risk information
+  result <- call_tarspot_for_station(station_code, station_name, risk_threshold, Sys.Date())
+  
+  # Check if result is NULL or has issues
+  if (is.null(result) || nrow(result) == 0) {
     cat("Error: No data returned for station", station_code, "\n")
-    probability_results <- rbind(probability_results, data.frame(
-      Station = station_code,
-      Probability = -999  # Handle error case with -999
-    ))
-    next  # Skip to the next iteration
+    next  # Skip to the next iteration if no data is returned
   }
   
-  rh_above_90_daily <- rh_above_90_daily %>% mutate(date_day = floor_date(date, unit='days'))
-  rh_above_90_daily1 <- rh_above_90_daily %>% slice(8)
-  th_rh90_14ma <- rh_above_90_daily1$rh_above_90_daily_14d_ma[1]
+  # Add station details (code, name, lat, lon) to the result for each row
+  result <- result %>%
+    mutate(
+      Station_Code = station_code,
+      Station_Name = station_name,
+      Latitude = station_lat,
+      Longitude = station_lon
+    )
   
-  # Fetch temperature data
-  at0 <- fetch_at(station_code)
-  
-  # Check if at0 is NULL
-  if (is.null(at0)) {
-    cat("Error: No data returned for station", station_code, "\n")
-    probability_results <- rbind(probability_results, data.frame(
-      Station = station_code,
-      Probability = -999  # Handle error case with -999
-    ))
-    next  # Skip to the next iteration
-  }
-  
-  at <- at0 %>% slice(1)
-  mat_30dma <- at$air_temp_avg_c_30d_ma[1]
-  max_rh_30dma <- at$rh_max_30d_ma[1]
-  cat('th_rh90_14ma ', th_rh90_14ma,
-      'max_rh_30dma ', max_rh_30dma,
-      'mat_30dma ', mat_30dma, "\n")
-  
-  base_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
-  
-  params <- list(
-    growth_stage = 'R1',
-    fungicide_applied = 'no',
-    risk_threshold = risk_threshold * 100,  # Ensure it's in percentage format
-    mean_air_temp_30d_ma = mat_30dma,
-    max_rh_30d_ma = max_rh_30dma,
-    tot_nhrs_rh90_14d_ma = th_rh90_14ma
-  )
-  
-  # API call to fetch the probability data
-  response <- POST(url = base_url, query = params)
-  
-  if (status_code(response) == 200) {
-    # Parse the content as JSON
-    result <- content(response, as = "parsed", type = "application/json")
-    
-    # Retrieve relevant values
-    probability <- result$probability[[1]]
-    probability_class <- result$risk_class[[1]]
-  
-    cat('====Risk====', probability, probability_class, "\n")
-    
-    # Store the station name and its probability in the results data frame
-    probability_results <- rbind(probability_results, data.frame(
-      Station = station_code,
-      Probability = probability  # Use the correct key here
-    ))
-  } else {
-    cat("Error: API request failed with status code", status_code(response), "\n")
-    probability_results <- rbind(probability_results, data.frame(
-      Station = station_code,
-      Probability = -999  # Handle error case with -999
-    ))
-  }
+  # Append the result (which contains 7 rows) to the probability_results dataframe
+  probability_results <- rbind(probability_results, result)
 }
 
-# Print the final table with station names and their probability values
+# Save the results to a CSV file including the station code, name, coordinates, date, and probability
+write.csv(probability_results, file = "materials/probability_results_with_date.csv", row.names = FALSE)
+
+# Print the final table with station names, coordinates, dates, and their probability values
 print(probability_results)

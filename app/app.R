@@ -24,45 +24,34 @@ ui <- dashboardPage(
     div(
       "Tarspot Forecasting App (Beta)",
       style = "
-      display: block;
-      font-size: 1.5em;
-      margin-block-start: 0.5em;
-      font-weight: bold;
-      color: white;
-      margin-right: 50%",
-      align = "right"
+    display: block;
+    font-size: 1.5em;
+    margin-block-start: 0.5em;
+    font-weight: bold;
+    color: white;
+    margin-right: auto;  # Center or align as needed
+    text-align: center;",  # Ensure the text aligns properly
+      align = "center"  # Change alignment if needed
     ),
     .cssSelector = "nav"
   ),
   
   dashboardSidebar(
-    width = 350,
+    width = 450,
     tags$head(
       tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap")
     ),
     
     # Custom CSS for controlling appearance
     tags$style(HTML("
-      body, h1, h2, h3, h4, h5, h6 {
-        font-family: 'Public Sans', sans-serif;
+      .box {
+        padding: 10px;
       }
-      .main-header .logo {
-        font-family: 'Public Sans', sans-serif;
-        font-weight: 700;
+      .plot-container {
+        margin: 0 auto;
       }
-      .skin-blue .main-header .navbar {
-        font-family: 'Public Sans', sans-serif;
-        font-weight: 600;
-      }
-      .sidebar-menu h2 {
-        font-family: 'Public Sans', sans-serif;
-        font-weight: 600;
-        font-size: 18px;
-      }
-      .box h2 {
-        font-family: 'Public Sans', sans-serif;
-        font-weight: 700;
-        font-size: 18px;
+      .leaflet-container {
+        height: 500px !important;  # Ensure map height fits the layout
       }
     ")),
     
@@ -74,7 +63,9 @@ ui <- dashboardPage(
       checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE),  # Changed to checkbox
       
       sliderInput("risk_threshold", "Set Risk Threshold (%)", 
-                  min = 20, max = 50, value = 35, step = 1)
+                  min = 20, max = 50, value = 35, step = 1),
+      tags$p("Note: The plots may have a small delay.", style = "color: gray; font-style: italic; font-size: 12px;")
+      
     )
   ),
   
@@ -127,12 +118,24 @@ server <- function(input, output, session) {
       station <- stations[[station_code]]
       station_name <- station$name  # Get station name
       risk_threshold <- input$risk_threshold / 100  # Convert risk threshold to a percentage
+      current <- Sys.time()
+      today_ct <- with_tz(current, tzone = "America/Chicago")
+      
+      mo <- 3 # historical data in terms of num of months
+      out <- from_ct_to_gmt(today_ct, mo)
+      
+      # Convert both dates to Unix timestamps in GMT
+      start_time <- out$start_time_gmt
+      end_time <- out$end_time_gmt
       
       # Call the API or function to get the data
-      result <- call_tarspot_for_station(station_code, station_name, risk_threshold)  # Fetch data
+      result <- call_tarspot_for_station(station_code, station_name, risk_threshold, start_time)  # Fetch data
+      
+      airtemp <- api_call_wisconet_data_daily(station_code, start_time, end_time)
       print("===========here ")
       print(result)
-      return(result)
+      
+      return(list(tarspot = result, airtemp = airtemp))
     } else {
       return(NULL)
     }
@@ -177,33 +180,51 @@ server <- function(input, output, session) {
     }
   })
   
-  # Display the fetched weather data in a table
   # Render the line plot showing the trend of Risk over Date
+  library(gridExtra)
+  
   output$risk_trend <- renderPlot({
-    data <- weather_data()   # Select the columns of interest
+    # Get the weather data
+    weatheroutputs <- weather_data()   
+    
+    # Select the columns of interest from tarspot and airtemp
+    data <- weatheroutputs$tarspot
+    variables_at_rh <- weatheroutputs$airtemp
     station_code <- input$custom_station_code
     station <- stations[[station_code]]
     
+    # Plot 1: Tarspot Risk Trend Plot
+    tarspot_plot <- NULL
     if (!is.null(data)) {
       df <- data %>%
         mutate(Date = ymd(date_day)) %>%    # Convert date_day to Date
         dplyr::select(Date, Risk, Risk_Class)
       
-      ggplot(df, aes(x = Date, y = Risk)) +
-        geom_line(color = "blue") +        # Line plot for Risk trend
-        geom_point(color = "red") +        # Add points for better visualization
-        geom_text(aes(label = Risk_Class),  # Add Risk_Class labels at each point
-                  vjust = -0.5,             # Adjust vertical position of labels
-                  color = "black") +        # Set label color
-        labs(title = paste(station$name," Station, ", station$region,"Region,", station$state),
-             x = "Date",
-             y = "Probability of Tarspot") +
-        theme_minimal()
-      # Horizontal line at Risk = 35
+      tarspot_plot <- plot_trend(df, station) +
+        geom_hline(yintercept = 35, linetype = "dashed", color = "red")  # Horizontal line at Risk = 35
     } else {
-      # Handle the case when there's no data available
-      return(NULL)
+      tarspot_plot <- ggplot() + 
+        ggtitle("No Tarspot Data Available") +
+        theme_void()
     }
+    
+    # Plot 2: Weather Data (Temperature and Humidity)
+    weather_plot <- NULL
+    if (!is.null(variables_at_rh)) {
+      # Example call to the function
+      weather_plot <- plot_weather_data(variables_at_rh, station = station)
+        
+      # Display the plot
+      print(weather_plot)
+      
+    } else {
+      weather_plot <- ggplot() + 
+        ggtitle("No Weather Data Available") +
+        theme_void()
+    }
+    
+    # Arrange the two plots side by side
+    grid.arrange(tarspot_plot, weather_plot, ncol = 2)
   })
   
 }
