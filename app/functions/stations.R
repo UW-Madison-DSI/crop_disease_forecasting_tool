@@ -341,14 +341,14 @@ stations<-list(
     time_zone = "America/Chicago",
     state = "WI"),
   
-  WNTEST1 = list(
-    name = "WiscNetTest",
-    latitude = 43.2954,
-    longitude = -89.3582,
-    location = "Poultry Barn",
-    region = "South Central",
-    time_zone = "America/Chicago",
-    state = "WI"),
+  #WNTEST1 = list(
+  #  name = "WiscNetTest",
+  #  latitude = 43.2954,
+  #  longitude = -89.3582,
+  #  location = "Poultry Barn",
+  #  region = "South Central",
+  #  time_zone = "America/Chicago",
+  #  state = "WI"),
   
   KEMP = list(
     name = "Woodruff",

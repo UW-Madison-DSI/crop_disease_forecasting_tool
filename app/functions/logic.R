@@ -19,13 +19,9 @@ from_ct_to_gmt <- function(current_time, mo){
   # Subtract months from the current time in Central Time
   past_time_ct <- current_time - months(mo)
   
-  cat('current: CT', current_time, mo, 'months ago CT', past_time_ct, '\n')
-  
   # Convert both dates to Unix timestamps in GMT
   start_time <- as.integer(as.POSIXct(past_time_ct, tz = "GMT"))
   end_time <- as.integer(as.POSIXct(current_time, tz = "GMT"))
-  
-  cat('Start time (GMT):', start_time, 'End time (GMT):', end_time, '\n')
   
   return(list(
     start_time_gmt = start_time,
@@ -39,18 +35,8 @@ base_url <- 'https://wisconet.wisc.edu'
 url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 
 
-current <- Sys.time()
-today_ct <- with_tz(current, tzone = "America/Chicago")
-
-mo <- 6 # historical data in terms of num of months
-out <- from_ct_to_gmt(today_ct, mo)
-
-# Convert both dates to Unix timestamps in GMT
-start_time <- out$start_time_gmt
-end_time <- out$end_time_gmt
-
 ################################################################ Function to get weather data from the API
-api_call_wisconet_data_daily <- function(station) {
+api_call_wisconet_data_daily <- function(station, start_time, end_time) {
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
   params <- list(
@@ -106,7 +92,9 @@ api_call_wisconet_data_daily <- function(station) {
     
     # Rearrange columns for better readability
     result_df <- result_df[c("collection_time", 
-                             "air_temp_avg_c", 
+                             "air_temp_min_c",
+                             "air_temp_avg_c",
+                             "air_temp_max_c",
                              "air_temp_min_c_30d_ma",
                              "air_temp_max_c_30d_ma", 
                              "air_temp_avg_c_30d_ma",
@@ -138,10 +126,10 @@ api_call_wisconet_plot <- function(df) {
 }
 
 # Function to fetch and plot data
-fetch_at <- function(station) {
+fetch_at <- function(station, start_time, end_time) {
   
   # Fetch the data using the API function
-  data_df <- api_call_wisconet_data_daily(station)
+  data_df <- api_call_wisconet_data_daily(station, start_time, end_time)
   
   # Plot the data if it is not NULL
   if (!is.null(data_df)) {
@@ -153,7 +141,7 @@ fetch_at <- function(station) {
 }
 
 ################################################################ Function to get 60-minute relative humidity data
-api_call_wisconet_data_rh <- function(station) {
+api_call_wisconet_data_rh <- function(station, start_time, end_time) {
   
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
@@ -201,8 +189,7 @@ api_call_wisconet_data_rh <- function(station) {
         
         rh_night_above_90 = if_else(rh_avg >= 90 & (hour >= 20 | hour <= 6), 1, 0)
       )
-    print("---------------------------------------------------------------------")
-    print(tail(result_df,20))
+
     
     # Group by date and sum the counts of night hours where RH >= 90 for each day
     daily_rh_above_90 <- result_df %>%
@@ -228,9 +215,9 @@ api_call_wisconet_data_rh <- function(station) {
 }
 
 ################################################################ Function to fetch and print the number of Night hours with RH > 90% per day
-fetch_rh_above_90_daily <- function(station) {
+fetch_rh_above_90_daily <- function(station, start_time, end_time) {
   # Fetch the data using the API function
-  rh_data <- api_call_wisconet_data_rh(station)
+  rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
   
   data <- rh_data$daily_rh_above_90
   data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, 
@@ -244,6 +231,64 @@ fetch_rh_above_90_daily <- function(station) {
     cat("No data returned for the specified station.\n")
     return(NULL)
   }
+}
+
+
+# Define a function to create the weather plot
+plot_weather_data <- function(data, station) {
+  # Create the plot
+  weather_plot <- data %>%
+    ggplot(aes(x = collection_time)) +
+    
+    # Min temperature and its 30-day moving average
+    geom_line(aes(y = air_temp_min_c, color = "Min Temp (C)")) +
+    geom_line(aes(y = air_temp_min_c_30d_ma, color = "Min Temp (C) (30d MA)"), linetype = "dashed") +
+    
+    # Avg temperature and its 30-day moving average
+    geom_line(aes(y = air_temp_avg_c, color = "Avg Temp (C)")) +
+    geom_line(aes(y = air_temp_avg_c_30d_ma, color = "Avg Temp (C) (30d MA)"), linetype = "dashed") +
+    
+    # Max temperature and its 30-day moving average
+    geom_line(aes(y = air_temp_max_c, color = "Max Temp (C)")) +
+    geom_line(aes(y = air_temp_max_c_30d_ma, color = "Max Temp (C) (30d MA)"), linetype = "dashed") +
+    
+    # Add RH to the plot using the secondary y-axis
+    #geom_line(aes(y = rh_max, color = "Max RH (%)"), linetype = "solid") +
+    
+    # Primary y-axis for temperature
+    #scale_y_continuous(
+    #  name = "Temperature (C)",  # Label for the primary y-axis
+    #  sec.axis = sec_axis(~ ., name = "Relative Humidity (%)")  # Secondary y-axis for RH
+    #) +
+    
+    # Title, labels, and theme
+    labs(title = paste("Air Temperature (C) for", station),
+         x = "Date",y='Air Temperature (C)') +
+    
+    # Minimal theme
+    theme_minimal() +
+    
+    # Move the legend below the plot
+    theme(
+      legend.position = "bottom",         # Position the legend below the plot
+      legend.direction = "horizontal",    # Arrange the legend items horizontally
+      legend.title = element_blank(),     # Remove the legend title
+      legend.text = element_text(size = 10)  # Customize legend text size
+    ) +
+    
+    # Color manual assignment
+    scale_color_manual(values = c(
+      "Min Temp (C)" = "blue", 
+      "Min Temp (C) (30d MA)" = "lightblue",
+      "Avg Temp (C)" = "green", 
+      "Avg Temp (C) (30d MA)" = "lightgreen",
+      "Max Temp (C)" = "red",
+      "Max Temp (C) (30d MA)" = "pink"#,
+      #"Max RH (%)" = "purple"  # Color for RH
+    ))
+  
+  # Return the plot
+  return(weather_plot)
 }
 
 ################################################################ Call Tarspot API
@@ -265,10 +310,8 @@ get_risk_probability <- function(station_id, station_name,
     tot_nhrs_rh90_14d_ma = th_rh90_14ma
   )
   
-  #response <- POST(url_tspot, body = toJSON(body), encode = "json")
   response <- POST(url = base_url, query = params)
 
-  
   # Check if the request was successful
   if (status_code(response) == 200) {
     # Parse the content as JSON
@@ -301,15 +344,41 @@ get_risk_probability <- function(station_id, station_name,
   }
 }
 
+
+plot_trend<- function(df, station){
+  ggplot(df, aes(x = Date, y = Risk)) +
+    geom_line(color = "#0C7BDC") +
+    geom_point(color = "#FFC20A") +
+    geom_text(aes(label = Risk_Class),
+              vjust = -0.5,
+              color = "black") +
+    labs(title = paste(station$name," Station, ", station$region,"Region,", station$state),
+         x = "Date",
+         y = "Probability of Tarspot") +
+    theme_minimal()
+}
+
 ###################################### Prpeare the relevant data for Tarspot
-call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
-  cat("Station id ", station_id, station_name)
-  rh_above_90_daily <- fetch_rh_above_90_daily(station_id)
+call_tarspot_for_station <- function(station_id, station_name, risk_threshold, current){
+  current <- Sys.time()
+  today_ct <- with_tz(current, tzone = "America/Chicago")
+  
+  mo <- 6 # historical data in terms of num of months
+  out <- from_ct_to_gmt(today_ct, mo)
+  
+  # Convert both dates to Unix timestamps in GMT
+  start_time <- out$start_time_gmt
+  end_time <- out$end_time_gmt
+  
+  
+  
+  rh_above_90_daily <- fetch_rh_above_90_daily(station_id,start_time, end_time)
   rh_above_90_daily1 <- rh_above_90_daily %>% mutate(date_day = as.Date(adjusted_date),
                         date_day1 = floor_date(as.Date(adjusted_date), unit='days')) %>%
     arrange(desc(date_day))
   
-  at0 <- fetch_at(station_id)
+  at0 <- api_call_wisconet_data_daily(station_id, start_time, end_time)
+  #fetch_at(station_id,start_time, end_time)
   at0 <- at0 %>% mutate(date_day1 = floor_date(collection_time, unit='days'),
                         date_day = as.Date(collection_time)-1) 
 
@@ -336,16 +405,12 @@ call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
                      by.y = "date_day") %>% 
     mutate(date_day = date_day + 1) %>%
     arrange(desc(date_day)) %>% 
-    select(c('date_day',  # Use 'date_day' if that's the correct column name instead of 'Date'
-             'rh_above_90_daily_14d_ma', 'rh_max','rh_max_30d_ma',
-             'air_temp_avg_c_30d_ma', 'air_temp_avg_c')) %>% 
-    slice(1:7)
-  
-  
-  print("----------------------------->> Input API, single values")
-  cat('mat_30dma: ',mat_30dma, 
-      'max_rh_30dma: ', max_rh_30dma,
-      'th_rh90_14ma: ',th_rh90_14ma)
+    select(c('date_day',
+             'rh_above_90_daily_14d_ma', 
+             'rh_max',
+             'rh_max_30d_ma',
+             'air_temp_avg_c_30d_ma', 
+             'air_temp_avg_c')) %>% slice(1:7)
   
   merged_ds <- merged_ds %>%
     rowwise() %>%
@@ -361,19 +426,6 @@ call_tarspot_for_station <- function(station_id, station_name, risk_threshold){
            Station = risk_output$station_name) %>%
     select(-risk_output)  # Remove the intermediate list column if not needed
   
-  # Print the dataset with the new Risk and Risk_Class columns
-  print("--------------------------")
-  print(merged_ds)
-  
-  #result <- get_risk_probability(station_id, 
-  #                               station_name, 
-  #                               risk_threshold, 
-  #                               mat_30dma, 
-  #                               max_rh_30dma,
-  #                               th_rh90_14ma, 
-  #                               url_ts)
-  
-  #cat('====Risk====',result$Risk, result$Risk_Class)
   return(merged_ds)
 }
 
