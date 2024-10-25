@@ -241,16 +241,16 @@ plot_weather_data <- function(data, station) {
     ggplot(aes(x = collection_time)) +
     
     # Min temperature and its 30-day moving average
-    geom_line(aes(y = air_temp_min_c, color = "Min Temp (C)")) +
-    geom_line(aes(y = air_temp_min_c_30d_ma, color = "Min Temp (C) (30d MA)"), linetype = "dashed") +
+    geom_line(aes(y = air_temp_min_c, color = "Min Temp (°C)")) +
+    geom_line(aes(y = air_temp_min_c_30d_ma, color = "Min Temp (°C) (30d MA)"), linetype = "dashed") +
     
     # Avg temperature and its 30-day moving average
-    geom_line(aes(y = air_temp_avg_c, color = "Avg Temp (C)")) +
-    geom_line(aes(y = air_temp_avg_c_30d_ma, color = "Avg Temp (C) (30d MA)"), linetype = "dashed") +
+    geom_line(aes(y = air_temp_avg_c, color = "Avg Temp (°C)")) +
+    geom_line(aes(y = air_temp_avg_c_30d_ma, color = "Avg Temp (°C) (30d MA)"), linetype = "dashed") +
     
     # Max temperature and its 30-day moving average
-    geom_line(aes(y = air_temp_max_c, color = "Max Temp (C)")) +
-    geom_line(aes(y = air_temp_max_c_30d_ma, color = "Max Temp (C) (30d MA)"), linetype = "dashed") +
+    geom_line(aes(y = air_temp_max_c, color = "Max Temp (°C)")) +
+    geom_line(aes(y = air_temp_max_c_30d_ma, color = "Max Temp (°C) (30d MA)"), linetype = "dashed") +
     
     # Add RH to the plot using the secondary y-axis
     #geom_line(aes(y = rh_max, color = "Max RH (%)"), linetype = "solid") +
@@ -262,8 +262,8 @@ plot_weather_data <- function(data, station) {
     #) +
     
     # Title, labels, and theme
-    labs(title = paste("Air Temperature (C) for", station),
-         x = "Date",y='Air Temperature (C)') +
+    labs(title = paste("Air Temperature (°C) for", station),
+         x = "Date",y='Air Temperature (°C)') +
     
     # Minimal theme
     theme_minimal() +
@@ -278,14 +278,17 @@ plot_weather_data <- function(data, station) {
     
     # Color manual assignment
     scale_color_manual(values = c(
-      "Min Temp (C)" = "blue", 
-      "Min Temp (C) (30d MA)" = "lightblue",
-      "Avg Temp (C)" = "green", 
-      "Avg Temp (C) (30d MA)" = "lightgreen",
-      "Max Temp (C)" = "red",
-      "Max Temp (C) (30d MA)" = "pink"#,
-      #"Max RH (%)" = "purple"  # Color for RH
+      "Min Temp (°C)" = "#5DA5DA",            # Soft blue
+      "Min Temp (°C) (30d MA)" = "#ADD8E6",   # Light blue
+      "Avg Temp (°C)" = "#60BD68",            # Soft green
+      "Avg Temp (°C) (30d MA)" = "#B2E2B2",   # Light green
+      "Max Temp (°C)" = "#FAA43A",            # Light orange
+      "Max Temp (°C) (30d MA)" = "#FDDC9B",   # Light peach
+      "Max RH (%)" = "#B276B2",              # Soft purple
+      "RH (30d MA)" = "#CFCFCF",             # Light gray for subtler contrast
+      "Dew Point (°C)" = "#FFC107"            # Muted yellow
     ))
+  
   
   # Return the plot
   return(weather_plot)
@@ -294,7 +297,64 @@ plot_weather_data <- function(data, station) {
 ################################################################ Call Tarspot API
 ################################################################################
 ################################################################################
+## Experimenting using the logic of the model
+logistic <- function(logit) {
+  exp(logit) / (1 + exp(logit))
+}
+
+calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35) {
+  # Logistic regression formulas for the two models, no irrigation total needed
+  logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH) #paper page5
+  logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot) #paper page5
+  probabilities <- sapply(c(logit_LR4, logit_LR6), logistic)
+  ensemble_prob <- mean(probabilities)
+  
+  # Calculate risk using the general disease risk function
+  return(ensemble_prob)
+}
+
 get_risk_probability <- function(station_id, station_name, 
+                                        risk_threshold,
+                                        mat_30dma, max_rh_30dma,
+                                        th_rh90_14ma, url_ts) {
+  
+  probab<-calculate_tarspot_risk(mat_30dma, max_rh_30dma,
+                                 th_rh90_14ma)
+  print("--------------------------------------------------------------")
+  cat(risk_threshold, probab)
+  print("--------------------------------------------------------------")
+  # Check if the request was successful
+  if (probab) {
+    # Retrieve relevant values
+    probability <- probab
+    probability_class <- if_else(probab>risk_threshold,"High", "Low")
+    
+    dframe<-data.frame(
+      Station = station_name,
+      AirTemp_C_30dma=mat_30dma,
+      Max_RH_pct_30dma=max_rh_30dma,
+      Tot_Nhrs_RHab90_14dma=th_rh90_14ma,
+      Risk = 100*probability,
+      Risk_Class = probability_class
+    )
+    return(dframe)
+  } else {
+    # Print error if the request fails
+    cat("Error: API request failed with status code", status_code(response), "\n")
+    print(content(response, as = "text"))
+    dframe<-data.frame(
+      Station = station_id,
+      AirTemp_C_30dma=NA,
+      Max_RH_pct_30dma=NA,
+      Tot_Nhrs_RHab90_14dma=NA,
+      Risk = NA,
+      Risk_Class = NA
+    )
+    return(dframe)
+  }
+}
+
+get_risk_probability_by_api <- function(station_id, station_name, 
                                  risk_threshold,
                                  mat_30dma, max_rh_30dma,
                                  th_rh90_14ma, url_ts) {
@@ -345,18 +405,22 @@ get_risk_probability <- function(station_id, station_name,
 }
 
 
-plot_trend<- function(df, station){
+library(scales)
+
+plot_trend <- function(df, station){
   ggplot(df, aes(x = Date, y = Risk)) +
     geom_line(color = "#0C7BDC") +
     geom_point(color = "#FFC20A") +
     geom_text(aes(label = Risk_Class),
               vjust = -0.5,
               color = "black") +
-    labs(title = paste(station$name," Station, ", station$region,"Region,", station$state),
+    labs(title = paste(station$name, "Station,", station$region, "Region,", station$state),
          x = "Date",
-         y = "Probability of Tarspot") +
+         y = "Probability of Tarspot (%)") +
+    scale_y_continuous(labels = percent_format(scale = 1)) +  # Formats y-axis as percentages
     theme_minimal()
 }
+
 
 ###################################### Prpeare the relevant data for Tarspot
 call_tarspot_for_station <- function(station_id, station_name, risk_threshold, current){
