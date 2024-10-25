@@ -145,7 +145,7 @@ server <- function(input, output, session) {
   output$mymap <- renderLeaflet({
     leaflet() %>% 
       addTiles() %>% 
-      setView(lng = -89.758205, lat = 44.769571, zoom = 7)  # Default map view over Wisconsin
+      setView(lng = -89.758205, lat = 44.769571, zoom = 8.5)  # Default map view over Wisconsin
   })
   
   # Update the map based on the selected station(s)
