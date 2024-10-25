@@ -3,7 +3,6 @@ library(plumber)
 # Load necessary functions
 source("R/logit_functions.R")
 source("R/crop_mangm_validations.R")
-source("R/var_schema.R")
 
 #* @apiTitle Crop Disease Risk Prediction API
 #* @apiDescription This API predicts the risk of crop diseases (Spore, Tarspot, and Gray Leaf Spot) based on environmental data and user inputs.
@@ -46,7 +45,6 @@ function(growth_stage = "R1",
                                    tot_nhrs_rh90_14d_ma, 
                                    risk_threshold)
   
-  # Return the result as JSON
   return(result)
 }
 
@@ -63,7 +61,6 @@ function(growth_stage = "R1",
          min_air_temp_21d_ma, 
          min_dewpoint_30d_ma) {
   
-  # Validate inputs
   numeric_vars <- c("risk_threshold", "min_air_temp_21d_ma", "min_dewpoint_30d_ma")
   
   # Convert these variables to numeric
