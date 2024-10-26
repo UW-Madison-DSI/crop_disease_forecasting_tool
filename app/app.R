@@ -8,9 +8,12 @@ library(jsonlite)
 library(dplyr)
 library(flexdashboard)
 library(lubridate)
+# Render the line plot showing the trend of Risk over Date
+library(gridExtra)
 
 source("functions/stations.R")
 source("functions/logic.R")
+source("functions/auxiliar_functions.R")
 
 station_choices <- c("All" = "all", setNames(names(stations), sapply(stations, function(station) station$name)))
 
@@ -59,33 +62,33 @@ ui <- dashboardPage(
       h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Settings")), style = "font-size:18px;"),
       selectInput("custom_station_code", "Please Select an Station", 
                   choices = station_choices),
-      checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE),  # Changed to checkbox
-      checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE),  # Changed to checkbox
+      checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE),  
+      checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE), 
       
       sliderInput("risk_threshold", "Set Risk Threshold (%)", 
                   min = 20, max = 50, value = 35, step = 1),
-      tags$p("Note: The plots may have a small delay.", style = "color: gray; font-style: italic; font-size: 12px;")
+      tags$p("Note: Weather plots may have a short delay.", style = "color: gray; font-style: italic; font-size: 12px;")
       
     )
   ),
   
   dashboardBody(
     fluidRow(
-      # Show the Risk trend plot conditionally (no Risk gauge)
+      box(
+        leafletOutput("mymap", height = "600px"),
+        width = 12
+      )
+    ),
+    fluidRow(
+      # Show the Risk trend plot conditionally
       conditionalPanel(
         condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage",
         box(
           h2(strong("Tarspot Risk in the last 7 days"), style = "font-size:18px;"),
           plotOutput("risk_trend"),  # Show the Risk trend plot here
-          textOutput("risk_class_text"),  # Risk class text output (optional)
+          textOutput("risk_class_text"),
           width = 12  # Full width for visibility
         )
-      )
-    ),
-    fluidRow(
-      box(
-        leafletOutput("mymap", height = "600px"),
-        width = 12
       )
     ),
     fluidRow(
@@ -145,7 +148,7 @@ server <- function(input, output, session) {
   output$mymap <- renderLeaflet({
     leaflet() %>% 
       addTiles() %>% 
-      setView(lng = -89.758205, lat = 44.769571, zoom = 8.5)  # Default map view over Wisconsin
+      setView(lng = -89.75, lat = 44.76, zoom = 6)  # Default map view over Wisconsin
   })
   
   # Update the map based on the selected station(s)
@@ -172,7 +175,7 @@ server <- function(input, output, session) {
     if (station_code == "all") {
       return("You have selected all stations. 
              Please select one to see the risk of tarspot. 
-             If you have applied a fungicide in the last 14 days to your crop, 
+             If you applied a fungicide in the last 14 days to your crop, 
              we can not estimate a probability of tarspot.")
     } else {
       station <- stations[[station_code]]
@@ -180,8 +183,7 @@ server <- function(input, output, session) {
     }
   })
   
-  # Render the line plot showing the trend of Risk over Date
-  library(gridExtra)
+  
   
   output$risk_trend <- renderPlot({
     # Get the weather data
