@@ -213,7 +213,7 @@ logistic <- function(logit) {
   exp(logit) / (1 + exp(logit))
 }
 
-calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35) {
+calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot) {
   # Logistic regression formulas for the two models, no irrigation total needed
   logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH) #paper page5
   logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot) #paper page5
@@ -224,21 +224,36 @@ calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35
   return(ensemble_prob)
 }
 
+
+classify_risk <- function(probability, high_threshold, medium_threshold, low_threshold = 0) {
+  cat("----------- Probability ", probability, high_threshold, medium_threshold)
+  if (probability<=0){
+    return ("NoRisk")
+  }else if (probability >= 0 & probability<=medium_threshold) {
+    return("Low")
+  } else if (probability > medium_threshold & probability<high_threshold) {
+    return("Medium")
+  } else if (probability >= high_threshold){
+    return("High")
+  }
+}
+
 get_risk_probability <- function(station_id, station_name, 
                                         risk_threshold,
                                         mat_30dma, max_rh_30dma,
                                         th_rh90_14ma, url_ts) {
   
-  probab<-calculate_tarspot_risk(mat_30dma, max_rh_30dma,
+  probability<-calculate_tarspot_risk(mat_30dma, max_rh_30dma,
                                  th_rh90_14ma)
   print("--------------------------------------------------------------")
-  cat(risk_threshold, probab)
+  cat(risk_threshold, probability)
   print("--------------------------------------------------------------")
   # Check if the request was successful
-  if (probab) {
+  if (probability) {
     # Retrieve relevant values
-    probability <- probab
-    probability_class <- if_else(probab>risk_threshold,"High", "Low")
+
+    probability_class <- classify_risk(probability, risk_threshold, .4, 0)
+    #if_else(probab>risk_threshold,"High", "Low")
     
     dframe<-data.frame(
       Station = station_name,
@@ -266,7 +281,7 @@ get_risk_probability <- function(station_id, station_name,
 }
 
 
-################### Still comparing, probably will be deprecated one
+################### Still comparing if calling by internal logic or by the API, probably will be deprecated one
 get_risk_probability_by_api <- function(station_id, station_name, 
                                  risk_threshold,
                                  mat_30dma, max_rh_30dma,
@@ -275,7 +290,7 @@ get_risk_probability_by_api <- function(station_id, station_name,
   base_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
   
   params <- list(
-    growth_stage = 'R1',
+    growth_stage = 'yes',
     fungicide_applied = 'no',
     risk_threshold = risk_threshold * 100,  # Ensure it's in percentage format
     mean_air_temp_30d_ma = mat_30dma,
@@ -374,17 +389,17 @@ call_tarspot_for_station <- function(station_id, station_name, risk_threshold, c
   
   merged_ds <- merged_ds %>%
     rowwise() %>%
-    mutate(risk_output = list(get_risk_probability(station_id = "station_id_value", # replace with actual station_id
-                                                   station_name = "station_name_value", # replace with actual station_name
-                                                   risk_threshold = 0.5,  # replace with your threshold value
+    mutate(risk_output = list(get_risk_probability(station_id = station_id,
+                                                   station_name = station_name,
+                                                   risk_threshold = risk_threshold,
                                                    mat_30dma = air_temp_avg_c_30d_ma,
                                                    max_rh_30dma = rh_max_30d_ma,
                                                    th_rh90_14ma = rh_above_90_daily_14d_ma,
-                                                   url_ts = url_ts)), # replace with actual URL if needed
+                                                   url_ts = url_ts)),
            Risk = risk_output$Risk,
            Risk_Class = risk_output$Risk_Class,
            Station = risk_output$station_name) %>%
-    select(-risk_output)  # Remove the intermediate list column if not needed
+    select(-risk_output)
   
   return(merged_ds)
 }

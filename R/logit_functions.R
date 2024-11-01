@@ -5,12 +5,14 @@ logistic <- function(logit) {
 
 # Function to classify risk based on probability and thresholds
 classify_risk <- function(probability, high_threshold, medium_threshold, low_threshold = 0) {
-  if (probability >= high_threshold) {
-    return("High")
-  } else if (probability >= medium_threshold) {
-    return("Medium")
-  } else {
+  if (probability<=0){
+    return ("NoRisk")
+  }else if (probability >= 0 & probability<=medium_threshold) {
     return("Low")
+  } else if (probability > medium_threshold & probability<high_threshold) {
+    return("Medium")
+  } else if (probability >= high_threshold){
+    return("High")
   }
 }
 
@@ -67,7 +69,7 @@ calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold = 60) {
   ))
 }
 
-# Example for non-irrigated risk calculation
+# Non-irrigated risk calculation
 calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA) {
   # Logistic regression formula for non-irrigated model
   logit_nirr <- (-0.47 * maxAT30MA) - (1.01 * maxWS30MA) + 16.65
@@ -81,7 +83,7 @@ calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA) {
   ))
 }
 
-# Example for irrigated risk calculation
+# Irrigated risk calculation
 calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing) {
   # Determine row value (0 for 15-inch, 1 for 30-inch)
   row <- ifelse(row_spacing == 30, 1, 0)
@@ -95,5 +97,19 @@ calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing) {
     thresholds = c(1.0, 1.0),  #no threshold here, no class, just probab
     disease_name = "Sporecaster-Irr",
     threshold = -1 #no threshold here, no class, just probab
+  ))
+}
+
+
+# Frogeye Leaf Spot
+calculate_frogeye_leaf_spot <- function(maxAT30, rh80tot30, threshold_high, threshold_mid) {
+  # Logistic regression formula, no rrigation needed
+  logit_fe <- -5.92485 -(0.1220 * maxAT30) + (0.1732 * rh80tot30)
+  
+  # Calculate risk using the general disease risk function
+  return(calculate_disease_risk(
+    logit_values = c(logit_fe),
+    thresholds = c(threshold_mid, threshold_high), 
+    disease_name = "FrogeyeLeafSpot"
   ))
 }
