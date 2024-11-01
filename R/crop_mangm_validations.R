@@ -17,15 +17,8 @@ convert_to_numeric <- function(data, variables) {
 }
 
 GrowthStage <- list(
-  V10 = "V10",
-  V11 = "V11",
-  V12 = "V12",
-  V13 = "V13",
-  V14 = "V14",
-  V15 = "V15",
-  R1 = "R1",
-  R2 = "R2",
-  R3 = "R3"
+  YES = "yes",
+  NO = "no"
 )
 
 FungicideApplied <- list(
@@ -53,7 +46,7 @@ validate_growth_and_fungicide <- function(growth_stage, fungicide_applied) {
   }
   
   if (!(growth_stage %in% allowed_stages)) {
-    return(list(valid = FALSE, message = "Invalid growth stage", reason = "Allowed stages are V10 to R3"))
+    return(list(valid = FALSE, message = "Invalid growth stage response", reason = "Allowed values are 'yes' or 'no'"))
   }
   
   return(list(valid = TRUE))

@@ -62,18 +62,23 @@ ui <- dashboardPage(
       h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Settings")), style = "font-size:18px;"),
       selectInput("custom_station_code", "Please Select an Station", 
                   choices = station_choices),
+      #selectInput("custom_disease", "Please Select A Disease", 
+      #            choices = c("Tarspot","Gray Leaf Spot")),
       checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE),  
       checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE), 
       
       sliderInput("risk_threshold", "Set Risk Threshold (%)", 
                   min = 20, max = 50, value = 35, step = 1),
       tags$p("Note: Weather plots may have a short delay.", style = "color: gray; font-style: italic; font-size: 12px;")
-      
     )
   ),
   
   dashboardBody(
     fluidRow(
+      div(
+        textOutput("risk_label"),
+        style = "font-size: 1.5em; color: yellow; text-align: center; font-weight: bold; margin-bottom: 10px;"
+      ),
       box(
         leafletOutput("mymap", height = "600px"),
         width = 12
@@ -154,9 +159,18 @@ server <- function(input, output, session) {
   # Update the map based on the selected station(s)
   observe({
     station_data <- selected_station_data()
+    selected_station <- input$selected_station  # 
     
-    leafletProxy("mymap") %>% clearMarkers()  # Clear previous markers
+    leafletProxy("mymap") %>% clearMarkers()  #
     
+    # Center on selected station
+    if (!is.null(selected_station)) {
+      station <- station_data[[selected_station]]
+      leafletProxy("mymap") %>%
+        setView(lng = station$longitude, lat = station$latitude, zoom = 3)
+    }
+    
+     
     # Loop through each station and add a marker
     for (station_code in names(station_data)) {
       station <- station_data[[station_code]]
@@ -170,6 +184,26 @@ server <- function(input, output, session) {
   })
   
   # Display station info based on the selection
+  output$risk_label <- renderText({
+    # Ensure weather_data is not NULL
+    crop_fung <- input$fungicide_applied
+    crop_gs <- input$crop_growth_stage
+    if (!is.null(weather_data()) && crop_fung && crop_gs) {
+      # Extract the most recent Risk_Class as a single value
+      most_recent_risk <- weather_data()$tarspot %>%
+        slice_max(order_by = date_day, n = 1) %>%  # Get the row with the latest date
+        pull(Risk_Class) %>%
+        as.character() %>%
+        .[1]  # Ensure only one value is taken
+      
+      # Display the most recent risk level
+      paste("Current Risk Level:", most_recent_risk)
+    } else {
+      NULL  # Hide the output if data is missing
+    }
+  })
+  
+  
   output$station_info <- renderText({
     station_code <- input$custom_station_code
     if (station_code == "all") {
@@ -183,14 +217,13 @@ server <- function(input, output, session) {
     }
   })
   
-  
-  
   output$risk_trend <- renderPlot({
     # Get the weather data
-    weatheroutputs <- weather_data()   
+    weatheroutputs <- weather_data() 
     
     # Select the columns of interest from tarspot and airtemp
     data <- weatheroutputs$tarspot
+    
     variables_at_rh <- weatheroutputs$airtemp
     station_code <- input$custom_station_code
     station <- stations[[station_code]]
