@@ -4,9 +4,11 @@ logistic <- function(logit) {
 }
 
 # Function to classify risk based on probability and thresholds
-classify_risk <- function(probability, high_threshold, medium_threshold, low_threshold = 0) {
+classify_risk <- function(probability, high_threshold, medium_threshold) {
   if (probability<=0){
     return ("NoRisk")
+  }else if (high_threshold >= 1 & 1<=medium_threshold) {
+    return("NoRisk")
   }else if (probability >= 0 & probability<=medium_threshold) {
     return("Low")
   } else if (probability > medium_threshold & probability<high_threshold) {
@@ -17,17 +19,17 @@ classify_risk <- function(probability, high_threshold, medium_threshold, low_thr
 }
 
 # General function to calculate risk for any disease
-calculate_disease_risk <- function(logit_values, thresholds, disease_name, threshold) {
+calculate_disease_risk <- function(logit_values, thresholds, disease_name) {
   # Check if there are multiple logit values
   probabilities <- sapply(logit_values, logistic)
   ensemble_prob <- mean(probabilities)
   
-  if (threshold == -1) {
+  if (thresholds[2] == 1 & thresholds[1]==1) {
     # Return results as a list
     risk_class <- 'NoClass'
   } else {
     # Ensure the classify_risk function is properly defined
-    risk_class <- classify_risk(ensemble_prob, threshold / 100, thresholds[1], thresholds[2])
+    risk_class <- classify_risk(ensemble_prob, thresholds[1], thresholds[2])
   }
     
   # Return results as a list
@@ -40,7 +42,10 @@ calculate_disease_risk <- function(logit_values, thresholds, disease_name, thres
 }
 
 # Function to calculate risk for Tar Spot based on two logistic regression models
-calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35) {
+calculate_tarspot_risk <- function(meanAT, maxRH, 
+                                   rh90_night_tot, 
+                                   threshold_up = .35,
+                                   threshold_low) {
   # Logistic regression formulas for the two models, no irrigation total needed
   logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH) #paper page5
   logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot) #paper page5
@@ -48,25 +53,26 @@ calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot, threshold = 35
   # Calculate risk using the general disease risk function
   return(calculate_disease_risk(
     logit_values = c(logit_LR4, logit_LR6),      # Two models' logit values
-    thresholds = c(0.35, 0.20),                  # Risk classification thresholds
-    disease_name = "TarSpot",                    # Disease name
-    threshold = threshold                        # User-defined threshold (default 35%)
-  ))
+    thresholds = c(threshold_low, threshold_up),                  # Risk classification thresholds
+    disease_name = "TarSpot"
+    )
+  )
 }
 
 
 # Function to calculate risk for Gray Leaf Spot
-calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold = 60) {
+calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold_up = .6,
+                                          threshold_low) {
   # Logistic regression formula, no rrigation needed
   logit_GLS <- -2.9467-(0.03729 * minAT21) + (0.6534 * minDP30)
   
   # Calculate risk using the general disease risk function
   return(calculate_disease_risk(
     logit_values = c(logit_GLS),
-    thresholds = c(0.40, 0), 
-    disease_name = "GrayLeafSpot",
-    threshold = threshold
-  ))
+    thresholds = c(threshold_low, threshold_up), 
+    disease_name = "GrayLeafSpot"  
+    )
+  )
 }
 
 # Non-irrigated risk calculation
@@ -79,7 +85,6 @@ calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA) {
     logit_values = c(logit_nirr),
     thresholds = c(1.0, 1.0), #no threshold here, no class, just probab 
     disease_name = "Sporecaster-NIrr",
-    threshold = -1 #no threshold here, no class, just probab
   ))
 }
 
@@ -95,8 +100,7 @@ calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing) {
   return(calculate_disease_risk(
     logit_values = c(logit_irr),
     thresholds = c(1.0, 1.0),  #no threshold here, no class, just probab
-    disease_name = "Sporecaster-Irr",
-    threshold = -1 #no threshold here, no class, just probab
+    disease_name = "Sporecaster-Irr"
   ))
 }
 
