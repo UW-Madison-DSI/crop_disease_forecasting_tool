@@ -26,6 +26,9 @@ Visit our [dashboard here](https://connect.doit.wisc.edu/tarspot_forecasting_app
 - `/predict_sporecaster_risk`  
   Predicts the probability and risk level for **Spore**.
 
+- `/predict_frogeye_leaf_spot_risk`  
+  Predicts the probability and risk level for **Frogeye**.
+
 
 Method: `POST` 
 
@@ -68,7 +71,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 
 ### Acknowledgements
-- This work is part of an Open-Source initiative from the [Open Source Program Office at the University of Madison Wisconsin](https://ospo.wisc.edu), aimed at fostering collaboration and innovation in forecasting tools.
+- This work is an Open-Source initiative from the [Open Source Program Office at the University of Madison Wisconsin](https://ospo.wisc.edu), aimed at fostering collaboration and innovation in forecasting tools.
 - The models presented are based on plant pathology research in the University of Madison Wisconsin, paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
 - This software was created by the [Data Science Institute](https://datascience.wisc.edu) at the [University of Wisconsin-Madison](https://www.wisc.edu)
 
