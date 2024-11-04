@@ -76,3 +76,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - This software was created by the [Data Science Institute](https://datascience.wisc.edu) at the [University of Wisconsin-Madison](https://www.wisc.edu)
 
 Mantainer: Maria Oros, maria.oros@wisc.edu
+
+
+![R-CMD-check](https://github.com/mariaob1201/corn_disease_forecast_api/actions/workflows/r-cmd-check.yml/badge.svg)
