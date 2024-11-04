@@ -1,7 +1,7 @@
 Based on http://opensource.org/licenses/MIT
 
 YEAR: 2024 COPYRIGHT HOLDER: Data Science Institute UW-Madison
-Maria Oros `moros2@wisc.edu`
+Maria Oros `maria.oros@wisc.edu`
 
 and specify as
 
