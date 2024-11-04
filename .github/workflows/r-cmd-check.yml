@@ -3,19 +3,34 @@ name: R-testthat
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]  # Added to also run tests on PRs
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+
       - name: Install additional dependencies
         run: |
-          Rscript install_dependencies.R  # Custom script for any extra packages
+          if [ -f "install_dependencies.R" ]; then
+            Rscript install_dependencies.R
+          else
+            echo "No install_dependencies.R found, skipping..."
+          fi
 
       - name: Run tests with testthat
         run: |
-          Rscript -e 'library(testthat); test_dir("tests/testthat")'
+          Rscript -e '
+          if (!require("testthat")) install.packages("testthat")
+          library(testthat)
+          results <- test_dir("tests/testthat", reporter = "summary")
+          if (!all(results)) stop("Some tests failed.")'
