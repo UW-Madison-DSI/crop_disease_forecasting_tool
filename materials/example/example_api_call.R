@@ -1,3 +1,14 @@
+printList <- function(list) {
+  
+  for (item in 1:length(list)) {
+    
+    print(head(list[[item]]))
+    
+  }
+}
+
+library(listviewer)
+
 ################################################################################
 ################### API CALL EXAMPLE - single point ############################
 ################################################################################
@@ -8,12 +19,13 @@ library(httr)
 # Base URL for the API
 base_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
 
+
 # Query parameters as a list
 params <- list(
-  growth_stage = 'R1',
+  growth_stage = 'yes',
   fungicide_applied = 'no',
   risk_threshold = 35,  # percentage
-  mean_air_temp_30d_ma = 14.55833,
+  mean_air_temp_30d_ma = 24,
   max_rh_30d_ma = 97.56667,
   tot_nhrs_rh90_14d_ma = 6.142857
 )
@@ -25,7 +37,8 @@ response <- POST(url = base_url, query = params)
 if (status_code(response) == 200) {
   # Parse the content as JSON
   result <- content(response, as = "parsed", type = "application/json")
-  
+  content <- content(response, 'text')
+  print(content)
   # Retrieve only the probability value
   probability <- result$probability[[1]]  # Accessing the first element in the list
   cat("Probability:", probability, "\n")
@@ -36,61 +49,9 @@ if (status_code(response) == 200) {
   print(content(response, as = "text"))
 }
 
-############################################################################ Tarspot
-# Define the URL for the API
-url_ts <- paste0(url, "/predict_tarspot_risk")
 
-body <- list(
-  growth_stage = 'R1',
-  fungicide_applied = 'no',
-  risk_threshold = 35, 
-  mean_air_temp_30d_ma = 16,
-  max_rh_30d_ma = 95.72,
-  tot_hrs_rh90_14d_ma = 4.4
-)
-
-# Make the POST request
-response <- POST(url_ts, body = body, encode = "json")
-
-# Check status code and print response content
-status_code(response)
-content <- content(response, 'text')
-print(content)
-
-
-n<-10
-mean_air_temp_range <- seq(16, 26, length.out = n)
-tot_hrs_rh90_range <- seq(5, 20, length.out = n)  # Range of total hours RH>90%
-
-for (th in tot_hrs_rh90_range){
-  for (mat in mean_air_temp_range){
-    # Define the data to be sent in the POST request
-    body <- list(
-      growth_stage = 'R1',
-      fungicide_applied = 'no',
-      risk_threshold = 35, 
-      mean_air_temp_30d_ma = mat,
-      max_rh_30d_ma = 95.72,
-      tot_hrs_rh90_14d_ma = th
-    )
-    
-    # Make the POST request
-    response <- POST(url_ts, body = body, encode = "json")
-    
-    # Check the status code
-    if (status_code(response) == 200) {
-      # Parse the content as JSON
-      response_content <- content(response, as = "parsed", type = "application/json")
-      
-      # Access the 'probability' field from the parsed response
-      print(paste(th, mat,response_content$probability[[1]]))
-    } else {
-      print(paste("Request failed with status code", status_code(response)))
-    }
-  }
-}
 # Result
-#[1] "{\"disease\":[\"TarSpot\"],\"probability\":[6.92],\"risk_class\":[\"Low\"]}"
+#[1] "{\"code\":[\"Success\"],\"disease\":[\"TarSpot\"],\"probability\":[3.35],\"risk_class\":[\"Low\"]}"
 
 
 
@@ -100,7 +61,7 @@ url_gls <- paste0(url, "/predict_gray_leaf_spot_risk")
 
 # Define the data to be sent in the POST request
 body <- list(
-  growth_stage = 'R1',
+  growth_stage = 'yes',
   fungicide_applied = 'no',
   risk_threshold = 60, 
   min_air_temp_21d_ma = 25.342857,
@@ -119,11 +80,13 @@ print(content)
 ############################################################################ Sporecaster
 url_sc <- paste0(url, "/predict_sporecaster_risk")
 
+
+
 # Define the data to be sent in the POST request
 for (irr in c("yes","no")){
   body_sc <- list(
-    growth_stage = 'R1',
-    fungicide_applied = 'no',
+    #growth_stage = 'yes',
+    #fungicide_applied = 'no',
     row_spacing=15,
     irrigated=irr,
     risk_threshold = 35, 
@@ -146,3 +109,25 @@ for (irr in c("yes","no")){
 #[1] "{\"disease\":[\"Sporecaster-Irr\"],\"probability\":[33.32],\"risk_class\":[\"NoClass\"]}"
 #No encoding supplied: defaulting to UTF-8.
 #[1] "{\"disease\":[\"Sporecaster-NIrr\"],\"probability\":[83.47],\"risk_class\":[\"NoClass\"]}"
+
+############################################################
+url_gls <- paste0(url, "/predict_frogeye_leaf_spot_risk")
+
+
+# Define the data to be sent in the POST request
+body <- list(
+  growth_stage = 'yes',
+  fungicide_applied = 'no',
+  risk_threshold = 50, 
+  max_air_temp_30d_ma = 25.342857,
+  relative_humidity_80tot_30d_ma = 5.511667
+)
+# Make the POST request
+response_fe_lsr <- POST(url_gls, body = body, encode = "json")
+
+# Check status code and print response content
+status_code(response_fe_lsr)
+content <- content(response_fe_lsr, 'text')
+print(content)
+
+#[1] "{\"code\":[\"Success\"],\"disease\":[\"FrogeyeLeafSpot\"],\"probability\":[0.03],\"risk_class\":[\"Low\"]}"

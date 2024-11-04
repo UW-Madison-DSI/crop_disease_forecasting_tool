@@ -33,8 +33,6 @@ for (i in 1:nrow(grid)) {
   
   # Prepare API data
   body_sc <- list(
-    growth_stage = 'R1',
-    fungicide_applied = 'no',
     row_spacing=15,
     irrigated='no',
     risk_threshold = 100, 
@@ -79,3 +77,4 @@ fig <- fig %>% layout(
 
 # Show the plot
 fig
+#sporecaster_noirr_example_api_call.png
