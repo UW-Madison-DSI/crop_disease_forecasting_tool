@@ -1,11 +1,13 @@
 library(plumber)
 
-# Load necessary functions
+
 source("R/logit_functions.R")
 source("R/crop_mangm_validations.R")
 
+
 #* @apiTitle Crop Disease Risk Prediction API
 #* @apiDescription This API predicts the risk of crop diseases (Spore, Tarspoter, Gray Leaf Spot and Frog Eye Leaf Spot) based on environmental data and user inputs.
+
 
 #* Predict Tarspot Risk
 #* @param growth_stage Character: 'yes' if the growth stage of the crop is between ("V10" to "R3"), "no" otherwise
@@ -23,8 +25,10 @@ function(growth_stage = "yes",
          tot_nhrs_rh90_14d_ma) {
   
   # Validate inputs
-  numeric_vars <- c("risk_threshold", "mean_air_temp_30d_ma", 
-                    "max_rh_30d_ma", "tot_nhrs_rh90_14d_ma")
+  numeric_vars <- c("risk_threshold", 
+                    "mean_air_temp_30d_ma", 
+                    "max_rh_30d_ma", 
+                    "tot_nhrs_rh90_14d_ma")
   
   # Convert these variables to numeric
   convert_to_numeric(environment(), numeric_vars)
@@ -45,10 +49,14 @@ function(growth_stage = "yes",
     result <- calculate_tarspot_risk(mean_air_temp_30d_ma, 
                                    max_rh_30d_ma, 
                                    tot_nhrs_rh90_14d_ma, 
-                                   risk_threshold_up,
-                                   risk_threshold_low)
+                                   risk_threshold_low,
+                                   risk_threshold_up)
   
-    return(result)
+    if (is.null(result)) {
+      return(list(error = "An error occurred while calculating Tarspot Risk."))
+    }else{
+      return(result)
+    }
   }
 }
 
@@ -70,26 +78,27 @@ function(growth_stage = "yes",
   # Convert these variables to numeric
   convert_to_numeric(environment(), numeric_vars)
   
-  risk_threshold_mid<-.5
-  risk_threshold_high<-risk_threshold/100
-  if (risk_threshold_high<risk_threshold_mid || risk_threshold_high>.70){
-    risk_threshold_high<-.6
+  risk_threshold_low<-.5
+  risk_threshold_up<-risk_threshold/100
+  if (risk_threshold_up<risk_threshold_low || risk_threshold_up>.70){
+    risk_threshold_up<-.6
   }
-  
   
   if (fungicide_applied=='yes' || growth_stage=='no') {
     return(list(valid = FALSE, 
-                message = "We can not compute the FrogEye Risk.", 
+                message = "We can not compute the Gray Leaf Spot Risk.", 
                 reason = "Fungicide applied in last 14d or growth stage not in the valid ranges."))
   } else {
     # Call the gray leaf spot risk calculation function
     result <- calculate_gray_leaf_spot_risk(min_air_temp_21d_ma, 
                                             min_dewpoint_30d_ma, 
-                                            risk_threshold_high, 
-                                            risk_threshold_mid)
-    
-    # Return the result as JSON
-    return(result)
+                                            risk_threshold_low,
+                                            risk_threshold_up)
+    if(is.null(result)){
+      return(NULL)
+    }else{
+      return(result)
+    }
   }
 }
 
@@ -129,7 +138,8 @@ function(row_spacing,
   # Conditional logic for irrigated and non-irrigated fields
   if (irrigated == "no") {
     # Calculate risk for non-irrigated fields
-    result <- calculate_non_irrigated_risk(max_air_temp_30d_ma, max_windspeed_30d_ma)
+    result <- calculate_non_irrigated_risk(max_air_temp_30d_ma, 
+                                           max_windspeed_30d_ma)
     
   } else if (irrigated == "yes") {
     # Ensure max_rh_30d_ma is provided for irrigated fields
@@ -143,15 +153,17 @@ function(row_spacing,
     convert_to_numeric(environment(), numeric_vars_irrigated)
     
     # Calculate risk for irrigated fields
-    result <- calculate_irrigated_risk(max_air_temp_30d_ma, max_rh_30d_ma, row_spacing)
+    result <- calculate_irrigated_risk(max_air_temp_30d_ma, 
+                                       max_rh_30d_ma, 
+                                       row_spacing)
   }
   
   # Return the result or an error if something went wrong
   if (is.null(result)) {
-    return(list(error = "An error occurred while calculating risk."))
+    return(list(error = "An error occurred while calculating Sporecaster Risk."))
+  }else{
+    return(result)
   }
-  
-  return(result)
 }
 
 #* Predict FrogEye Leaf Spot Risk
@@ -169,13 +181,12 @@ function(growth_stage = "yes",
   
   numeric_vars <- c("risk_threshold", "max_air_temp_30d_ma", "relative_humidity_80tot_30d_ma")
   
-  # Convert these variables to numeric
   convert_to_numeric(environment(), numeric_vars)
   
-  risk_threshold_mid<-.4
-  risk_threshold_high<-risk_threshold/100
-  if (risk_threshold_high<risk_threshold_mid || risk_threshold_high>.6){
-    risk_threshold_high<-.5
+  risk_threshold_low<-.4
+  risk_threshold_up<-risk_threshold/100
+  if (risk_threshold_up<risk_threshold_low || risk_threshold_up>.6){
+    risk_threshold_up<-.5
   }
   
   if (fungicide_applied=='yes' || growth_stage=='no') {
@@ -183,13 +194,15 @@ function(growth_stage = "yes",
                 message = "We can not compute the FrogEye Risk.", 
                 reason = "Fungicide applied in last 14d or growth stage not in the valid ranges."))
   } else {
-    # Call the gray leaf spot risk calculation function
     result <- calculate_frogeye_leaf_spot(max_air_temp_30d_ma, 
                                           relative_humidity_80tot_30d_ma, 
-                                          risk_threshold_high, 
-                                          risk_threshold_mid)
+                                          risk_threshold_low,
+                                          risk_threshold_up)
     
-    # Return the result as JSON
-    return(result)
+    if (is.null(result)) {
+      return(list(error = "An error occurred while calculating Frogeye Risk."))
+    }else{
+      return(result)
+    }
   }
 }

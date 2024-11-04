@@ -75,9 +75,24 @@ ui <- dashboardPage(
   
   dashboardBody(
     fluidRow(
-      div(
-        textOutput("risk_label"),
-        style = "font-size: 1.5em; color: yellow; text-align: center; font-weight: bold; margin-bottom: 10px;"
+      conditionalPanel(
+        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage",
+        div(
+          textOutput("risk_label"),
+          style = "
+          font-size: 1.5em; 
+          color: green; 
+          text-align: left; 
+          font-weight: bold; 
+          margin-bottom: 10px; 
+          margin-left: 20px;
+          padding: 10px;             /* Adds space inside the box */
+          border: 2px solid green;    /* Adds a green border */
+          border-radius: 5px;         /* Rounds the corners */
+          background-color: #f9f9f9;  /* Light background color */
+          box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* Adds a subtle shadow */
+        "
+        )
       ),
       box(
         leafletOutput("mymap", height = "600px"),
@@ -170,7 +185,7 @@ server <- function(input, output, session) {
         setView(lng = station$longitude, lat = station$latitude, zoom = 3)
     }
     
-     
+    
     # Loop through each station and add a marker
     for (station_code in names(station_data)) {
       station <- station_data[[station_code]]
@@ -248,7 +263,7 @@ server <- function(input, output, session) {
     if (!is.null(variables_at_rh)) {
       # Example call to the function
       weather_plot <- plot_weather_data(variables_at_rh, station = station)
-        
+      
       # Display the plot
       print(weather_plot)
       

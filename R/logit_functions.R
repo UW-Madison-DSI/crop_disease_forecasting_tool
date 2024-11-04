@@ -1,59 +1,64 @@
 # Logistic function to convert logit to probability
 logistic <- function(logit) {
-  exp(logit) / (1 + exp(logit))
+  probability<-exp(logit) / (1 + exp(logit))
+  return(probability)
 }
 
 # Function to classify risk based on probability and thresholds
-classify_risk <- function(probability, high_threshold, medium_threshold) {
-  if (probability<=0){
+classify_risk <- function(probability, medium_threshold, high_threshold) {
+  cat("\n Risk Class: ",medium_threshold,high_threshold, probability) 
+  if (probability<=0.0){
     return ("NoRisk")
   }else if (high_threshold >= 1 & 1<=medium_threshold) {
-    return("NoRisk")
-  }else if (probability >= 0 & probability<=medium_threshold) {
+    return("NoRiskClass")
+  }else if (probability > 0 & probability<medium_threshold) {
     return("Low")
-  } else if (probability > medium_threshold & probability<high_threshold) {
+  } else if (probability >= medium_threshold & probability<=high_threshold) {
     return("Medium")
-  } else if (probability >= high_threshold){
+  } else if (probability > high_threshold){
     return("High")
   }
 }
 
-# General function to calculate risk for any disease
+# function to calculate risk for any disease
 calculate_disease_risk <- function(logit_values, thresholds, disease_name) {
-  # Check if there are multiple logit values
   probabilities <- sapply(logit_values, logistic)
+  cat("Probabilities ",disease_name,': ', probabilities)
   ensemble_prob <- mean(probabilities)
+  cat("Ensemble ",disease_name,': ', ensemble_prob,'\n')
   
-  if (thresholds[2] == 1 & thresholds[1]==1) {
+  
+  if (thresholds[2] == 1.0 & thresholds[1]==1.0) {
     # Return results as a list
-    risk_class <- 'NoClass'
+    risk_classification <- 'NoRiskClass'
   } else {
     # Ensure the classify_risk function is properly defined
-    risk_class <- classify_risk(ensemble_prob, thresholds[1], thresholds[2])
+    risk_classification <- classify_risk(ensemble_prob, thresholds[1], thresholds[2])
   }
-    
+  cat("\n thresholds ",thresholds[1],thresholds[2], risk_classification)  
   # Return results as a list
   return(list(
-    code='ok',
+    code='Success',
     disease = disease_name,
     probability = round(ensemble_prob * 100, 2),  # Convert probability to percentage
-    risk_class = risk_class
+    risk_class = risk_classification
   ))
 }
 
 # Function to calculate risk for Tar Spot based on two logistic regression models
 calculate_tarspot_risk <- function(meanAT, maxRH, 
                                    rh90_night_tot, 
-                                   threshold_up = .35,
-                                   threshold_low) {
+                                   threshold_low,
+                                   threshold_up = .35
+                                   ) {
   # Logistic regression formulas for the two models, no irrigation total needed
   logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH) #paper page5
   logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot) #paper page5
   
   # Calculate risk using the general disease risk function
   return(calculate_disease_risk(
-    logit_values = c(logit_LR4, logit_LR6),      # Two models' logit values
-    thresholds = c(threshold_low, threshold_up),                  # Risk classification thresholds
+    logit_values = c(logit_LR4, logit_LR6), # Two models' logit values
+    thresholds = c(threshold_low, threshold_up),
     disease_name = "TarSpot"
     )
   )
@@ -61,8 +66,11 @@ calculate_tarspot_risk <- function(meanAT, maxRH,
 
 
 # Function to calculate risk for Gray Leaf Spot
-calculate_gray_leaf_spot_risk <- function(minAT21, minDP30, threshold_up = .6,
-                                          threshold_low) {
+calculate_gray_leaf_spot_risk <- function(minAT21, 
+                                          minDP30,
+                                          threshold_low,
+                                          threshold_up= .6
+                                          ) {
   # Logistic regression formula, no rrigation needed
   logit_GLS <- -2.9467-(0.03729 * minAT21) + (0.6534 * minDP30)
   
@@ -84,7 +92,7 @@ calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA) {
   return(calculate_disease_risk(
     logit_values = c(logit_nirr),
     thresholds = c(1.0, 1.0), #no threshold here, no class, just probab 
-    disease_name = "Sporecaster-NIrr",
+    disease_name = "Sporecaster-NIrr"
   ))
 }
 
@@ -106,7 +114,7 @@ calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA, row_spacing) {
 
 
 # Frogeye Leaf Spot
-calculate_frogeye_leaf_spot <- function(maxAT30, rh80tot30, threshold_high, threshold_mid) {
+calculate_frogeye_leaf_spot <- function(maxAT30, rh80tot30, threshold_mid, threshold_high) {
   # Logistic regression formula, no rrigation needed
   logit_fe <- -5.92485 -(0.1220 * maxAT30) + (0.1732 * rh80tot30)
   
