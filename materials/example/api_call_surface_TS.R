@@ -24,18 +24,18 @@ for (i in 1:nrow(grid)) {
   mat_val <- grid$mean_air_temp[i]
   rh_val <- grid$max_rh[i]
   
-  # Define the data to be sent in the POST request
   body <- list(
-    growth_stage = 'R1',
+    growth_stage = 'yes',
     fungicide_applied = 'no',
-    risk_threshold = 35,
+    risk_threshold = 35,  # percentage
     mean_air_temp_30d_ma = mat_val,
     max_rh_30d_ma = rh_val,
-    tot_hrs_rh90_14d_ma = 10
+    tot_nhrs_rh90_14d_ma = 6.142857
   )
   
   # Make the POST request
-  response <- POST(url_ts, body = body, encode = "json")
+  #response <- POST(url_ts, body = body, encode = "json")
+  response <- POST(url = url_ts, query = body)
   
   # Check the status code
   if (status_code(response) == 200) {
@@ -49,7 +49,7 @@ for (i in 1:nrow(grid)) {
   }
 }
 
-head(prob_matrix)
+head(prob_grid)
 
 
 # Reshape the probability data into a matrix for 3D plotting
@@ -77,3 +77,4 @@ fig <- fig %>% layout(
 
 # Show the plot
 fig
+

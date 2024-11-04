@@ -1,3 +1,17 @@
+install.packages("lubridate")
+library(lubridate)
+
+install.packages("httr")
+library(httr)
+
+install.packages("zoo")
+library(zoo)
+
+install.packages("dplyr")
+library(dplyr)
+# or
+library(magrittr)
+
 #######################################################################################################
 #######################################################################################################
 ######################################################################### TARSPOT RISK FOR ALL STATIONS
@@ -17,6 +31,7 @@ probability_results <- data.frame(
 # Loop through all station codes
 for (station_code in names(stations)) {
   station <- stations[[station_code]]
+  print(station)
   
   # Get station name and coordinates
   station_name <- station$name
@@ -28,27 +43,36 @@ for (station_code in names(stations)) {
   # Set the risk threshold (ensure it's between 0 and 1)
   risk_threshold <- 0.35
   
-  # Call the function to get the probability and other risk information
-  result <- call_tarspot_for_station(station_code, station_name, risk_threshold, Sys.Date())
-  
-  # Check if result is NULL or has issues
-  if (is.null(result) || nrow(result) == 0) {
-    cat("Error: No data returned for station", station_code, "\n")
-    next  # Skip to the next iteration if no data is returned
-  }
-  
-  # Add station details (code, name, lat, lon) to the result for each row
-  result <- result %>%
-    mutate(
-      Station_Code = station_code,
-      Station_Name = station_name,
-      Latitude = station_lat,
-      Longitude = station_lon
-    )
-  
-  # Append the result (which contains 7 rows) to the probability_results dataframe
-  probability_results <- rbind(probability_results, result)
+  # Use tryCatch to handle errors for each station
+  tryCatch({
+    # Call the function to get the probability and other risk information
+    result <- call_tarspot_for_station(station_code, station_name, risk_threshold, Sys.Date())
+    
+    # Check if result is NULL or has issues
+    if (is.null(result) || nrow(result) == 0) {
+      cat("Error: No data returned for station", station_code, "\n")
+      next  # Skip to the next iteration if no data is returned
+    }
+    
+    # Add station details (code, name, lat, lon) to the result for each row
+    result <- result %>%
+      mutate(
+        Station_Code = station_code,
+        Station_Name = station_name,
+        Latitude = station_lat,
+        Longitude = station_lon
+      )
+    
+    # Append the result (which contains 7 rows) to the probability_results dataframe
+    probability_results <- rbind(probability_results, result)
+    
+  }, error = function(e) {
+    # Handle errors by printing a message and moving to the next station
+    cat("Error processing station", station_code, ":", e$message, "\n")
+    next
+  })
 }
+
 
 # Save the results to a CSV file including the station code, name, coordinates, date, and probability
 write.csv(probability_results, file = "materials/probability_results_with_date.csv", row.names = FALSE)

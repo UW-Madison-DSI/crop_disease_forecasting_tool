@@ -24,18 +24,18 @@ for (i in 1:nrow(grid)) {
   mat_val <- grid$mean_air_temp[i]
   rh90_val <- grid$tot_hrs_rh90[i]
   
-  # Define the data to be sent in the POST request
-  body <- list(
-    growth_stage = 'R1',
+  params <- list(
+    growth_stage = 'yes',
     fungicide_applied = 'no',
     risk_threshold = 35,
     mean_air_temp_30d_ma = mat_val,
     max_rh_30d_ma = 85.72,  # Fixed value for max RH
-    tot_hrs_rh90_14d_ma = rh90_val
+    tot_nhrs_rh90_14d_ma = rh90_val
   )
   
   # Make the POST request
-  response <- POST(url_ts, body = body, encode = "json")
+  # response <- POST(url_ts, body = body, encode = "json")
+  response <- POST(url = url_ts, query = params)
   
   # Check the status code
   if (status_code(response) == 200) {
@@ -74,3 +74,5 @@ fig <- fig %>% layout(
 
 # Show the plot
 fig
+
+#api_call_example_tarspot_4b.png

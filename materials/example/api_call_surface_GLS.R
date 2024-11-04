@@ -33,7 +33,7 @@ for (i in 1:nrow(grid)) {
   
   # Prepare API data
   api_data <- list(
-    growth_stage = 'R1',
+    growth_stage = 'yes',
     fungicide_applied = 'no',
     risk_threshold = 60, 
     min_air_temp_21d_ma = x_val,
@@ -55,7 +55,7 @@ for (i in 1:nrow(grid)) {
 
 # Reshape the data for 3D plotting (z_grid must be in matrix form for plotly)
 z_matrix <- matrix(z_grid, nrow = length(x_range), ncol = length(y_range))
-
+z_matrix
 # Create a 3D surface plot and label the palette as "risk"
 fig <- plot_ly(
   x = x_range, y = y_range, z = z_matrix, 
@@ -76,3 +76,5 @@ fig <- fig %>% layout(
 
 # Show the plot
 fig
+
+#gls_example_api_call.png
