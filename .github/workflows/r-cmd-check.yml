@@ -21,12 +21,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          if [ -f "install_dependencies.R" ]; then
-            Rscript install_dependencies.R
-          else
-            echo "No install_dependencies.R found, skipping..."
-          fi
-          Rscript -e 'if (!requireNamespace("testthat", quietly = TRUE)) install.packages("testthat")'
+          # Install testthat and here packages if not already installed
+          Rscript -e 'packages <- c("testthat", "here"); needed <- packages[!packages %in% installed.packages()]; if(length(needed)) install.packages(needed)'
 
       - name: Run tests with testthat
         run: |
