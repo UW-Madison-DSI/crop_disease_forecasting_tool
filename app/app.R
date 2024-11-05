@@ -35,7 +35,8 @@ ui <- dashboardPage(
   dashboardSidebar(
     width = 450,
     tags$head(
-      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap")
+      tags$link(rel = "stylesheet", 
+                href = "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap")
     ),
     tags$style(HTML("
       .box {
@@ -153,7 +154,7 @@ server <- function(input, output, session) {
         color = "darkgreen",
         weight = 1,
         opacity = 1,
-        fillOpacity = 0.2,
+        fillOpacity = 0,
         fillColor = "lightpink",
         group = "County Boundaries",
         popup = ~NAME
@@ -246,11 +247,11 @@ server <- function(input, output, session) {
         theme_void()
     }
     
-    grid.arrange(tarspot_plot#, weather_plot, ncol = 2
+    grid.arrange(tarspot_plot
+                 , weather_plot, ncol = 2
                  )
   })
   
 }
 
-# Run the application
 shinyApp(ui = ui, server = server)

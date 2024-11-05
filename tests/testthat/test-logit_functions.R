@@ -4,7 +4,6 @@ library(testthat)
 library(here)
 source(here("R", "logit_functions.R"))
 
-#source("R/logit_functions.R")  # Ensure this path correctly points to the functions you want to test
 
 test_that("logistic function returns probabilities between 0 and 1", {
   expect_true(all(logistic(c(-5, 0, 5)) >= 0 & logistic(c(-5, 0, 5)) <= 1))

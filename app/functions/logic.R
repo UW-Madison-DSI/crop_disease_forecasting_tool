@@ -5,7 +5,6 @@ library(jsonlite)
 library(zoo)
 library(ggplot2)
 library(dplyr)  # Load dplyr for the pipe operator
-library(httr)
 library(scales)
 
 
