@@ -1,4 +1,5 @@
-![R-CMD-check](https://github.com/mariaob1201/corn_disease_forecast_api/actions/workflows/r-cmd-check.yml/badge.svg)
+[![R-CMD-check](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/testthat/actions/workflows/r-cmd-check.yml/badge.svg)](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/testthat/actions/workflows/r-cmd-check.yml)
+
 
 
 # **Forecasting Model Tools: API and Dashboard**

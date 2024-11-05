@@ -19,10 +19,9 @@ jobs:
         with:
           r-version: 'release'
 
-      - name: Install dependencies
+      - name: Install minimal dependencies
         run: |
-          # Install testthat and here packages if not already installed
-          Rscript -e 'packages <- c("testthat", "here"); needed <- packages[!packages %in% installed.packages()]; if(length(needed)) install.packages(needed)'
+          Rscript -e 'install.packages(c("testthat", "here"), dependencies = FALSE)'
 
       - name: Run tests with testthat
         run: |
