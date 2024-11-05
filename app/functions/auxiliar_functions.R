@@ -1,4 +1,3 @@
-# Load necessary packages
 library(lubridate)
 library(httr)
 library(jsonlite)
@@ -103,17 +102,44 @@ plot_weather_data <- function(data, station) {
   return(weather_plot)
 }
 
-
-plot_trend <- function(df, station){
+#################### Risk trend
+plot_trend1 <- function(df, station){
   ggplot(df, aes(x = Date, y = Risk)) +
     geom_line(color = "#0C7BDC") +
-    geom_point(color = "#FFC20A") +
+    geom_point(color = "#FFC20A", size = 4) +
     geom_text(aes(label = Risk_Class),
               vjust = -0.5,
               color = "black") +
     labs(title = paste(station$name, "Station,", station$region, "Region,", station$state),
          x = "Date",
-         y = "Probability of Tarspot (%)") +
-    scale_y_continuous(labels = percent_format(scale = 1)) +  # Formats y-axis as percentages
+         y = "Probability of Tar Spot (%)") +
+    scale_y_continuous(labels = percent_format(scale = 1),
+                       breaks = seq(0, 100, by = 25)) +
     theme_minimal()
+}
+
+library(ggplot2)
+library(scales)
+
+plot_trend <- function(df, station){
+  ggplot(df, aes(x = Date, y = Risk)) +
+    geom_line(color = "#0C7BDC") +
+    geom_point(color = "#FFC20A", size = 4) +
+    geom_text(aes(label = Risk_Class),
+              vjust = -0.5,
+              color = "black",
+              size = 5) +
+    labs(title = paste(station$name, "Station,", station$region, "Region,", station$state),
+         x = "Date",
+         y = "Probability of Tar Spot (%)") +
+    scale_y_continuous(labels = percent_format(scale = 1),
+                       breaks = seq(0, 100, by = 25)) +
+    
+    # Control x-axis date formatting and frequency
+    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
+    
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
+    )
 }

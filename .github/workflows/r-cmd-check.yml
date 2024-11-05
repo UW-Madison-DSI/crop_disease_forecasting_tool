@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]  # Added to also run tests on PRs
+    branches: [main]
 
 jobs:
   test:
@@ -19,18 +19,15 @@ jobs:
         with:
           r-version: 'release'
 
-      - name: Install additional dependencies
+      - name: Install dependencies
         run: |
           if [ -f "install_dependencies.R" ]; then
             Rscript install_dependencies.R
           else
             echo "No install_dependencies.R found, skipping..."
           fi
+          Rscript -e 'if (!requireNamespace("testthat", quietly = TRUE)) install.packages("testthat")'
 
       - name: Run tests with testthat
         run: |
-          Rscript -e '
-          if (!require("testthat")) install.packages("testthat")
-          library(testthat)
-          results <- test_dir("tests/testthat", reporter = "summary")
-          if (!all(results)) stop("Some tests failed.")'
+          Rscript -e 'library(testthat); test_dir("tests/testthat", reporter = "summary")'
