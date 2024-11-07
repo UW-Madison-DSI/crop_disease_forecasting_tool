@@ -4,18 +4,20 @@
 
 # **Forecasting Model Tools: API and Dashboard**
 
-This API leverages the power of environmental data to predict the likelihood of diseases like Tarspot, Spore and Gray Leaf Spot on corn crops. 
+This open source plant disease forecasting API and Dashboard opens new opportunities for proactive and data-driven decision-making in agriculture. Such tools enable farmers, agronomists, and plant pathologists to monitor and predict disease outbreaks with greater accuracy and timeliness. By leveraging weather data, disease models, and historical disease spread patterns, our tool provides critical insights that empower users to take preventive actions, potentially reducing the impact of diseases on crops.
 
-## Features
+## App Features
 
-- Predicts the probability of disease incidence based on key environmental variables.
-- Customizable action thresholds that allow users to define risk levels for interventions.
-- Returns the probability and risk classification for the given thresholds.
+- Predicts the probability of Tar Spot disease incidence based on key environmental variables from Wisconet.
+- Includes customizable action thresholds that allow users to define risk levels and dates of interest.
+- Returns the probability and risk classification for the given thresholds and a 7 days range on the settled date given by the user.
+- Shows trends of the environmental variables that play a role in the forecasting model.
 
-## Dashboard 
 Visit our [dashboard here](https://connect.doit.wisc.edu/tarspot_forecasting_app/)
 
 ## API Endpoints
+
+Our API includes the risk models: Tarspot, Gray Leaf Spot, FrogEye Leaf Spot and Sporecaster. 
 
 **Base URL**: [Forecast Crop Disease API](https://connect.doit.wisc.edu/forecasting_crop_disease/)
 
@@ -75,7 +77,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 
 ### Acknowledgements
-- This work is an Open-Source initiative from the [Open Source Program Office at the University of Madison Wisconsin](https://ospo.wisc.edu), aimed at fostering collaboration and innovation in forecasting tools.
+- This work is an Open-Source initiative from the [Open Source Program Office at the University of Madison Wisconsin](https://ospo.wisc.edu), aimed at fostering collaboration and innovation in open source forecasting tools.
 - The models presented are based on plant pathology research in the University of Madison Wisconsin, paper: [Nature Scientific Reports, 2023](https://www.nature.com/articles/s41598-023-44338-6)
 - This software was created by the [Data Science Institute](https://datascience.wisc.edu) at the [University of Wisconsin-Madison](https://www.wisc.edu)
 
