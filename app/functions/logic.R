@@ -334,7 +334,6 @@ get_risk_probability_by_api <- function(station_id, station_name,
 
 ###################################### Prpeare the relevant data for Tarspot
 call_tarspot_for_station <- function(station_id, station_name, risk_threshold, current){
-  current <- Sys.time()
   today_ct <- with_tz(current, tzone = "America/Chicago")
   
   mo <- 6 # historical data in terms of num of months
