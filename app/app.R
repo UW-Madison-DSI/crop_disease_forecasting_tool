@@ -56,6 +56,10 @@ ui <- dashboardPage(
       menuItem(textOutput("current_date"), icon = icon("calendar-day")),
       selectInput("custom_station_code", "Please Select a Station", 
                   choices = station_choices),
+      dateInput("forecast_date", "Select Forecast Date", 
+                value = Sys.Date(), 
+                min = Sys.Date() - 365, 
+                max = Sys.Date() + 365),
       checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE),  
       checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE), 
       
@@ -130,13 +134,14 @@ server <- function(input, output, session) {
     if (station_code != "all") {
       station <- stations[[station_code]]
       risk_threshold <- input$risk_threshold / 100
-      current <- Sys.time()
+      current <- input$forecast_date  # Access the selected date
+      
       today_ct <- with_tz(current, tzone = "America/Chicago")
       mo <- 6
       out <- from_ct_to_gmt(today_ct, mo)
       start_time <- out$start_time_gmt
       end_time <- out$end_time_gmt
-      result <- call_tarspot_for_station(station_code, station$name, risk_threshold, start_time)
+      result <- call_tarspot_for_station(station_code, station$name, risk_threshold, today_ct)
       airtemp <- api_call_wisconet_data_daily(station_code, start_time, end_time)
       return(list(tarspot = result, airtemp = airtemp))
     } else {
@@ -166,7 +171,8 @@ server <- function(input, output, session) {
   })
   
   output$current_date <- renderText({
-    paste("Today’s Date:", Sys.Date())
+    current <- input$forecast_date
+    paste("Date:", current)
   })
   
   # Update map based on selected station
