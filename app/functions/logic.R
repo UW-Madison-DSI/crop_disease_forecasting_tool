@@ -224,15 +224,15 @@ calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot) {
 }
 
 
-classify_risk <- function(probability, high_threshold, medium_threshold, low_threshold = 0) {
-  cat("----------- Probability ", probability, high_threshold, medium_threshold)
+classify_risk <- function(probability, medium_threshold, high_threshold) {
+  cat("----------- Probability ", probability, medium_threshold, high_threshold)
   if (probability<=0){
     return ("NoRisk")
   }else if (probability >= 0 & probability<=medium_threshold) {
     return("Low")
-  } else if (probability > medium_threshold & probability<high_threshold) {
+  } else if (probability > medium_threshold & probability<=high_threshold) {
     return("Medium")
-  } else if (probability >= high_threshold){
+  } else if (probability > high_threshold){
     return("High")
   }
 }
@@ -251,7 +251,7 @@ get_risk_probability <- function(station_id, station_name,
   if (probability) {
     # Retrieve relevant values
 
-    probability_class <- classify_risk(probability, risk_threshold, .4, 0)
+    probability_class <- classify_risk(probability,.2, risk_threshold)
     #if_else(probab>risk_threshold,"High", "Low")
     
     dframe<-data.frame(
