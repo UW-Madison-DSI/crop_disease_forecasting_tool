@@ -53,13 +53,13 @@ ui <- dashboardPage(
       #h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Settings")), style = "font-size:18px;"),
       sliderInput("risk_threshold", "Action Threshold (%)", 
                   min = 20, max = 50, value = 35, step = 1),
-      menuItem(textOutput("current_date"), icon = icon("calendar-day")),
       selectInput("custom_station_code", "Please Select a Station", 
                   choices = station_choices),
+      menuItem(textOutput("current_date"), icon = icon("calendar-day")),
       dateInput("forecast_date", "Select Forecast Date", 
                 value = Sys.Date(), 
-                min = Sys.Date() - 365, 
-                max = Sys.Date() + 365),
+                min = Sys.Date() - 85, 
+                max = Sys.Date()),
       checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE),  
       checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE), 
       
@@ -170,11 +170,6 @@ server <- function(input, output, session) {
       ) 
   })
   
-  output$current_date <- renderText({
-    current <- input$forecast_date
-    paste("Date:", current)
-  })
-  
   # Update map based on selected station
   observe({
     station_data <- selected_station_data()
@@ -204,11 +199,16 @@ server <- function(input, output, session) {
       most_recent_risk_class <- most_recent_data %>% pull(Risk_Class)%>%
         as.character() %>%.[1]
       # Combine Risk Class and formatted Risk into a single message
-      paste("Risk ", most_recent_risk_class, most_recent_risk, '%')
+      paste("Tar Spot Risk is ", most_recent_risk_class, most_recent_risk, '%')
 
     } else {
       NULL
     }
+  })
+  
+  output$current_date <- renderText({
+    current <- input$forecast_date
+    paste("")
   })
   
   output$station_info <- renderText({
@@ -237,7 +237,8 @@ server <- function(input, output, session) {
         mutate(Date = ymd(date_day)) %>%
         select(Date, Risk, Risk_Class)
       tarspot_plot <- plot_trend(df, station) +
-        geom_hline(yintercept = threshold, linetype = "dashed", color = "red")
+        geom_hline(yintercept = threshold, linetype = "dashed", color = "red")+
+        geom_hline(yintercept = 20, linetype = "dashed", color = "green")
     } else {
       tarspot_plot <- ggplot() +
         ggtitle("No Tar Spot Data Available") +

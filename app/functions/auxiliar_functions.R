@@ -102,7 +102,7 @@ plot_weather_data <- function(data, station) {
 }
 
 #################### Risk trend
-plot_trend <- function(df, station){
+plot_trend1 <- function(df, station){
   ggplot(df, aes(x = Date, y = Risk)) +
     geom_line(color = "#0C7BDC") +
     geom_point(color = "#FFC20A", size = 4) +
@@ -123,4 +123,33 @@ plot_trend <- function(df, station){
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
     )
+}
+
+library(ggplot2)
+library(scales)
+
+plot_trend <- function(df, station){
+  ggplot(df, aes(x = Date, y = Risk)) +
+    geom_line(color = "#0C7BDC") +
+    geom_point(aes(color = Risk_Class), size = 4) +  # Map color to Risk_Class
+    geom_text(aes(label = Risk_Class),
+              vjust = -0.5,
+              color = "black",
+              size = 5) +
+    labs(title = paste(station$name, "Station,", station$region, "Region,", station$state),
+         x = "Date",
+         y = "Probability of Tar Spot (%)") +
+    scale_y_continuous(labels = percent_format(scale = 1),
+                       breaks = seq(0, 100, by = 20)) +
+    
+    # Set colors for Risk_Class categories
+    scale_color_manual(values = c("High" = "darkred", "Medium" = "#FFC20A", "Low" = "darkgreen")) +
+    
+    # Control x-axis date formatting and frequency
+    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
+    
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
+    )+guides(color = "none")  # Remove the color legend
 }
