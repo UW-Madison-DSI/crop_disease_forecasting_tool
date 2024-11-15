@@ -281,55 +281,55 @@ get_risk_probability <- function(station_id, station_name,
 
 
 ################### Still comparing if calling by internal logic or by the API, probably will be deprecated one
-get_risk_probability_by_api <- function(station_id, station_name, 
-                                 risk_threshold,
-                                 mat_30dma, max_rh_30dma,
-                                 th_rh90_14ma, url_ts) {
+#get_risk_probability_by_api <- function(station_id, station_name, 
+#                                 risk_threshold,
+#                                 mat_30dma, max_rh_30dma,
+#                                 th_rh90_14ma, url_ts) {
   
-  base_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
+#  base_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
   
-  params <- list(
-    growth_stage = 'yes',
-    fungicide_applied = 'no',
-    risk_threshold = risk_threshold * 100,  # Ensure it's in percentage format
-    mean_air_temp_30d_ma = mat_30dma,
-    max_rh_30d_ma = max_rh_30dma,  
-    tot_nhrs_rh90_14d_ma = th_rh90_14ma
-  )
+#  params <- list(
+#    growth_stage = 'yes',
+#    fungicide_applied = 'no',
+#    risk_threshold = risk_threshold * 100,  # Ensure it's in percentage format
+#    mean_air_temp_30d_ma = mat_30dma,
+#    max_rh_30d_ma = max_rh_30dma,  
+#    tot_nhrs_rh90_14d_ma = th_rh90_14ma
+#  )
   
-  response <- POST(url = base_url, query = params)
+#  response <- POST(url = base_url, query = params)
 
   # Check if the request was successful
-  if (status_code(response) == 200) {
+#  if (status_code(response) == 200) {
     # Parse the content as JSON
-    result <- content(response, as = "parsed", type = "application/json")
+#    result <- content(response, as = "parsed", type = "application/json")
     
     # Retrieve relevant values
-    probability <- result$probability[[1]]
-    probability_class <- result$risk_class[[1]]
+#    probability <- result$probability[[1]]
+#    probability_class <- result$risk_class[[1]]
     
-    return(data.frame(
-      Station = station_name,
-      AirTemp_C_30dma=mat_30dma,
-      Max_RH_pct_30dma=max_rh_30dma,
-      Tot_Nhrs_RHab90_14dma=th_rh90_14ma,
-      Risk = probability,
-      Risk_Class = probability_class
-    ))
-  } else {
+#    return(data.frame(
+#      Station = station_name,
+#      AirTemp_C_30dma=mat_30dma,
+#      Max_RH_pct_30dma=max_rh_30dma,
+#      Tot_Nhrs_RHab90_14dma=th_rh90_14ma,
+#      Risk = probability,
+#      Risk_Class = probability_class
+#    ))
+#  } else {
     # Print error if the request fails
-    cat("Error: API request failed with status code", status_code(response), "\n")
-    print(content(response, as = "text"))
-    return(data.frame(
-      Station = station_id,
-      AirTemp_C_30dma=NA,
-      Max_RH_pct_30dma=NA,
-      Tot_Nhrs_RHab90_14dma=NA,
-      Risk = NA,
-      Risk_Class = NA
-    ))
-  }
-}
+#    cat("Error: API request failed with status code", status_code(response), "\n")
+#    print(content(response, as = "text"))
+#    return(data.frame(
+#      Station = station_id,
+#      AirTemp_C_30dma=NA,
+#      Max_RH_pct_30dma=NA,
+#      Tot_Nhrs_RHab90_14dma=NA,
+#      Risk = NA,
+#      Risk_Class = NA
+#    ))
+#  }
+#}
 
 
 ###################################### Prpeare the relevant data for Tarspot

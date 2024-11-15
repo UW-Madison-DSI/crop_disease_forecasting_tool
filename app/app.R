@@ -17,8 +17,11 @@ source("functions/stations.R")
 source("functions/logic.R")
 source("functions/auxiliar_functions.R")
 
+
+
 station_choices <- c("All" = "all", setNames(names(stations), 
                       sapply(stations, function(station) station$name)))
+logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
 
 # Load county data for Wisconsin
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
@@ -36,32 +39,41 @@ ui <- dashboardPage(
     width = 450,
     tags$head(
       tags$link(rel = "stylesheet", 
-                href = "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap")
+                href = "https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;700&family=Red+Hat+Text:wght@400;600;700&display=swap"),
+      tags$style(HTML("
+      body {
+        font-family: 'Red Hat Display', sans-serif;
+      }
+      .sidebar {
+        font-family: 'Red Hat Text', sans-serif;
+      }
+      .logo-container {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+    "))),
+    
+    div(
+      class = "logo-container",
+      tags$img(
+        src = logo_src,  # Path to the logo file
+        style = "height: 100px; width: auto; display: block; margin: 0 auto;"
+      )
     ),
-    tags$style(HTML("
-      .box {
-        padding: 10px;
-      }
-      .plot-container {
-        margin: 0 auto;
-      }
-      .leaflet-container {
-        height: 500px !important;
-      }
-    ")),
+    
     sidebarMenu(
       #h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Settings")), style = "font-size:18px;"),
       sliderInput("risk_threshold", "Action Threshold (%)", 
                   min = 20, max = 50, value = 35, step = 1),
-      selectInput("custom_station_code", "Please Select a Station", 
+      selectInput("custom_station_code", "Please Select an Station", 
                   choices = station_choices),
-      menuItem(textOutput("current_date"), icon = icon("calendar-day")),
       dateInput("forecast_date", "Select Forecast Date", 
                 value = Sys.Date(), 
-                min = Sys.Date() - 85, 
+                min = Sys.Date() - 100, 
                 max = Sys.Date()),
+      #menuItem(textOutput("current_date"), icon = icon("calendar-day")),
       checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE),  
-      checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE), 
+      checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE),
       
       tags$p("Note: Weather plots may have a short delay.", style = "color: gray; font-style: italic; font-size: 12px;")
       # Note and today's date as menu items
@@ -153,7 +165,7 @@ server <- function(input, output, session) {
   output$mymap <- renderLeaflet({
     leaflet() %>%
       addTiles() %>%
-      setView(lng = -89.75, lat = 44.76, zoom = 6) %>%
+      setView(lng = -89.75, lat = 44.76, zoom = 7) %>%
       addPolygons(
         data = county_boundaries,
         color = "darkgreen",
@@ -206,10 +218,10 @@ server <- function(input, output, session) {
     }
   })
   
-  output$current_date <- renderText({
-    current <- input$forecast_date
-    paste("")
-  })
+  #output$current_date <- renderText({
+  #  current <- input$forecast_date
+  #  paste("")
+  #})
   
   output$station_info <- renderText({
     station_code <- input$custom_station_code
