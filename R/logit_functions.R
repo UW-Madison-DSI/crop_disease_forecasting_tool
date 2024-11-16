@@ -4,21 +4,6 @@ logistic <- function(logit) {
   return(probability)
 }
 
-# Function to classify risk based on probability and thresholds
-classify_risk <- function(probability, medium_threshold, high_threshold) {
-  cat("\n Risk Class: ",medium_threshold,high_threshold, probability) 
-  if (probability<=0.0){
-    return ("NoRisk")
-  }else if (high_threshold >= 1 & 1<=medium_threshold) {
-    return("NoRiskClass")
-  }else if (probability > 0 & probability<medium_threshold) {
-    return("Low")
-  } else if (probability >= medium_threshold & probability<=high_threshold) {
-    return("Medium")
-  } else if (probability > high_threshold){
-    return("High")
-  }
-}
 
 # function to calculate risk for any disease
 calculate_disease_risk <- function(logit_values, thresholds, disease_name) {

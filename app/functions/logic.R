@@ -206,23 +206,6 @@ fetch_rh_above_90_daily <- function(station, start_time, end_time) {
 
 ################################################################################
 ################################################################################
-################################################################ Call Tarspot 
-## Using the logic of the model
-logistic <- function(logit) {
-  exp(logit) / (1 + exp(logit))
-}
-
-calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot) {
-  # Logistic regression formulas for the two models, no irrigation total needed
-  logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH) #paper page5
-  logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot) #paper page5
-  probabilities <- sapply(c(logit_LR4, logit_LR6), logistic)
-  ensemble_prob <- mean(probabilities)
-  
-  # Calculate risk using the general disease risk function
-  return(ensemble_prob)
-}
-
 
 classify_risk <- function(probability, medium_threshold, high_threshold) {
   cat("----------- Probability ", probability, medium_threshold, high_threshold)
