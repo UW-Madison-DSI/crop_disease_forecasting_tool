@@ -27,41 +27,32 @@ source("functions/logic.R")
 source("functions/auxiliar_functions.R")
 
 
-
+############# Settings
 station_choices <- c("All" = "all", setNames(names(stations), 
                       sapply(stations, function(station) station$name)))
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
 condition_text <- "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model"
-a<-"input.custom_station_code != 'all' &&
-                   input.fungicide_applied &&
-                   input.crop_growth_stage &&
-                   input.run_model > 0"
 # Load county data for Wisconsin
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 
-# Define UI
+
+widhts <- 450
+
+############# Define UI
 ui <- dashboardPage(
   title = "Tar Spot Forecasting App (Beta)",
   
   dashboardHeader(
     title = "Tar Spot Forecasting App (Beta)",
-    titleWidth = 450
+    titleWidth = widhts
   ),
-    #tags$li(
-    #  class = "dropdown",
-    #  downloadButton("download_report", "Download Report", 
-    #                 class = "btn-primary", 
-    #                 style = "margin: 10px;")
-    #)
-  #),
   
   dashboardSidebar(
-    width = 450,
-    
+    width = widhts,
     div(
       class = "logo-container",
       tags$img(
-        src = logo_src,  # Path to the logo file
+        src = logo_src,
         style = "height: 100px; width: auto; display: block; margin: 0 auto;"
       )
     ),
@@ -90,7 +81,7 @@ ui <- dashboardPage(
       title = "Pick a date to forecast risk.",
       dateInput("forecast_date", "Select Forecast Date", 
                 value = Sys.Date(), 
-                min = as.Date("2024-08-01"), 
+                min = as.Date("2024-06-01"), 
                 max = Sys.Date())
     ),
     
@@ -112,21 +103,30 @@ ui <- dashboardPage(
         inputId = "run_model",
         label = "Run Forecasting Model",
         style = "
-      background-color: #FFD700; /* Yellow color */
-      color: black; 
-      font-size: 16px; 
-      padding: 10px; 
-      border-radius: 5px; 
-      border: none; 
-      cursor: pointer; 
-      text-align: center;"
+              background-color: #FFD700; /* Yellow color */
+              color: black; 
+              font-size: 16px; 
+              padding: 10px; 
+              border-radius: 5px; 
+              border: none; 
+              cursor: pointer; 
+              text-align: center;"
       )
     ),
     
     tags$p(
-      "Note: Weather plots may have a short delay.", 
-      style = "color: gray; font-style: italic; font-size: 12px; margin-top: 5px;"
+          "How to use this app? Click below to see the instructions.",
+          style = "
+        color: gray; 
+        font-family: sans-serif; 
+        font-size: 12px; 
+        margin-top: 35px; 
+        width: 300px; /* Adjust the width as needed */
+        margin-left: auto; 
+        margin-right: auto;
+      "
     ),
+    
     
     # Collapsible Instructions Panel
     tags$div(
@@ -155,7 +155,8 @@ ui <- dashboardPage(
         tags$p("3. Pick a forecast date to view the risk data."),
         tags$p("4. Check if no fungicide has been applied in the last 14 days."),
         tags$p("5. Ensure the crop is within the V10-R3 growth stage."),
-        tags$p("6. Push Run the Model to see the map and risk trend for insights.")
+        tags$p("6. Push Run the Model to see the map and risk trend for insights."),
+        tags$p("7. Download Report on the selected station by pushing the button at the top of the map.")
       )
     )
   ),
@@ -411,6 +412,9 @@ server <- function(input, output, session) {
       # Copy the logo image to the temporary directory
       tempLogo <- file.path(tempdir(), "OPENSOURDA_color-flush.png")
       file.copy("OPENSOURDA_color-flush.png", tempLogo, overwrite = TRUE)
+      
+      tempLogo <- file.path(tempdir(), "PLANPATHCO_color-flush.png")
+      file.copy("PLANPATHCO_color-flush.png", tempLogo, overwrite = TRUE)
       
       # Prepare the Tar Spot data
       tarspot_data <- if (!is.null(weather_data())) {
