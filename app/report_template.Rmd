@@ -1,0 +1,51 @@
+---
+title: "Tar Spot Forecast Report"
+output: pdf_document
+params:
+  selected_station: NULL
+  station_address: NULL
+  forecast_date: NULL
+  threshold: NULL
+  fungicide: NULL
+  growth_stage: NULL
+  weather_summary: NULL
+  tarspot: NULL
+---
+
+![OSPO](OPENSOURDA_color-center.png){ width=50% }
+
+## Summary of Inputs
+- **Selected Station**: `r params$selected_station`
+- **Station Address**: `r params$station_address`
+- **Forecast Date**: `r params$forecast_date`
+- **Risk Threshold**: `r params$threshold`%
+- **Fungicide Applied in Last 14 Days**: `r ifelse(params$fungicide, "Yes", "No")`
+- **Growth Stage Within V10-R3**: `r ifelse(params$growth_stage, "Yes", "No")`
+
+## Tar Spot Data Summary
+```{r, echo=FALSE}
+library(dplyr)
+library(knitr)
+
+if (!is.null(params$tarspot) && nrow(params$tarspot) > 0) {
+  # Select specific columns to display
+  tarspot_table <- params$tarspot %>%
+    select(Date = date_day, Risk, Risk_Class)
+  
+  # Render the table
+  kable(
+    tarspot_table,
+    caption = "Summary of Tar Spot Data",
+    format = "markdown"
+  )
+} else {
+  cat("No Tar Spot data available.")
+}
+```
+
+### -----------------------------------
+*Data Sources: This report utilizes data from the Wisconet Weather Network. We acknowledge the contributions of researchers and staff from the University of Wisconsin-Madison, who developed the Tar Spot Forecasting model and the Open Source Program Office for their support on developing this tool.*
+
+*Contact Information:*
+- *Email: moros2@wisc.edu*
+- *Report Generated On: *`r Sys.Date()`
