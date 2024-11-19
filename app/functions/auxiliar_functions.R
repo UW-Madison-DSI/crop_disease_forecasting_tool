@@ -182,7 +182,7 @@ plot_trend <- function(df, station){
                        breaks = seq(0, 100, by = 20)) +
     
     # Set colors for Risk_Class categories
-    scale_color_manual(values = c("High" = "darkred", "Medium" = "#FFC20A", "Low" = "darkgreen")) +
+    scale_color_manual(values = c("High" = "black", "Medium" = "#FFC20A", "Low" = "darkgreen")) +
     
     # Control x-axis date formatting and frequency
     scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
