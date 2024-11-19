@@ -40,9 +40,6 @@ ui <- dashboardPage(
   dashboardSidebar(
     width = 450,
     
-    # SliderInput with tooltip
-    
-    
     div(
       class = "logo-container",
       tags$img(
