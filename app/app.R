@@ -12,6 +12,8 @@ library(tigris)  # For county data
 library(sf)      # For handling spatial data
 library(gridExtra)
 library(plotly) 
+#install.packages("shinyBS")
+#library(shinyBS)
 
 source("functions/stations.R")
 source("functions/logic.R")
@@ -37,21 +39,9 @@ ui <- dashboardPage(
   
   dashboardSidebar(
     width = 450,
-    tags$head(
-      tags$link(rel = "stylesheet", 
-                href = "https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;700&family=Red+Hat+Text:wght@400;600;700&display=swap"),
-      tags$style(HTML("
-      body {
-        font-family: 'Red Hat Display', sans-serif;
-      }
-      .sidebar {
-        font-family: 'Red Hat Text', sans-serif;
-      }
-      .logo-container {
-        text-align: center;
-        margin-bottom: 20px;
-      }
-    "))),
+    
+    # SliderInput with tooltip
+    
     
     div(
       class = "logo-container",
@@ -61,25 +51,48 @@ ui <- dashboardPage(
       )
     ),
     
-    sidebarMenu(
-      #h2(strong(HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Settings")), style = "font-size:18px;"),
+    tags$div(
+      `data-toggle` = "tooltip", 
+      title = "Adjust this value to set the threshold for triggering actions.",
       sliderInput("risk_threshold", "Action Threshold (%)", 
-                  min = 20, max = 50, value = 35, step = 1),
-      selectInput("custom_station_code", "Please Select an Station", 
-                  choices = station_choices),
+                  min = 20, max = 50, value = 35, step = 1)
+    ),
+    
+    # SelectInput with tooltip
+    tags$div(
+      `data-toggle` = "tooltip", 
+      title = "Choose a station to view its risk data.",
+      selectInput("custom_station_code", "Please Select a Station", choices = station_choices)
+    ),
+    
+    # DateInput with tooltip
+    tags$div(
+      `data-toggle` = "tooltip", 
+      title = "Pick a date to forecast risk.",
       dateInput("forecast_date", "Select Forecast Date", 
                 value = Sys.Date(), 
-                min = Sys.Date() - 100, 
-                max = Sys.Date()),
-      #menuItem(textOutput("current_date"), icon = icon("calendar-day")),
-      checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE),  
-      checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE),
-      
-      tags$p("Note: Weather plots may have a short delay.", style = "color: gray; font-style: italic; font-size: 12px;")
-      # Note and today's date as menu items
-      #menuItem(text = "Note: Weather plots may have a short delay.", icon = icon("info-circle")),
+                min = as.Date("2024-08-01"), 
+                max = Sys.Date())
+    ),
+    
+    # CheckboxInput with tooltip
+    tags$div(
+      `data-toggle` = "tooltip", 
+      title = "Check if no fungicide has been applied recently.",
+      checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE)
+    ),
+    
+    tags$div(
+      `data-toggle` = "tooltip", 
+      title = "Select if the crop is in the V10-R3 growth stage.",
+      checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE)
+    ),
+    tags$p(
+      "Note: Weather plots may have a short delay.", 
+      style = "color: gray; font-style: italic; font-size: 12px; margin-top: 5px;"
     )
   ),
+  
   
   dashboardBody(
     fluidRow(
@@ -168,7 +181,7 @@ server <- function(input, output, session) {
       setView(lng = -89.75, lat = 44.76, zoom = 7) %>%
       addPolygons(
         data = county_boundaries,
-        color = "darkgreen",
+        color = "gray",
         weight = 1,
         opacity = 1,
         fillOpacity = 0,
@@ -249,8 +262,8 @@ server <- function(input, output, session) {
         mutate(Date = ymd(date_day)) %>%
         select(Date, Risk, Risk_Class)
       tarspot_plot <- plot_trend(df, station) +
-        geom_hline(yintercept = threshold, linetype = "dashed", color = "red")+
-        geom_hline(yintercept = 20, linetype = "dashed", color = "green")
+        geom_hline(yintercept = threshold, linetype = "dashed", color = "black")+
+        geom_hline(yintercept = 20, linetype = "dashed", color = "gray")
     } else {
       tarspot_plot <- ggplot() +
         ggtitle("No Tar Spot Data Available") +
