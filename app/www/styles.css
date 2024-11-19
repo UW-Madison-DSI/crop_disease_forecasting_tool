@@ -1,0 +1,14 @@
+/* styles.css */
+.skin-blue .main-header .navbar {
+  background-color: #c5050c;
+}
+.skin-blue .main-sidebar {
+  background-color: #c5050c;
+}
+.skin-blue .main-sidebar .sidebar-menu>li>a {
+  color: #ffffff;
+}
+.skin-blue .main-sidebar .sidebar-menu>li>a:hover {
+  background-color: #9e1111;
+  color: #ffffff;
+}

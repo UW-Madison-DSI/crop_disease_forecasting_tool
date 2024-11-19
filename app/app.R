@@ -21,6 +21,7 @@ source("functions/auxiliar_functions.R")
 
 
 
+
 station_choices <- c("All" = "all", setNames(names(stations), 
                       sapply(stations, function(station) station$name)))
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
@@ -47,6 +48,10 @@ ui <- dashboardPage(
         style = "height: 100px; width: auto; display: block; margin: 0 auto;"
       )
     ),
+    
+    #tags$head(
+    #  tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")
+    #),
     
     tags$div(
       `data-toggle` = "tooltip", 
@@ -84,40 +89,66 @@ ui <- dashboardPage(
       title = "Select if the crop is in the V10-R3 growth stage.",
       checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE)
     ),
+    
+    tags$div(
+      actionButton(
+        inputId = "run_model",
+        label = "Run Forecasting Model",
+        style = "
+      background-color: #FFD700; /* Yellow color */
+      color: black; 
+      font-size: 16px; 
+      padding: 10px; 
+      border-radius: 5px; 
+      border: none; 
+      cursor: pointer; 
+      text-align: center;"
+      )
+    ),
+    
     tags$p(
       "Note: Weather plots may have a short delay.", 
       style = "color: gray; font-style: italic; font-size: 12px; margin-top: 5px;"
     ),
-    # Collapsible Instructions Panel
+    
+    
     tags$div(
       style = "margin-top: 20px;",
-      tags$button(
-        type = "button",
-        class = "btn btn-info",
+      tags$div(
+        id = "triangleToggle",
+        style = "
+      width: 0; 
+      height: 0; 
+      border-left: 15px solid transparent; 
+      border-right: 15px solid transparent; 
+      border-top: 15px solid #007bff; 
+      cursor: pointer; 
+      margin: 0 auto;
+    ",
         `data-toggle` = "collapse",
-        `data-target` = "#collapseInstructions",
-        "How to Use The Tar Spot Forecasting App"
+        `data-target` = "#collapseInstructions"
       ),
       tags$div(
         id = "collapseInstructions",
         class = "collapse",
-        style = "border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 5px;",
+        style = "border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 3px;",
         tags$h4("Instructions", style = "margin-top: 0;"),
         tags$p("1. Use the Action Threshold slider to set the desired risk level."),
         tags$p("2. Select a station from the dropdown menu."),
         tags$p("3. Pick a forecast date to view the risk data."),
         tags$p("4. Check if no fungicide has been applied in the last 14 days."),
         tags$p("5. Ensure the crop is within the V10-R3 growth stage."),
-        tags$p("6. View the map and risk trend for insights.")
+        tags$p("6. Push Run the Model to see the map and risk trend for insights.")
       )
     )
   ),
-  
+  # Collapsible Instructions Panel
+  #)
   
   dashboardBody(
     fluidRow(
       conditionalPanel(
-        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage",
+        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model",
         div(
           textOutput("risk_label"),
           style = "
@@ -141,7 +172,7 @@ ui <- dashboardPage(
     ),
     fluidRow(
       conditionalPanel(
-        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage",
+        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model",
         box(
           h2(strong("Tar Spot Risk Trend"), style = "font-size:18px;"),
           plotOutput("risk_trend"),
