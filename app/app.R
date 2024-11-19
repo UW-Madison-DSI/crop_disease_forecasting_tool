@@ -40,9 +40,6 @@ ui <- dashboardPage(
   dashboardSidebar(
     width = 450,
     
-    # SliderInput with tooltip
-    
-    
     div(
       class = "logo-container",
       tags$img(
@@ -90,6 +87,29 @@ ui <- dashboardPage(
     tags$p(
       "Note: Weather plots may have a short delay.", 
       style = "color: gray; font-style: italic; font-size: 12px; margin-top: 5px;"
+    ),
+    # Collapsible Instructions Panel
+    tags$div(
+      style = "margin-top: 20px;",
+      tags$button(
+        type = "button",
+        class = "btn btn-info",
+        `data-toggle` = "collapse",
+        `data-target` = "#collapseInstructions",
+        "How to Use The Tar Spot Forecasting App"
+      ),
+      tags$div(
+        id = "collapseInstructions",
+        class = "collapse",
+        style = "border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 5px;",
+        tags$h4("Instructions", style = "margin-top: 0;"),
+        tags$p("1. Use the Action Threshold slider to set the desired risk level."),
+        tags$p("2. Select a station from the dropdown menu."),
+        tags$p("3. Pick a forecast date to view the risk data."),
+        tags$p("4. Check if no fungicide has been applied in the last 14 days."),
+        tags$p("5. Ensure the crop is within the V10-R3 growth stage."),
+        tags$p("6. View the map and risk trend for insights.")
+      )
     )
   ),
   
