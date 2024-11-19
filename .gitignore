@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 .DS_Store
+.DS_Store
+app/rsconnect/connect.doit.wisc.edu/moros2/forecasting_tools.dcf
+rsconnect/*
+.DS_Store
