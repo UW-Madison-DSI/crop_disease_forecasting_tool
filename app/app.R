@@ -14,11 +14,17 @@ library(gridExtra)
 library(plotly) 
 #install.packages("shinyBS")
 #library(shinyBS)
+#install.packages("rmarkdown")
+#install.packages("tinytex")
+#library(rmarkdown)
+#library(tinytex)
+#install.packages(c("mapview", "webshot2", "rmarkdown"))
+#library(webshot2)
+#library(webshot)
 
 source("functions/stations.R")
 source("functions/logic.R")
 source("functions/auxiliar_functions.R")
-
 
 
 
@@ -37,6 +43,13 @@ ui <- dashboardPage(
     title = "Tar Spot Forecasting App (Beta)",
     titleWidth = 450
   ),
+    #tags$li(
+    #  class = "dropdown",
+    #  downloadButton("download_report", "Download Report", 
+    #                 class = "btn-primary", 
+    #                 style = "margin: 10px;")
+    #)
+  #),
   
   dashboardSidebar(
     width = 450,
@@ -111,20 +124,20 @@ ui <- dashboardPage(
       style = "color: gray; font-style: italic; font-size: 12px; margin-top: 5px;"
     ),
     
-    
+    # Collapsible Instructions Panel
     tags$div(
       style = "margin-top: 20px;",
       tags$div(
         id = "triangleToggle",
         style = "
-      width: 0; 
-      height: 0; 
-      border-left: 15px solid transparent; 
-      border-right: 15px solid transparent; 
-      border-top: 15px solid #007bff; 
-      cursor: pointer; 
-      margin: 0 auto;
-    ",
+          width: 0; 
+          height: 0; 
+          border-left: 15px solid transparent; 
+          border-right: 15px solid transparent; 
+          border-top: 15px solid #007bff; 
+          cursor: pointer; 
+          margin: 0 auto;
+        ",
         `data-toggle` = "collapse",
         `data-target` = "#collapseInstructions"
       ),
@@ -142,10 +155,22 @@ ui <- dashboardPage(
       )
     )
   ),
-  # Collapsible Instructions Panel
-  #)
   
   dashboardBody(
+    fluidRow(
+      conditionalPanel(
+        condition = "input.custom_station_code != 'all' &&
+                   input.fungicide_applied &&
+                   input.crop_growth_stage &&
+                   input.run_model > 0",
+        div(
+          downloadButton("download_report", "Download Report", 
+                         class = "btn-primary", 
+                         style = "margin: 10px;"),
+          style = "text-align: center;"
+        )
+      )
+    ),
     fluidRow(
       conditionalPanel(
         condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model",
@@ -153,13 +178,13 @@ ui <- dashboardPage(
           textOutput("risk_label"),
           style = "
           font-size: 1.5em; 
-          color: green; 
+          color: black; 
           text-align: left; 
           font-weight: bold; 
           margin-bottom: 10px; 
           margin-left: 20px;
           padding: 10px;
-          border: 2px solid green;
+          border: 2px solid blue;
           border-radius: 5px;
           background-color: #f9f9f9;
           box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);"
@@ -218,6 +243,9 @@ server <- function(input, output, session) {
       start_time <- out$start_time_gmt
       end_time <- out$end_time_gmt
       result <- call_tarspot_for_station(station_code, station$name, risk_threshold, today_ct)
+      
+      print(result)
+      
       airtemp <- api_call_wisconet_data_daily(station_code, start_time, end_time)
       return(list(tarspot = result, airtemp = airtemp))
     } else {
@@ -261,26 +289,33 @@ server <- function(input, output, session) {
     }
   })
   
-  output$risk_label <- renderText({
+  risk_level <- reactive({
     crop_fung <- input$fungicide_applied
     crop_gs <- input$crop_growth_stage
+    
     if (!is.null(weather_data()) && crop_fung && crop_gs) {
       # Extract the most recent risk data
       most_recent_data <- weather_data()$tarspot %>%
         slice_max(order_by = date_day, n = 1)  # Get the row with the latest date
       
       # Extract Risk and Risk_Class separately
-      most_recent_risk <- most_recent_data %>% pull(Risk)%>%round(2)%>%
-        as.character() %>%.[1]
-      most_recent_risk_class <- most_recent_data %>% pull(Risk_Class)%>%
-        as.character() %>%.[1]
+      most_recent_risk <- most_recent_data %>%
+        pull(Risk) %>%
+        round(2) %>%
+        as.character() %>%
+        .[1]
+      most_recent_risk_class <- most_recent_data %>%
+        pull(Risk_Class) %>%
+        as.character() %>%
+        .[1]
+      
       # Combine Risk Class and formatted Risk into a single message
-      paste("Tar Spot Risk is ", most_recent_risk_class, most_recent_risk, '%')
-
+      paste("Tar Spot Risk is", most_recent_risk_class, most_recent_risk, '%')
     } else {
-      NULL
+      "No data available"
     }
   })
+  
   
   #output$current_date <- renderText({
   #  current <- input$forecast_date
@@ -299,21 +334,29 @@ server <- function(input, output, session) {
     }
   })
   
+  output$risk_label <- renderText({
+    risk_level()
+  })
+  
   output$risk_trend <- renderPlot({
     weatheroutputs <- weather_data()
     data <- weatheroutputs$tarspot
     variables_at_rh <- weatheroutputs$airtemp
     station_code <- input$custom_station_code
-    threshold<-input$risk_threshold
+    threshold <- input$risk_threshold
     station <- stations[[station_code]]
     
+    # Initialize plots as NULL
     tarspot_plot <- NULL
-    if (!is.null(data)) {
-      df <- data %>%
+    weather_plot <- NULL
+    
+    # Create tarspot plot
+    if (!is.null(data) && nrow(data) > 0) {
+      tarspot_df <- data %>%
         mutate(Date = ymd(date_day)) %>%
         select(Date, Risk, Risk_Class)
-      tarspot_plot <- plot_trend(df, station) +
-        geom_hline(yintercept = threshold, linetype = "dashed", color = "black")+
+      tarspot_plot <- plot_trend(tarspot_df, station) +
+        geom_hline(yintercept = threshold, linetype = "dashed", color = "black") +
         geom_hline(yintercept = 20, linetype = "dashed", color = "gray")
     } else {
       tarspot_plot <- ggplot() +
@@ -321,8 +364,8 @@ server <- function(input, output, session) {
         theme_void()
     }
     
-    weather_plot <- NULL
-    if (!is.null(variables_at_rh)) {
+    # Create weather plot
+    if (!is.null(variables_at_rh) && !identical(variables_at_rh, "Error: 400")) {
       weather_plot <- plot_weather_data(variables_at_rh, station = station)
     } else {
       weather_plot <- ggplot() +
@@ -330,10 +373,84 @@ server <- function(input, output, session) {
         theme_void()
     }
     
-    grid.arrange(tarspot_plot
-                 , weather_plot, ncol = 2
-                 )
+    print(class(tarspot_plot))
+    print(class(weather_plot))
+    
+    # Arrange plots only if both are valid
+    if (!is.null(tarspot_plot) && !is.null(weather_plot) && !identical(weather_plot, "Error: 400")) {
+      tryCatch({
+        print("here 1")
+        grid.arrange(tarspot_plot, weather_plot, ncol = 2)
+      }, error = function(e) {
+        print("here 2")
+        message("An error occurred while arranging the plots: ", e$message)
+      })
+    } else if (!is.null(tarspot_plot)) {
+      # Display only tarspot plot
+      print("here 3")
+      grid.arrange(tarspot_plot, ncol = 1)
+    } else if (!is.null(weather_plot) && !identical(weather_plot, "Error: 400")) {
+      # Display only weather plot
+      print("here 4")
+      grid.arrange(weather_plot, ncol = 1)
+    } else {
+      print("here 5")
+      message("No valid plots to display.")
+    }
   })
+  
+  output$download_report <- downloadHandler(
+    filename = function() {
+      paste0("TarSpotForecast_Report_", input$custom_station_code, "_", Sys.Date(), ".pdf")
+    },
+    content = function(file) {
+      tempReport <- file.path(tempdir(), "report_template.Rmd")
+      file.copy("report_template.Rmd", tempReport, overwrite = TRUE)
+      
+      # Copy the logo image to the temporary directory
+      tempLogo <- file.path(tempdir(), "OPENSOURDA_color-center.png")
+      file.copy("OPENSOURDA_color-center.png", tempLogo, overwrite = TRUE)
+      
+      # Prepare the Tar Spot data
+      tarspot_data <- if (!is.null(weather_data())) {
+        weather_data()$tarspot
+      } else {
+        NULL
+      }
+      station_code <- input$custom_station_code
+      station_info <- stations[[station_code]]
+      
+      # Construct the station address
+      station_address <- paste(
+        station_info$location,  # e.g., City or specific location
+        station_info$region,    # e.g., County or region name
+        station_info$state,     # e.g., State abbreviation or name
+        sep = ", "
+      )
+      tarspot_7d<-weather_data()$tarspot%>%mutate(Risk = round(Risk,2))
+      
+      # Render the report
+      rmarkdown::render(
+        tempReport,
+        output_file = file,
+        params = list(
+          selected_station = input$custom_station_code,
+          station_address = station_address,
+          forecast_date = input$forecast_date,
+          threshold = input$risk_threshold,
+          fungicide = input$fungicide_applied,
+          growth_stage = input$crop_growth_stage,
+          weather_summary = if (!is.null(weather_data())) {
+            summary(weather_data()$airtemp)
+          } else {
+            "No weather data available."
+          },
+          tarspot = tarspot_7d # Pass the actual data frame
+        )
+      )
+    }
+  )
+  
   
 }
 
