@@ -31,7 +31,11 @@ source("functions/auxiliar_functions.R")
 station_choices <- c("All" = "all", setNames(names(stations), 
                       sapply(stations, function(station) station$name)))
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
-
+condition_text <- "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model"
+a<-"input.custom_station_code != 'all' &&
+                   input.fungicide_applied &&
+                   input.crop_growth_stage &&
+                   input.run_model > 0"
 # Load county data for Wisconsin
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 
@@ -159,10 +163,7 @@ ui <- dashboardPage(
   dashboardBody(
     fluidRow(
       conditionalPanel(
-        condition = "input.custom_station_code != 'all' &&
-                   input.fungicide_applied &&
-                   input.crop_growth_stage &&
-                   input.run_model > 0",
+        condition = condition_text,
         div(
           downloadButton("download_report", "Download Report", 
                          class = "btn-primary", 
@@ -173,7 +174,7 @@ ui <- dashboardPage(
     ),
     fluidRow(
       conditionalPanel(
-        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model",
+        condition = condition_text,
         div(
           textOutput("risk_label"),
           style = "
@@ -184,7 +185,7 @@ ui <- dashboardPage(
           margin-bottom: 10px; 
           margin-left: 20px;
           padding: 10px;
-          border: 2px solid blue;
+          border: 2px solid dark;
           border-radius: 5px;
           background-color: #f9f9f9;
           box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);"
@@ -197,7 +198,7 @@ ui <- dashboardPage(
     ),
     fluidRow(
       conditionalPanel(
-        condition = "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model",
+        condition = condition_text,
         box(
           h2(strong("Tar Spot Risk Trend"), style = "font-size:18px;"),
           plotOutput("risk_trend"),
@@ -408,8 +409,8 @@ server <- function(input, output, session) {
       file.copy("report_template.Rmd", tempReport, overwrite = TRUE)
       
       # Copy the logo image to the temporary directory
-      tempLogo <- file.path(tempdir(), "OPENSOURDA_color-center.png")
-      file.copy("OPENSOURDA_color-center.png", tempLogo, overwrite = TRUE)
+      tempLogo <- file.path(tempdir(), "OPENSOURDA_color-flush.png")
+      file.copy("OPENSOURDA_color-flush.png", tempLogo, overwrite = TRUE)
       
       # Prepare the Tar Spot data
       tarspot_data <- if (!is.null(weather_data())) {
@@ -422,12 +423,13 @@ server <- function(input, output, session) {
       
       # Construct the station address
       station_address <- paste(
-        station_info$location,  # e.g., City or specific location
-        station_info$region,    # e.g., County or region name
-        station_info$state,     # e.g., State abbreviation or name
+        station_info$location,
+        station_info$region, 
+        station_info$state,
         sep = ", "
       )
-      tarspot_7d<-weather_data()$tarspot%>%mutate(Risk = round(Risk,2))
+      tarspot_7d<-weather_data()$tarspot%>%mutate(Risk = round(Risk,2),
+                                                  date_day = as.Date(date_day, format = "%Y-%m-%d") + 1)
       
       # Render the report
       rmarkdown::render(
@@ -445,7 +447,7 @@ server <- function(input, output, session) {
           } else {
             "No weather data available."
           },
-          tarspot = tarspot_7d # Pass the actual data frame
+          tarspot = tarspot_7d
         )
       )
     }
