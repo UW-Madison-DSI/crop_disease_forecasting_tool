@@ -11,7 +11,10 @@ library(lubridate)
 library(tigris)  # For county data
 library(sf)      # For handling spatial data
 library(gridExtra)
-library(plotly) 
+library(plotly)
+#tinytex::tlmgr_update()
+#tinytex::tlmgr_install("background")
+
 #install.packages("shinyBS")
 #library(shinyBS)
 #install.packages("rmarkdown")
@@ -401,61 +404,97 @@ server <- function(input, output, session) {
     }
   })
   
+  # Create header.tex
+  # Create LaTeX header file - fix escape sequences
+  cat('\\usepackage{fancyhdr}
+\\usepackage[margin=1in]{geometry}
+\\usepackage{graphicx}
+\\fancypagestyle{watermark}{
+  \\fancyfootoffset{0pt}
+  \\renewcommand{\\headrulewidth}{0pt}
+  \\fancyhf{}
+  \\cfoot{\\textcolor{gray!30}{\\scalebox{4}{TarSpot Forecast}}}
+}
+\\pagestyle{watermark}
+\\AtBeginDocument{\\thispagestyle{watermark}}
+', file = "header.tex", sep = "")
+  
+  # Define download handler
   output$download_report <- downloadHandler(
     filename = function() {
       paste0("TarSpotForecast_Report_", input$custom_station_code, "_", Sys.Date(), ".pdf")
     },
     content = function(file) {
-      tempReport <- file.path(tempdir(), "report_template.Rmd")
-      file.copy("report_template.Rmd", tempReport, overwrite = TRUE)
+      # Create temporary directory for report generation
+      temp_dir <- tempdir()
       
-      # Copy the logo image to the temporary directory
-      tempLogo <- file.path(tempdir(), "OPENSOURDA_color-flush.png")
-      file.copy("OPENSOURDA_color-flush.png", tempLogo, overwrite = TRUE)
+      # Copy required files to temp directory
+      files_to_copy <- list(
+        rmd = c(from = "report_template.Rmd", to = file.path(temp_dir, "report_template.Rmd")),
+        header = c(from = "header.tex", to = file.path(temp_dir, "header.tex")),
+        logo1 = c(from = "logos/OPENSOURDA_color-flush.png", to = file.path(temp_dir, "OPENSOURDA_color-flush.png")),
+        logo2 = c(from = "logos/PLANPATHCO_color-flush.png", to = file.path(temp_dir, "PLANPATHCO_color-flush.png"))
+      )
       
-      tempLogo <- file.path(tempdir(), "PLANPATHCO_color-flush.png")
-      file.copy("PLANPATHCO_color-flush.png", tempLogo, overwrite = TRUE)
-      
-      # Prepare the Tar Spot data
-      tarspot_data <- if (!is.null(weather_data())) {
-        weather_data()$tarspot
-      } else {
-        NULL
+      # Copy all files and check for errors
+      for (item in files_to_copy) {
+        if (!file.copy(item["from"], item["to"], overwrite = TRUE)) {
+          stop(paste("Failed to copy file:", item["from"]))
+        }
       }
+      
+      # Prepare Tar Spot data with error handling
+      if (!is.null(weather_data())) {
+        tarspot_7d <- weather_data()$tarspot %>%
+          mutate(
+            Risk = round(Risk, 2),
+            date_day = as.Date(date_day, format = "%Y-%m-%d") + 1
+          )
+      } else {
+        stop("Weather data is not available")
+      }
+      
+      # Get station information
       station_code <- input$custom_station_code
+      if (!station_code %in% names(stations)) {
+        stop("Invalid station code")
+      }
       station_info <- stations[[station_code]]
       
-      # Construct the station address
+      # Construct station address
       station_address <- paste(
         station_info$location,
-        station_info$region, 
+        station_info$region,
         station_info$state,
         sep = ", "
       )
-      tarspot_7d<-weather_data()$tarspot%>%mutate(Risk = round(Risk,2),
-                                                  date_day = as.Date(date_day, format = "%Y-%m-%d") + 1)
       
-      # Render the report
-      rmarkdown::render(
-        tempReport,
-        output_file = file,
-        params = list(
-          selected_station = input$custom_station_code,
-          station_address = station_address,
-          forecast_date = input$forecast_date,
-          threshold = input$risk_threshold,
-          fungicide = input$fungicide_applied,
-          growth_stage = input$crop_growth_stage,
-          weather_summary = if (!is.null(weather_data())) {
-            summary(weather_data()$airtemp)
-          } else {
-            "No weather data available."
-          },
-          tarspot = tarspot_7d
+      # Render the report with error handling
+      tryCatch({
+        rmarkdown::render(
+          file.path(temp_dir, "report_template.Rmd"),
+          output_file = file,
+          params = list(
+            selected_station = station_code,
+            station_address = station_address,
+            forecast_date = input$forecast_date,
+            threshold = input$risk_threshold,
+            fungicide = input$fungicide_applied,
+            growth_stage = input$crop_growth_stage,
+            weather_summary = if (!is.null(weather_data())) {
+              summary(weather_data()$airtemp)
+            } else {
+              "No weather data available."
+            },
+            tarspot = tarspot_7d
+          )
         )
-      )
+      }, error = function(e) {
+        stop(paste("Failed to render report:", e$message))
+      })
     }
   )
+  
   
   
 }
