@@ -20,6 +20,7 @@ source("functions/auxiliar_functions.R")
 
 
 ############# Settings
+tool_title <- "Agricultural Forecasting and Advisory System"
 station_choices <- c("All" = "all", setNames(names(stations), 
                       sapply(stations, function(station) station$name)))
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
@@ -35,10 +36,10 @@ widhts <- 450
 ui <- dashboardPage(
   
   
-  title = "Tar Spot Forecasting App (Beta)",
+  title = tool_title,
   
   dashboardHeader(
-    title = "Tar Spot Forecasting App (Beta)",
+    title = tool_title,
     titleWidth = widhts
   ),
   
