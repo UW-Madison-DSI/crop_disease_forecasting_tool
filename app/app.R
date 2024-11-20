@@ -55,7 +55,7 @@ ui <- dashboardPage(
     
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Adjust this value to set the threshold for triggering actions.",
+      title = "The action threshold defaults to a research-based appropriate level. You are encouraged to leave the threshold at the default.",
       sliderInput("risk_threshold", "Action Threshold (%)", 
                   min = 20, max = 50, value = 35, step = 1)
     ),
@@ -80,13 +80,13 @@ ui <- dashboardPage(
     # CheckboxInput with tooltip
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Forecasts will only be made if no fungicide has been used in the past two weeks.",
+      title = "Check if no fungicide has been applied recently; Forecasts will only be made if no fungicide has been used in the past two weeks.",
       checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE)
     ),
     
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Forecasts will only be made if the crop you are scouting is between V10 and R3 growth stages.",
+      title = "Check Check if no fungicide has been applied recently; Forecasts will only be made if the crop you are scouting is between V10 and R3 growth stages.",
       checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE)
     ),
     
@@ -99,11 +99,14 @@ ui <- dashboardPage(
               color: black; 
               font-type: bolt;
               font-size: 16px; 
+              margin-top: 30px; 
               padding: 10px; 
               border-radius: 5px; 
               border: none; 
               cursor: pointer; 
-              text-align: center;"
+              text-align: center;
+              margin-left: auto; 
+              margin-right: auto;"
       )
     ),
     
@@ -227,7 +230,7 @@ ui <- dashboardPage(
   )
 )
 
-# Define server logic
+################################################ Define server logic
 server <- function(input, output, session) {
   
   # Reactive expression to get the selected station data or all stations
@@ -249,14 +252,10 @@ server <- function(input, output, session) {
       current <- input$forecast_date  # Access the selected date
       
       today_ct <- with_tz(current, tzone = "America/Chicago")
-      mo <- 6
-      out <- from_ct_to_gmt(today_ct, mo)
+      out <- from_ct_to_gmt(today_ct, 6) # 6 mo
       start_time <- out$start_time_gmt
       end_time <- out$end_time_gmt
       result <- call_tarspot_for_station(station_code, station$name, risk_threshold, today_ct)
-      
-      print(result)
-      
       airtemp <- api_call_wisconet_data_daily(station_code, start_time, end_time)
       return(list(tarspot = result, airtemp = airtemp))
     } else {
@@ -305,8 +304,8 @@ server <- function(input, output, session) {
         lat_value <- station$latitude
         leafletProxy("mymap") %>%
           addMarkers(lng = station$longitude, lat = station$latitude,
-                     popup = paste0("<strong>", station$name, "</strong><br>",
-                                    station$location, "<br>",
+                     popup = paste0("<strong> Station: ", station$name, "</strong><br>",
+                                    "Location: ", station$location, "<br>",
                                     "Region: ", station$region, "<br>",
                                     "State: ", station$state))
       }
@@ -357,12 +356,7 @@ server <- function(input, output, session) {
       "No data available"
     }
   })
-  
-  
-  #output$current_date <- renderText({
-  #  current <- input$forecast_date
-  #  paste("")
-  #})
+
   
   output$station_info <- renderText({
     station_code <- input$custom_station_code
@@ -371,8 +365,10 @@ server <- function(input, output, session) {
              Please select one to see the risk of Tar Spot. 
              If you applied a fungicide in the last 14 days to your crop, we cannot estimate a probability of Tar Spot.")
     } else {
+      env <- Sys.getenv("test")
+      
       station <- stations[[station_code]]
-      paste("You have selected", station$name, "in", station$state)
+      paste("You have selected ", env, station$name, "Station. Clic on the pin to see specifications.")
     }
   })
   
