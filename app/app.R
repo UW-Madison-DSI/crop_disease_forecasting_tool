@@ -19,23 +19,41 @@ source("functions/logic.R")
 source("functions/auxiliar_functions.R")
 
 
-############# Settings
 tool_title <- "Agricultural Forecasting and Advisory System"
+
+
+############# Settings
 station_choices <- c("All" = "all", setNames(names(stations), 
                       sapply(stations, function(station) station$name)))
+
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
 condition_text <- "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model"
 
-# Load county data for Wisconsin
+widhts <- 450
+
+
+###### Wisconsin
+## County
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 
+## Bounds
+wi_bounds <- list(
+  min_lat = 42.49192,
+  max_lat = 47.08009,
+  min_lon = -92.88943,
+  max_lon = -86.24955
+)
 
-widhts <- 450
+# Function to ensure location is within bounds
+ensure_within_bounds <- function(lat, lon, bounds) {
+  lat <- max(min(lat, bounds$max_lat), bounds$min_lat)
+  lon <- max(min(lon, bounds$max_lon), bounds$min_lon)
+  return(c(lat, lon))
+}
 
 ############# Define UI
 ui <- dashboardPage(
-  
-  
+
   title = tool_title,
   
   dashboardHeader(
@@ -130,14 +148,14 @@ ui <- dashboardPage(
       tags$div(
         id = "triangleToggle",
         style = "
-          width: 0; 
-          height: 0; 
-          border-left: 15px solid transparent; 
-          border-right: 15px solid transparent; 
-          border-top: 15px solid #007bff; 
-          cursor: pointer; 
-          margin: 0 auto;
-        ",
+                  width: 0; 
+                  height: 0; 
+                  border-left: 15px solid transparent; 
+                  border-right: 15px solid transparent; 
+                  border-top: 15px solid #007bff; 
+                  cursor: pointer; 
+                  margin: 0 auto;
+                ",
         `data-toggle` = "collapse",
         `data-target` = "#collapseInstructions"
       ),
@@ -145,17 +163,20 @@ ui <- dashboardPage(
         id = "collapseInstructions",
         class = "collapse",
         style = "border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 3px;",
-        tags$h4("User Guide", style = "margin-top: 0;"),
-        tags$p("1. Use the Action Threshold slider to set the risk threshold. Leave the slider at the research-based default 
-               threshold unless you have informed reason to believe it should be adjusted."),
+        tags$h4("User Guide", style = "border: 1px solid #ccc; padding: 10px; margin-top: 0; 
+                border-radius: 3px;"),
+        tags$p("1. Use the Action Threshold slider to set the risk threshold. 
+                Leave the slider at the research-based default 
+               threshold unless you have informed reason to believe 
+               it should be adjusted."),
         tags$p("2. Select a station from the dropdown menu."),
         tags$p("3. Pick a forecast date to view the risk data."),
         tags$p("4. Check if no fungicide has been applied in the last 14 days."),
         tags$p("5. Ensure the crop is within the V10-R3 growth stage."),
         tags$p("6. Push Run the Model to see the map and risk trend for insights."),
-        tags$p("7. You can also download a PDF report of the forecast obtained for your location of interest 
-                by pushing the “Download Report” button 
-               that will appear after the forecast is obtained.")
+        tags$p("7. You can also download a PDF report of the forecast obtained for your location 
+                of interest by pushing the “Download Report” button 
+                that will appear after the forecast is obtained.")
       )
     )
   ),
@@ -191,17 +212,17 @@ ui <- dashboardPage(
         div(
           textOutput("risk_label"),
           style = "
-          font-size: 1.5em; 
-          color: black; 
-          text-align: left; 
-          font-weight: bold; 
-          margin-bottom: 10px; 
-          margin-left: 20px;
-          padding: 10px;
-          border: 2px solid dark;
-          border-radius: 5px;
-          background-color: #f9f9f9;
-          box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);"
+                  font-size: 1.5em; 
+                  color: black; 
+                  text-align: left; 
+                  font-weight: bold; 
+                  margin-bottom: 10px; 
+                  margin-left: 20px;
+                  padding: 10px;
+                  border: 2px solid dark;
+                  border-radius: 5px;
+                  background-color: #f9f9f9;
+                  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);"
         )
       ),
       box(
@@ -300,8 +321,7 @@ server <- function(input, output, session) {
       for (station_code in names(station_data)) {
         #seems like i could compute the risk forecasting here for all stations
         station <- station_data[[station_code]]
-        lon_value <- station$longitude
-        lat_value <- station$latitude
+        
         leafletProxy("mymap") %>%
           addMarkers(lng = station$longitude, lat = station$latitude,
                      popup = paste0("<strong> Station: ", station$name, "</strong><br>",
@@ -316,7 +336,7 @@ server <- function(input, output, session) {
       
       leafletProxy("mymap") %>%
         clearMarkers() %>%  # Clear existing markers
-        setView(lng = lon_value, lat = lat_value, zoom = 12) %>%  # Different zoom level
+        setView(lng = lon_value, lat = lat_value, zoom = 15) %>%  # Different zoom level
         addMarkers(
           lng = lon_value,
           lat = lat_value,
@@ -357,7 +377,6 @@ server <- function(input, output, session) {
     }
   })
 
-  
   output$station_info <- renderText({
     station_code <- input$custom_station_code
     if (station_code == "all") {
@@ -368,7 +387,7 @@ server <- function(input, output, session) {
       env <- Sys.getenv("test")
       
       station <- stations[[station_code]]
-      paste("You have selected ", env, station$name, "Station. Clic on the pin to see specifications.")
+      paste("You have selected ", station$name, "Station.")
     }
   })
   
@@ -431,18 +450,20 @@ server <- function(input, output, session) {
   
   # Create LaTeX header file - fix escape sequences
   cat('\\usepackage{fancyhdr}
-      \\usepackage[margin=1in]{geometry}
-      \\usepackage{graphicx}
-      \\fancypagestyle{watermark}{
-        \\fancyfootoffset{0pt}
-        \\renewcommand{\\headrulewidth}{0pt}
-        \\fancyhf{}
-        \\cfoot{\\textcolor{gray!30}{\\scalebox{4}{TarSpot Forecast}}}
-      }
-      \\pagestyle{watermark}
-      \\AtBeginDocument{\\thispagestyle{watermark}}
-      ', file = "header.tex", sep = "")
-  
+    \\usepackage[margin=1in]{geometry}
+    \\usepackage{graphicx}
+    \\usepackage{color}
+    
+    \\fancypagestyle{watermark}{
+      \\fancyfootoffset{15pt}
+      \\renewcommand{\\headrulewidth}{0pt}
+      \\fancyhf{}
+      \\cfoot{\\textcolor{gray!30}{\\scalebox{4}{TarSpot Forecast}}}
+    }
+    \\pagestyle{watermark}
+    \\AtBeginDocument{\\thispagestyle{watermark}}
+    ', file = "header.tex")
+          
   # Define download handler
   output$download_report <- downloadHandler(
     filename = function() {
