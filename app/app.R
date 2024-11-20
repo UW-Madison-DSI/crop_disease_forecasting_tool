@@ -33,6 +33,8 @@ widhts <- 450
 
 ############# Define UI
 ui <- dashboardPage(
+  
+  
   title = "Tar Spot Forecasting App (Beta)",
   
   dashboardHeader(
@@ -90,10 +92,11 @@ ui <- dashboardPage(
     tags$div(
       actionButton(
         inputId = "run_model",
-        label = "Run Forecasting Model",
+        label = "Run Forecast",
         style = "
               background-color: #FFD700; /* Yellow color */
               color: black; 
+              font-type: bolt;
               font-size: 16px; 
               padding: 10px; 
               border-radius: 5px; 
@@ -107,7 +110,7 @@ ui <- dashboardPage(
           "Need help getting started? Click below for step-by-step instructions tailored to this app.",
           style = "
             color: gray; 
-            font-family: sans-serif; 
+            font-weight: bold; /* Corrected to font-weight */ 
             font-size: 12px; 
             margin-top: 35px; 
             width: 300px; /* Adjust the width as needed */
@@ -138,7 +141,7 @@ ui <- dashboardPage(
         id = "collapseInstructions",
         class = "collapse",
         style = "border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 3px;",
-        tags$h4("Instructions", style = "margin-top: 0;"),
+        tags$h4("User Guide", style = "margin-top: 0;"),
         tags$p("1. Use the Action Threshold slider to set the risk threshold. Leave the slider at the default threshold unless you have informed reason to believe it should be adjusted."),
         tags$p("2. Select a station from the dropdown menu."),
         tags$p("3. Pick a forecast date to view the risk data."),
@@ -151,6 +154,19 @@ ui <- dashboardPage(
   ),
   
   dashboardBody(
+    tags$style(HTML("
+          .btn-primary {
+            font-weight: bold; /* Makes all buttons with the 'btn-primary' class bold */
+          }
+          p {
+            font-weight: bold; /* Makes all paragraphs bold */
+          }
+          h2 {
+            font-weight: bold; /* Makes all h2 headings bold */
+          }
+        ")
+    ),
+    
     fluidRow(
       conditionalPanel(
         condition = condition_text,
@@ -190,7 +206,7 @@ ui <- dashboardPage(
       conditionalPanel(
         condition = condition_text,
         box(
-          h2(strong("Tar Spot Risk Trend"), style = "font-size:18px;"),
+          h2(strong("Tar Spot Risk Trend"), style = "font-size:18px; font-weight: bold;"),
           plotOutput("risk_trend"),
           textOutput("risk_class_text"),
           width = 12
@@ -297,7 +313,7 @@ server <- function(input, output, session) {
       
       leafletProxy("mymap") %>%
         clearMarkers() %>%  # Clear existing markers
-        setView(lng = lon_value, lat = lat_value, zoom = 10) %>%  # Different zoom level
+        setView(lng = lon_value, lat = lat_value, zoom = 12) %>%  # Different zoom level
         addMarkers(
           lng = lon_value,
           lat = lat_value,
