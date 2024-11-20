@@ -12,18 +12,7 @@ library(tigris)  # For county data
 library(sf)      # For handling spatial data
 library(gridExtra)
 library(plotly)
-#tinytex::tlmgr_update()
-#tinytex::tlmgr_install("background")
 
-#install.packages("shinyBS")
-#library(shinyBS)
-#install.packages("rmarkdown")
-#install.packages("tinytex")
-#library(rmarkdown)
-#library(tinytex)
-#install.packages(c("mapview", "webshot2", "rmarkdown"))
-#library(webshot2)
-#library(webshot)
 
 source("functions/stations.R")
 source("functions/logic.R")
@@ -35,6 +24,7 @@ station_choices <- c("All" = "all", setNames(names(stations),
                       sapply(stations, function(station) station$name)))
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
 condition_text <- "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model"
+
 # Load county data for Wisconsin
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 
@@ -59,10 +49,6 @@ ui <- dashboardPage(
         style = "height: 100px; width: auto; display: block; margin: 0 auto;"
       )
     ),
-    
-    #tags$head(
-    #  tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")
-    #),
     
     tags$div(
       `data-toggle` = "tooltip", 
@@ -118,16 +104,16 @@ ui <- dashboardPage(
     ),
     
     tags$p(
-          "How to use this app? Click below to see the instructions.",
+          "Need help getting started? Click below for step-by-step instructions tailored to this app.",
           style = "
-        color: gray; 
-        font-family: sans-serif; 
-        font-size: 12px; 
-        margin-top: 35px; 
-        width: 300px; /* Adjust the width as needed */
-        margin-left: auto; 
-        margin-right: auto;
-      "
+            color: gray; 
+            font-family: sans-serif; 
+            font-size: 12px; 
+            margin-top: 35px; 
+            width: 300px; /* Adjust the width as needed */
+            margin-left: auto; 
+            margin-right: auto;
+          "
     ),
     
     
@@ -281,16 +267,39 @@ server <- function(input, output, session) {
   
   # Update map based on selected station
   observe({
+    station_code <- input$custom_station_code
     station_data <- selected_station_data()
-    leafletProxy("mymap") %>% clearMarkers()
-    for (station_code in names(station_data)) {
-      station <- station_data[[station_code]]
+    if (station_code == "all"){
+      for (station_code in names(station_data)) {
+        #seems like i could compute the risk forecasting here for all stations
+        station <- station_data[[station_code]]
+        lon_value <- station$longitude
+        lat_value <- station$latitude
+        leafletProxy("mymap") %>%
+          addMarkers(lng = station$longitude, lat = station$latitude,
+                     popup = paste0("<strong>", station$name, "</strong><br>",
+                                    station$location, "<br>",
+                                    "Region: ", station$region, "<br>",
+                                    "State: ", station$state))
+      }
+    }else{
+      station <- stations[[station_code]]
+      lon_value <- station$longitude
+      lat_value <- station$latitude
+      
       leafletProxy("mymap") %>%
-        addMarkers(lng = station$longitude, lat = station$latitude,
-                   popup = paste0("<strong>", station$name, "</strong><br>",
-                                  station$location, "<br>",
-                                  "Region: ", station$region, "<br>",
-                                  "State: ", station$state))
+        clearMarkers() %>%  # Clear existing markers
+        setView(lng = lon_value, lat = lat_value, zoom = 9) %>%  # Different zoom level
+        addMarkers(
+          lng = lon_value,
+          lat = lat_value,
+          popup = paste0(
+            "<strong>", station$name, "</strong><br>",
+            station$location, "<br>",
+            "Region: ", station$region, "<br>",
+            "State: ", station$state
+          )
+        )
     }
   })
   
@@ -378,46 +387,37 @@ server <- function(input, output, session) {
         theme_void()
     }
     
-    print(class(tarspot_plot))
-    print(class(weather_plot))
-    
     # Arrange plots only if both are valid
     if (!is.null(tarspot_plot) && !is.null(weather_plot) && !identical(weather_plot, "Error: 400")) {
       tryCatch({
-        print("here 1")
         grid.arrange(tarspot_plot, weather_plot, ncol = 2)
       }, error = function(e) {
-        print("here 2")
         message("An error occurred while arranging the plots: ", e$message)
       })
     } else if (!is.null(tarspot_plot)) {
       # Display only tarspot plot
-      print("here 3")
       grid.arrange(tarspot_plot, ncol = 1)
     } else if (!is.null(weather_plot) && !identical(weather_plot, "Error: 400")) {
       # Display only weather plot
-      print("here 4")
       grid.arrange(weather_plot, ncol = 1)
     } else {
-      print("here 5")
       message("No valid plots to display.")
     }
   })
   
-  # Create header.tex
   # Create LaTeX header file - fix escape sequences
   cat('\\usepackage{fancyhdr}
-\\usepackage[margin=1in]{geometry}
-\\usepackage{graphicx}
-\\fancypagestyle{watermark}{
-  \\fancyfootoffset{0pt}
-  \\renewcommand{\\headrulewidth}{0pt}
-  \\fancyhf{}
-  \\cfoot{\\textcolor{gray!30}{\\scalebox{4}{TarSpot Forecast}}}
-}
-\\pagestyle{watermark}
-\\AtBeginDocument{\\thispagestyle{watermark}}
-', file = "header.tex", sep = "")
+      \\usepackage[margin=1in]{geometry}
+      \\usepackage{graphicx}
+      \\fancypagestyle{watermark}{
+        \\fancyfootoffset{0pt}
+        \\renewcommand{\\headrulewidth}{0pt}
+        \\fancyhf{}
+        \\cfoot{\\textcolor{gray!30}{\\scalebox{4}{TarSpot Forecast}}}
+      }
+      \\pagestyle{watermark}
+      \\AtBeginDocument{\\thispagestyle{watermark}}
+      ', file = "header.tex", sep = "")
   
   # Define download handler
   output$download_report <- downloadHandler(

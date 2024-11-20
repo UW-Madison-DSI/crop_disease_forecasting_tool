@@ -1,11 +1,12 @@
 \usepackage{fancyhdr}
-\usepackage[margin=1in]{geometry}
-\usepackage{graphicx}
-\fancypagestyle{watermark}{
-  \fancyfootoffset{0pt}
-  \renewcommand{\headrulewidth}{0pt}
-  \fancyhf{}
-  \cfoot{\textcolor{gray!30}{\scalebox{4}{TarSpot Forecast}}}
-}
-\pagestyle{watermark}
-\AtBeginDocument{\thispagestyle{watermark}}
+      \usepackage[margin=1in]{geometry}
+      \usepackage{graphicx}
+      \fancypagestyle{watermark}{
+        \fancyfootoffset{0pt}
+        \renewcommand{\headrulewidth}{0pt}
+        \fancyhf{}
+        \cfoot{\textcolor{gray!30}{\scalebox{4}{TarSpot Forecast}}}
+      }
+      \pagestyle{watermark}
+      \AtBeginDocument{\thispagestyle{watermark}}
+      
