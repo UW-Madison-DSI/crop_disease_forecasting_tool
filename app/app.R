@@ -371,7 +371,7 @@ server <- function(input, output, session) {
       weather_plot <- plot_weather_data(variables_at_rh, station = station)
     } else {
       weather_plot <- ggplot() +
-        ggtitle("No Weather Data Available") +
+        ggtitle("No Weather Data is Available") +
         theme_void()
     }
     
