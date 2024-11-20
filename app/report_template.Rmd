@@ -1,6 +1,9 @@
 ---
 title: "Tar Spot Forecast Report"
-output: pdf_document
+output: 
+  pdf_document:
+    includes:
+      in_header: header.tex
 params:
   selected_station: NULL
   station_address: NULL
