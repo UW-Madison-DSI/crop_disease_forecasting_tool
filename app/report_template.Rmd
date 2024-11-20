@@ -12,7 +12,8 @@ params:
   tarspot: NULL
 ---
 
-![OSPO](OPENSOURDA_color-center.png){ width=50% }
+![OSPO](OPENSOURDA_color-flush.png){ width=50% }
+![PlantPath](PLANPATHCO_color-flush.png){ width=50% }
 
 ## Summary of Inputs
 - **Selected Station**: `r params$selected_station`
@@ -35,7 +36,7 @@ if (!is.null(params$tarspot) && nrow(params$tarspot) > 0) {
   # Render the table
   kable(
     tarspot_table,
-    caption = "Summary of Tar Spot Data",
+    caption = "Tar Spot Risk in the last 7 days",
     format = "markdown"
   )
 } else {
