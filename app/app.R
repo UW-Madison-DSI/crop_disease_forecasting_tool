@@ -60,14 +60,14 @@ ui <- dashboardPage(
     # SelectInput with tooltip
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Choose a station to view its risk data.",
-      selectInput("custom_station_code", "Please Select a Station", choices = station_choices)
+      title = "Choose a weather station to view disease risk at this location.",
+      selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
     ),
     
     # DateInput with tooltip
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Pick a date to forecast risk.",
+      title = "Pick a date for which you would like a disease risk forecast.",
       dateInput("forecast_date", "Select Forecast Date", 
                 value = Sys.Date(), 
                 min = as.Date("2024-06-01"), 
@@ -77,13 +77,13 @@ ui <- dashboardPage(
     # CheckboxInput with tooltip
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Check if no fungicide has been applied recently.",
+      title = "Forecasts will only be made if no fungicide has been used in the past two weeks.",
       checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE)
     ),
     
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Select if the crop is in the V10-R3 growth stage.",
+      title = "Forecasts will only be made if the crop you are scouting is between V10 and R3 growth stages.",
       checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE)
     ),
     
@@ -139,7 +139,7 @@ ui <- dashboardPage(
         class = "collapse",
         style = "border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 3px;",
         tags$h4("Instructions", style = "margin-top: 0;"),
-        tags$p("1. Use the Action Threshold slider to set the desired risk level."),
+        tags$p("1. Use the Action Threshold slider to set the risk threshold. Leave the slider at the default threshold unless you have informed reason to believe it should be adjusted."),
         tags$p("2. Select a station from the dropdown menu."),
         tags$p("3. Pick a forecast date to view the risk data."),
         tags$p("4. Check if no fungicide has been applied in the last 14 days."),
@@ -247,7 +247,12 @@ server <- function(input, output, session) {
   # Render the leaflet map with an initial layer control
   output$mymap <- renderLeaflet({
     leaflet() %>%
-      addTiles() %>%
+      addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+      addProviderTiles("USGS.USTopo", group = "Topographic") %>%  # USGS Topographic
+      addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%  # Esri Imagery
+      addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
+      #addProviderTiles("Esri.WorldTerrain", group = "Terrain") %>%
+      #addTiles() %>%
       setView(lng = -89.75, lat = 44.76, zoom = 7) %>%
       addPolygons(
         data = county_boundaries,
@@ -260,9 +265,12 @@ server <- function(input, output, session) {
         popup = ~NAME
       ) %>%
       addLayersControl(
+        baseGroups = c("OpenStreetMap", "Topographic", "CartoDB Positron", #"Terrain",
+                       "Esri Imagery"),
         overlayGroups = c("County Boundaries"),
         options = layersControlOptions(collapsed = TRUE)
-      ) 
+      ) %>%
+      addTiles(group = "OpenStreetMap") 
   })
   
   # Update map based on selected station
@@ -289,7 +297,7 @@ server <- function(input, output, session) {
       
       leafletProxy("mymap") %>%
         clearMarkers() %>%  # Clear existing markers
-        setView(lng = lon_value, lat = lat_value, zoom = 9) %>%  # Different zoom level
+        setView(lng = lon_value, lat = lat_value, zoom = 10) %>%  # Different zoom level
         addMarkers(
           lng = lon_value,
           lat = lat_value,
@@ -475,17 +483,12 @@ server <- function(input, output, session) {
           file.path(temp_dir, "report_template.Rmd"),
           output_file = file,
           params = list(
-            selected_station = station_code,
+            #selected_station = station_code,
             station_address = station_address,
             forecast_date = input$forecast_date,
             threshold = input$risk_threshold,
             fungicide = input$fungicide_applied,
             growth_stage = input$crop_growth_stage,
-            weather_summary = if (!is.null(weather_data())) {
-              summary(weather_data()$airtemp)
-            } else {
-              "No weather data available."
-            },
             tarspot = tarspot_7d
           )
         )

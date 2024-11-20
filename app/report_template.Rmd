@@ -1,11 +1,10 @@
 ---
-title: "Tar Spot Forecast Report"
+title: "Tar Spot Forecast Risk Report"
 output: 
   pdf_document:
     includes:
       in_header: header.tex
 params:
-  selected_station: NULL
   station_address: NULL
   forecast_date: NULL
   threshold: NULL
@@ -19,12 +18,11 @@ params:
 ![PlantPath](PLANPATHCO_color-flush.png){ width=50% }
 
 ## Summary of Inputs
-- **Selected Station**: `r params$selected_station`
 - **Station Address**: `r params$station_address`
 - **Forecast Date**: `r params$forecast_date`
 - **Risk Threshold**: `r params$threshold`%
-- **Fungicide Applied in Last 14 Days**: `r ifelse(params$fungicide, "Yes", "No")`
-- **Growth Stage Within V10-R3**: `r ifelse(params$growth_stage, "Yes", "No")`
+- **Fungicide Applied in Last 14 Days?**: `r ifelse(params$fungicide, "Yes", "No")`
+- **Growth Stage Within V10-R3?**: `r ifelse(params$growth_stage, "Yes", "No")`
 
 ## Tar Spot Data Summary
 ```{r, echo=FALSE}
