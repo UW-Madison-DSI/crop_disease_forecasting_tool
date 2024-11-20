@@ -143,13 +143,16 @@ ui <- dashboardPage(
         class = "collapse",
         style = "border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 3px;",
         tags$h4("User Guide", style = "margin-top: 0;"),
-        tags$p("1. Use the Action Threshold slider to set the risk threshold. Leave the slider at the default threshold unless you have informed reason to believe it should be adjusted."),
+        tags$p("1. Use the Action Threshold slider to set the risk threshold. Leave the slider at the research-based default 
+               threshold unless you have informed reason to believe it should be adjusted."),
         tags$p("2. Select a station from the dropdown menu."),
         tags$p("3. Pick a forecast date to view the risk data."),
         tags$p("4. Check if no fungicide has been applied in the last 14 days."),
         tags$p("5. Ensure the crop is within the V10-R3 growth stage."),
         tags$p("6. Push Run the Model to see the map and risk trend for insights."),
-        tags$p("7. Download Report on the selected station by pushing the button at the top of the map.")
+        tags$p("7. You can also download a PDF report of the forecast obtained for your location of interest 
+                by pushing the “Download Report” button 
+               that will appear after the forecast is obtained.")
       )
     )
   ),
