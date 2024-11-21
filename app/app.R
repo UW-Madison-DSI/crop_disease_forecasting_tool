@@ -371,7 +371,7 @@ server <- function(input, output, session) {
         .[1]
       
       # Combine Risk Class and formatted Risk into a single message
-      paste("Tar Spot Risk is", most_recent_risk_class, most_recent_risk, '%')
+      paste("The Risk of Tar Spot is ", most_recent_risk_class,': ', most_recent_risk, '%')
     } else {
       "No data available"
     }
@@ -463,6 +463,28 @@ server <- function(input, output, session) {
     \\pagestyle{watermark}
     \\AtBeginDocument{\\thispagestyle{watermark}}
     ', file = "header.tex")
+  
+  #cat('\\usepackage{fancyhdr}
+    #    \\usepackage[margin=1in]{geometry}
+    #    \\usepackage{graphicx}
+    #    \\usepackage{color}
+    #    \\usepackage{amsmath}
+    #    \\usepackage{background}
+        
+    #    \\backgroundsetup{
+    #      scale=1,
+    #      color=gray,
+    #      opacity=0.1,
+    #      angle=0,
+    #      contents={\\textcolor{gray!30}{\\fontsize{60}{70}\\selectfont\\sffamily\\bfseries UW-Madison}}
+    #    }
+        
+    #    \\pagestyle{fancy}
+    #    \\fancyhf{}
+    #    \\renewcommand{\\headrulewidth}{0pt}
+        
+    #', file = "header.tex")
+
           
   # Define download handler
   output$download_report <- downloadHandler(
