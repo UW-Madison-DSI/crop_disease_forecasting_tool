@@ -17,12 +17,13 @@ library(plotly)
 source("functions/stations.R")
 source("functions/logic.R")
 source("functions/auxiliar_functions.R")
+source("functions/instructions.R")
 
 
 tool_title <- "Agricultural Forecasting and Advisory System"
 
 
-############# Settings
+####################################################################### Settings
 station_choices <- c("All" = "all", setNames(names(stations), 
                       sapply(stations, function(station) station$name)))
 
@@ -31,27 +32,11 @@ condition_text <- "input.custom_station_code != 'all' && input.fungicide_applied
 
 widhts <- 450
 
-
-###### Wisconsin
-## County
+###### AOI: Wisconsin
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 
-## Bounds
-wi_bounds <- list(
-  min_lat = 42.49192,
-  max_lat = 47.08009,
-  min_lon = -92.88943,
-  max_lon = -86.24955
-)
 
-# Function to ensure location is within bounds
-ensure_within_bounds <- function(lat, lon, bounds) {
-  lat <- max(min(lat, bounds$max_lat), bounds$min_lat)
-  lon <- max(min(lon, bounds$max_lon), bounds$min_lon)
-  return(c(lat, lon))
-}
-
-############# Define UI
+############################################# Define UI
 ui <- dashboardPage(
 
   title = tool_title,
@@ -71,114 +56,24 @@ ui <- dashboardPage(
       )
     ),
     
-    tags$div(
-      `data-toggle` = "tooltip", 
-      title = "The action threshold defaults to a research-based appropriate level. You are encouraged to leave the threshold at the default.",
-      sliderInput("risk_threshold", "Action Threshold (%)", 
-                  min = 20, max = 50, value = 35, step = 1)
-    ),
-    
-    # SelectInput with tooltip
+    # Control panel FROM functions/instructions.R
+    risk_buttom,
     tags$div(
       `data-toggle` = "tooltip", 
       title = "Choose a weather station to view disease risk at this location.",
       selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
     ),
     
-    # DateInput with tooltip
-    tags$div(
-      `data-toggle` = "tooltip", 
-      title = "Pick a date for which you would like a disease risk forecast.",
-      dateInput("forecast_date", "Select Forecast Date", 
-                value = Sys.Date(), 
-                min = as.Date("2024-06-01"), 
-                max = Sys.Date())
-    ),
+    forecast_date_buttom,
+    fungicide_applied_buttom,
+    crop_growth_stage_buttom,
+    run_model_buttom,
     
-    # CheckboxInput with tooltip
-    tags$div(
-      `data-toggle` = "tooltip", 
-      title = "Check if no fungicide has been applied recently; Forecasts will only be made if no fungicide has been used in the past two weeks.",
-      checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE)
-    ),
-    
-    tags$div(
-      `data-toggle` = "tooltip", 
-      title = "Check Check if no fungicide has been applied recently; Forecasts will only be made if the crop you are scouting is between V10 and R3 growth stages.",
-      checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE)
-    ),
-    
-    tags$div(
-      actionButton(
-        inputId = "run_model",
-        label = "Run Forecast",
-        style = "
-              background-color: #FFD700; /* Yellow color */
-              color: black; 
-              font-type: bolt;
-              font-size: 16px; 
-              margin-top: 30px; 
-              padding: 10px; 
-              border-radius: 5px; 
-              border: none; 
-              cursor: pointer; 
-              text-align: center;
-              margin-left: auto; 
-              margin-right: auto;"
-      )
-    ),
-    
-    tags$p(
-          "Need help getting started? Click below for step-by-step instructions tailored to this app.",
-          style = "
-            color: gray; 
-            font-weight: sans; /* Corrected to font-weight */ 
-            font-size: 12px; 
-            margin-top: 35px; 
-            width: 300px; /* Adjust the width as needed */
-            margin-left: auto; 
-            margin-right: auto;
-          "
-    ),
-    
-    
-    # Collapsible Instructions Panel
-    tags$div(
-      style = "margin-top: 20px;",
-      tags$div(
-        id = "triangleToggle",
-        style = "
-                  width: 0; 
-                  height: 0; 
-                  border-left: 15px solid transparent; 
-                  border-right: 15px solid transparent; 
-                  border-top: 15px solid #007bff; 
-                  cursor: pointer; 
-                  margin: 0 auto;
-                ",
-        `data-toggle` = "collapse",
-        `data-target` = "#collapseInstructions"
-      ),
-      tags$div(
-        id = "collapseInstructions",
-        class = "collapse",
-        style = "border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 3px;",
-        tags$h4("User Guide", style = "border: 1px solid #ccc; padding: 10px; margin-top: 0; 
-                border-radius: 3px;"),
-        tags$p("1. Use the Action Threshold slider to set the risk threshold. 
-                Leave the slider at the research-based default 
-               threshold unless you have informed reason to believe 
-               it should be adjusted."),
-        tags$p("2. Select a station from the dropdown menu."),
-        tags$p("3. Pick a forecast date to view the risk data."),
-        tags$p("4. Check if no fungicide has been applied in the last 14 days."),
-        tags$p("5. Ensure the crop is within the V10-R3 growth stage."),
-        tags$p("6. Push Run the Model to see the map and risk trend for insights."),
-        tags$p("7. You can also download a PDF report of the forecast obtained for your location 
-                of interest by pushing the “Download Report” button 
-                that will appear after the forecast is obtained.")
-      )
-    )
+    # Instructions panel and section FROM functions/instructions.R
+    instructions_section,
+    instructions_panel,
+    instructions_block,
+    contact_info
   ),
   
   dashboardBody(
@@ -448,6 +343,7 @@ server <- function(input, output, session) {
     }
   })
   
+  ################# Define download handler and generates PDF report based on the Latex header
   # Create LaTeX header file - fix escape sequences
   cat('\\usepackage{fancyhdr}
     \\usepackage[margin=1in]{geometry}
@@ -463,80 +359,35 @@ server <- function(input, output, session) {
     \\pagestyle{watermark}
     \\AtBeginDocument{\\thispagestyle{watermark}}
     ', file = "header.tex")
-  
-  #cat('\\usepackage{fancyhdr}
-    #    \\usepackage[margin=1in]{geometry}
-    #    \\usepackage{graphicx}
-    #    \\usepackage{color}
-    #    \\usepackage{amsmath}
-    #    \\usepackage{background}
-        
-    #    \\backgroundsetup{
-    #      scale=1,
-    #      color=gray,
-    #      opacity=0.1,
-    #      angle=0,
-    #      contents={\\textcolor{gray!30}{\\fontsize{60}{70}\\selectfont\\sffamily\\bfseries UW-Madison}}
-    #    }
-        
-    #    \\pagestyle{fancy}
-    #    \\fancyhf{}
-    #    \\renewcommand{\\headrulewidth}{0pt}
-        
-    #', file = "header.tex")
 
-          
-  # Define download handler
   output$download_report <- downloadHandler(
     filename = function() {
-      paste0("TarSpotForecast_Report_", input$custom_station_code, "_", Sys.Date(), ".pdf")
+      paste0("UWMadison_TarSpotForecast_Report_", input$custom_station_code, "_", Sys.Date(), ".pdf")
     },
     content = function(file) {
-      # Create temporary directory for report generation
+      # Create temporary directory
       temp_dir <- tempdir()
       
-      # Copy required files to temp directory
-      files_to_copy <- list(
-        rmd = c(from = "report_template.Rmd", to = file.path(temp_dir, "report_template.Rmd")),
-        header = c(from = "header.tex", to = file.path(temp_dir, "header.tex")),
-        logo1 = c(from = "logos/OPENSOURDA_color-flush.png", to = file.path(temp_dir, "OPENSOURDA_color-flush.png")),
-        logo2 = c(from = "logos/PLANPATHCO_color-flush.png", to = file.path(temp_dir, "PLANPATHCO_color-flush.png"))
-      )
+      # Copy required files
+      copy_report_files(temp_dir)
       
-      # Copy all files and check for errors
-      for (item in files_to_copy) {
-        if (!file.copy(item["from"], item["to"], overwrite = TRUE)) {
-          stop(paste("Failed to copy file:", item["from"]))
-        }
-      }
-      
-      # Prepare Tar Spot data with error handling
-      if (!is.null(weather_data())) {
-        tarspot_7d <- weather_data()$tarspot %>%
-          mutate(
-            Risk = round(Risk, 2),
-            date_day = as.Date(date_day, format = "%Y-%m-%d") + 1
-          )
-      } else {
-        stop("Weather data is not available")
-      }
+      # Prepare Tar Spot data
+      tarspot_7d <- prepare_tarspot_data(weather_data())
       
       # Get station information
-      station_code <- input$custom_station_code
-      if (!station_code %in% names(stations)) {
-        stop("Invalid station code")
-      }
-      station_info <- stations[[station_code]]
+      station_address <- get_station_address(input$custom_station_code, stations)
       
-      # Construct station address
-      station_address <- paste(
-        station_info$location,
-        station_info$region,
-        station_info$state,
-        sep = ", "
+      # Prepare report parameters
+      report_params <- list(
+        station_address = station_address,
+        forecast_date = input$forecast_date,
+        threshold = input$risk_threshold,
+        fungicide = input$fungicide_applied,
+        growth_stage = input$crop_growth_stage,
+        tarspot = tarspot_7d
       )
       
-      # Render the report with error handling
+      # Render the report
       tryCatch({
         rmarkdown::render(
           file.path(temp_dir, "report_template.Rmd"),
@@ -556,6 +407,7 @@ server <- function(input, output, session) {
       })
     }
   )
+  
   
 }
 

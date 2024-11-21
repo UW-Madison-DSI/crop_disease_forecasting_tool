@@ -164,8 +164,6 @@ plot_trend1 <- function(df, station){
     )
 }
 
-library(ggplot2)
-library(scales)
 
 plot_trend <- function(df, station){
   ggplot(df, aes(x = Date, y = Risk)) +
@@ -192,3 +190,56 @@ plot_trend <- function(df, station){
       axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
     )+guides(color = "none")  # Remove the color legend
 }
+
+############################################################ Functions for thhe PDF
+# Function to ensure location is within bounds
+ensure_within_bounds <- function(lat, lon, bounds) {
+  lat <- max(min(lat, bounds$max_lat), bounds$min_lat)
+  lon <- max(min(lon, bounds$max_lon), bounds$min_lon)
+  return(c(lat, lon))
+}
+
+# Function to copy required files to a temporary directory
+copy_report_files <- function(temp_dir) {
+  files_to_copy <- list(
+    rmd = c(from = "report_template.Rmd", to = file.path(temp_dir, "report_template.Rmd")),
+    header = c(from = "header.tex", to = file.path(temp_dir, "header.tex")),
+    logo1 = c(from = "logos/OPENSOURDA_color-flush.png", to = file.path(temp_dir, "OPENSOURDA_color-flush.png")),
+    logo2 = c(from = "logos/PLANPATHCO_color-flush.png", to = file.path(temp_dir, "PLANPATHCO_color-flush.png"))
+  )
+  
+  for (item in files_to_copy) {
+    if (!file.copy(item["from"], item["to"], overwrite = TRUE)) {
+      stop(paste("Failed to copy file:", item["from"]))
+    }
+  }
+}
+
+# Function to prepare Tar Spot data
+prepare_tarspot_data <- function(weather_data) {
+  if (!is.null(weather_data)) {
+    weather_data$tarspot %>%
+      mutate(
+        Risk = round(Risk, 2),
+        date_day = as.Date(date_day, format = "%Y-%m-%d") + 1
+      )
+  } else {
+    stop("Weather data is not available")
+  }
+}
+
+# Function to get station address
+get_station_address <- function(station_code, stations) {
+  if (!station_code %in% names(stations)) {
+    stop("Invalid station code")
+  }
+  
+  station_info <- stations[[station_code]]
+  paste(
+    station_info$location,
+    station_info$region,
+    station_info$state,
+    sep = ", "
+  )
+}
+
