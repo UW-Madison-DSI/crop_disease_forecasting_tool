@@ -132,7 +132,7 @@ ui <- dashboardPage(
           "Need help getting started? Click below for step-by-step instructions tailored to this app.",
           style = "
             color: gray; 
-            font-weight: bold; /* Corrected to font-weight */ 
+            font-weight: sans; /* Corrected to font-weight */ 
             font-size: 12px; 
             margin-top: 35px; 
             width: 300px; /* Adjust the width as needed */
@@ -184,13 +184,13 @@ ui <- dashboardPage(
   dashboardBody(
     tags$style(HTML("
           .btn-primary {
-            font-weight: bold; /* Makes all buttons with the 'btn-primary' class bold */
+            font-weight: sans; /* Makes all buttons with the 'btn-primary' class bold */
           }
           p {
-            font-weight: bold; /* Makes all paragraphs bold */
+            font-weight: sans; /* Makes all paragraphs bold */
           }
           h2 {
-            font-weight: bold; /* Makes all h2 headings bold */
+            font-weight: sans; /* Makes all h2 headings bold */
           }
         ")
     ),
@@ -215,7 +215,7 @@ ui <- dashboardPage(
                   font-size: 1.5em; 
                   color: black; 
                   text-align: left; 
-                  font-weight: bold; 
+                  font-weight: sans; 
                   margin-bottom: 10px; 
                   margin-left: 20px;
                   padding: 10px;
@@ -234,7 +234,7 @@ ui <- dashboardPage(
       conditionalPanel(
         condition = condition_text,
         box(
-          h2(strong("Tar Spot Risk Trend"), style = "font-size:18px; font-weight: bold;"),
+          h2(strong("Tar Spot Risk Trend"), style = "font-size:18px; font-weight: sans;"),
           plotOutput("risk_trend"),
           textOutput("risk_class_text"),
           width = 12
@@ -535,8 +535,7 @@ server <- function(input, output, session) {
     }
   )
   
-  
-  
 }
 
+################################################ The magic
 shinyApp(ui = ui, server = server)
