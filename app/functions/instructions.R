@@ -16,6 +16,7 @@ instructions_panel <- tags$div(
   )
 )
 
+
 instructions_block <- tags$div(
   id = "collapseInstructions",
   class = "collapse",
@@ -35,6 +36,7 @@ instructions_block <- tags$div(
                 of interest by pushing the “Download Report” button 
                 that will appear after the forecast is obtained.")
 )
+
 
 instructions_section<- tags$p(
   "Need help getting started? Click below for step-by-step instructions tailored to this app.",
@@ -57,12 +59,38 @@ contact_info <- tags$div(
     tags$strong("Contact Information:"),
     style = "font-size: 16px;"
   ),
-  tags$p("For questions or support, please contact:"),
-  tags$ul(
-    tags$li("Maria Oros", tags$a(href = "mailto:maria.oros@wisc.edu", "maria.oros@wisc.edu"))
+  #tags$p("For questions or suggestions please contact:"),
+  tags$div(
+    tags$span(
+      tags$img(src = "https://cdn-icons-png.flaticon.com/512/732/732200.png", 
+               alt = "Email Icon", style = "width: 16px; height: 16px; margin-right: 8px;"),
+      "Open Source Program Office: ",
+      tags$a(href = "mailto:ospo@datascience.wisc.edu", "ospo@datascience.wisc.edu")
+    ),
+    style = "margin-bottom: 10px;"
   ),
-  tags$p("University of Wisconsin-Madison")
+  tags$div(
+    tags$span(
+      tags$img(src = "https://cdn-icons-png.flaticon.com/512/732/732200.png", 
+               alt = "Email Icon", style = "width: 16px; height: 16px; margin-right: 8px;"),
+      "Maria Oros (Data Scientist): ",
+      tags$a(href = "mailto:maria.oros@wisc.edu", "maria.oros@wisc.edu")
+    ),
+    style = "margin-bottom: 10px;"
+  ),
+  tags$div(
+    tags$span(
+      tags$img(src = "https://cdn-icons-png.flaticon.com/512/25/25231.png", 
+               alt = "GitHub Icon", style = "width: 16px; height: 16px; margin-right: 8px;"),
+      "Visit our GitHub repository: ",
+      tags$a(href = "https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git", 
+             "https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git")
+    )
+  )#,
+  #tags$p("University of Wisconsin-Madison, Data Science Institute")
 )
+
+
 
 ##################################################################### Actions
 risk_buttom<-tags$div(
@@ -95,6 +123,7 @@ crop_growth_stage_buttom<-tags$div(
   title = "Check Check if no fungicide has been applied recently; Forecasts will only be made if the crop you are scouting is between V10 and R3 growth stages.",
   checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE)
 )
+
 
 run_model_buttom<-tags$div(
   actionButton(

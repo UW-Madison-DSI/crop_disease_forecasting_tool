@@ -325,6 +325,9 @@ server <- function(input, output, session) {
         theme_void()
     }
     
+    print(tarspot_plot)
+    print(weather_plot)
+    
     # Arrange plots only if both are valid
     if (!is.null(tarspot_plot) && !is.null(weather_plot) && !identical(weather_plot, "Error: 400")) {
       tryCatch({
