@@ -16,7 +16,6 @@ params:
   threshold: NULL
   fungicide: NULL
   growth_stage: NULL
-  weather_summary: NULL
   tarspot: NULL
 ---
 
@@ -29,7 +28,7 @@ params:
 - **No Fungicide Applied in the last 14 days?**: `r ifelse(params$fungicide, "Yes", "No")`
 - **Growth Stage Within V10-R3?**: `r ifelse(params$growth_stage, "Yes", "No")`
 
-## Tar Spot Risk Summary
+## Tar Spot Risk summary
 ```{r, echo=FALSE}
 library(dplyr)
 library(knitr)
@@ -45,7 +44,7 @@ if (!is.null(params$tarspot) && nrow(params$tarspot) > 0) {
   # Render the table
   kable(
     tarspot_table,
-    caption = "Tar Spot Risk in the Seven Days Leading up to the Settled Forecast Date",
+    caption = "Risk Trend in the Seven Days Leading up to the Settled Forecast Date",
     format = "markdown"
   )
 } else {

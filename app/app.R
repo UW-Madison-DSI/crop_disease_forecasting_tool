@@ -64,12 +64,11 @@ ui <- dashboardPage(
       selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
     ),
     
+    # Instructions panel and section FROM functions/instructions.R
     forecast_date_buttom,
     fungicide_applied_buttom,
     crop_growth_stage_buttom,
     run_model_buttom,
-    
-    # Instructions panel and section FROM functions/instructions.R
     instructions_section,
     instructions_panel,
     instructions_block,
@@ -325,9 +324,6 @@ server <- function(input, output, session) {
         theme_void()
     }
     
-    print(tarspot_plot)
-    print(weather_plot)
-    
     # Arrange plots only if both are valid
     if (!is.null(tarspot_plot) && !is.null(weather_plot) && !identical(weather_plot, "Error: 400")) {
       tryCatch({
@@ -410,8 +406,6 @@ server <- function(input, output, session) {
       })
     }
   )
-  
-  
 }
 
 ################################################ The magic
