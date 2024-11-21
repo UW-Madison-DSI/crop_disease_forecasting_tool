@@ -26,7 +26,7 @@ params:
 - **Station Address**: `r params$station_address`
 - **Forecast Date**: `r params$forecast_date`
 - **Risk Threshold**: `r params$threshold`%
-- **Fungicide Applied in Last 14 Days?**: `r ifelse(params$fungicide, "Yes", "No")`
+- **No Fungicide Applied in the last 14 days?**: `r ifelse(params$fungicide, "Yes", "No")`
 - **Growth Stage Within V10-R3?**: `r ifelse(params$growth_stage, "Yes", "No")`
 
 ## Tar Spot Risk Summary
