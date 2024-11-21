@@ -135,7 +135,9 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
       rh_avg = NA,  # Placeholder for relative humidity values
       stringsAsFactors = FALSE
     )
-
+    
+    print(result_df)
+    
     # Process measures to get '60min_relative_humidity_pct_avg'
     for (i in seq_along(data$measures)) {
       measures <- data$measures[[i]]
@@ -170,7 +172,7 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
     daily_rh_above_90$rh_above_90_daily_14d_ma <- rollmean(daily_rh_above_90$hours_rh_above_90,
                                                            k = 14, fill = NA, align = "right")
     
-    print(daily_rh_above_90)
+    print(daily_rh_above_90 %>%arrange(desc(adjusted_date)))
     
     return(list(
       data = result_df,

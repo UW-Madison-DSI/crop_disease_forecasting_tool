@@ -37,12 +37,15 @@ library(knitr)
 if (!is.null(params$tarspot) && nrow(params$tarspot) > 0) {
   # Select specific columns to display
   tarspot_table <- params$tarspot %>%
-    select(Date = date_day, Risk, Risk_Class)
+    select(Date = date_day, 
+           Risk, 
+           Category = Risk_Class)%>%
+    mutate(Risk = scales::percent(Risk*.01, accuracy = 1))
   
   # Render the table
   kable(
     tarspot_table,
-    caption = "Tar Spot Risk in the last 7 days",
+    caption = "Tar Spot Risk in the Seven Days Leading up to the Settled Forecast Date",
     format = "markdown"
   )
 } else {
