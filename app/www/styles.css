@@ -1,14 +1,79 @@
-/* styles.css */
+/* Accessible, Discreet UW-Madison Themed Styles */
+
+/* Main Header */
 .skin-blue .main-header .navbar {
-  background-color: #c5050c;
+  background-color: #3f3f3f; /* Neutral dark gray for a discreet look */
 }
+
+/* Sidebar Background */
 .skin-blue .main-sidebar {
-  background-color: #c5050c;
+  background-color: #4b4b4b; /* Slightly lighter gray for the sidebar */
 }
-.skin-blue .main-sidebar .sidebar-menu>li>a {
+
+/* Sidebar Links */
+.skin-blue .main-sidebar .sidebar-menu > li > a {
+  color: #d9d9d9; /* Soft off-white text for readability */
+}
+
+/* Sidebar Links Hover */
+.skin-blue .main-sidebar .sidebar-menu > li > a:hover {
+  background-color: #606060; /* Medium gray for hover */
+  color: #ffffff; /* Bright white text on hover */
+}
+
+/* Active Sidebar Link */
+.skin-blue .main-sidebar .sidebar-menu > li.active > a {
+  background-color: #757575; /* Light gray to indicate active state */
+  color: #ffffff; /* White text for active link */
+}
+
+/* Header Logo */
+.skin-blue .main-header .logo {
+  background-color: #3f3f3f; /* Neutral dark gray */
+  color: #ffffff; /* White text for the logo */
+  border-bottom: 2px solid #757575; /* Subtle border to add structure */
+}
+
+/* Header Logo on Hover */
+.skin-blue .main-header .logo:hover {
+  background-color: #606060; /* Slightly lighter gray on hover */
   color: #ffffff;
 }
-.skin-blue .main-sidebar .sidebar-menu>li>a:hover {
-  background-color: #9e1111;
+
+/* Navbar Dropdown */
+.skin-blue .main-header .navbar .nav > li > a {
+  color: #d9d9d9; /* Soft off-white text in navbar */
+}
+
+/* Navbar Dropdown Hover */
+.skin-blue .main-header .navbar .nav > li > a:hover {
+  background-color: #606060; /* Medium gray for hover */
   color: #ffffff;
+}
+
+/* Footer Styling */
+.main-footer {
+  background-color: #3f3f3f; /* Neutral dark gray for footer */
+  color: #d9d9d9; /* Soft off-white text */
+  border-top: 1px solid #757575; /* Subtle border for footer */
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: #4b4b4b; /* Medium gray for buttons */
+  border-color: #3f3f3f; /* Darker gray for border */
+}
+
+.btn-primary:hover {
+  background-color: #606060; /* Slightly lighter gray on hover */
+  border-color: #4b4b4b; /* Medium gray border */
+}
+
+/* Additional Links or Text */
+a {
+  color: #5a9bd5; /* Accessible blue for links */
+}
+
+a:hover {
+  color: #2a5599; /* Darker blue for hover */
 }

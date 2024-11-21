@@ -14,7 +14,7 @@ source("functions/auxiliar_functions.R")
 
 base_url <- 'https://wisconet.wisc.edu'
 url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
-
+tarspot_api_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
 
 ################################################################ Function to get weather data from Wisconet API
 api_call_wisconet_data_daily <- function(station, start_time, end_time) {
@@ -93,8 +93,6 @@ api_call_wisconet_data_daily <- function(station, start_time, end_time) {
   }
 }
 
-
-
 # Function to fetch and plot data
 fetch_at <- function(station, start_time, end_time) {
   
@@ -167,7 +165,7 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
       summarise(hours_rh_above_90 = sum(rh_night_above_90, na.rm = TRUE)) %>%
       ungroup()
     
-    print("----------------------- +++++ --- +++++ ---------------------------------")
+    #print("----------------------- +++++ --- +++++ ---------------------------------")
     # Calculate 14-day rolling mean for RH >= 90 hours
     daily_rh_above_90$rh_above_90_daily_14d_ma <- rollmean(daily_rh_above_90$hours_rh_above_90,
                                                            k = 14, fill = NA, align = "right")
@@ -269,8 +267,6 @@ get_risk_probability <- function(station_id, station_name,
 #                                 mat_30dma, max_rh_30dma,
 #                                 th_rh90_14ma, url_ts) {
   
-#  base_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
-  
 #  params <- list(
 #    growth_stage = 'yes',
 #    fungicide_applied = 'no',
@@ -280,7 +276,7 @@ get_risk_probability <- function(station_id, station_name,
 #    tot_nhrs_rh90_14d_ma = th_rh90_14ma
 #  )
   
-#  response <- POST(url = base_url, query = params)
+#  response <- POST(url = tarspot_api_url, query = params)
 
   # Check if the request was successful
 #  if (status_code(response) == 200) {
@@ -317,16 +313,12 @@ get_risk_probability <- function(station_id, station_name,
 
 ###################################### Prpeare the relevant data for Tarspot
 call_tarspot_for_station <- function(station_id, station_name, risk_threshold, current){
-  today_ct <- with_tz(current, tzone = "America/Chicago")
-  
-  mo <- 6 # historical data in terms of num of months
-  out <- from_ct_to_gmt(today_ct, mo)
+  today_ct <- with_tz(current, tzone = "America/Chicago") #not today exactly but the curent date given by the user in time zone
+  out <- from_ct_to_gmt(today_ct, 6) # 6 mo backwards
   
   # Convert both dates to Unix timestamps in GMT
   start_time <- out$start_time_gmt
   end_time <- out$end_time_gmt
-  
-  
   
   rh_above_90_daily <- fetch_rh_above_90_daily(station_id,start_time, end_time)
   rh_above_90_daily1 <- rh_above_90_daily %>% mutate(date_day = as.Date(adjusted_date),
@@ -344,22 +336,22 @@ call_tarspot_for_station <- function(station_id, station_name, risk_threshold, c
   mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
   max_rh_30dma <- at$rh_max_30d_ma[1]
   
-  print("----------->>> here in rh above")
-  print(head(rh_above_90_daily1,10))
+  #print("----------->>> here in rh above")
+  #print(head(rh_above_90_daily1,10))
   
-  print("----------------------------->> Daily variables, Input API")
-  print(at0)
+  #print("----------------------------->> Daily variables, Input API")
+  #print(at0)
   
-  print("----------------------------->> Merge of the datasets")
-  cat(colnames(rh_above_90_daily1))
-  print("--------")
-  cat(colnames(at0))
+  #print("----------------------------->> Merge of the datasets")
+  #cat(colnames(rh_above_90_daily1))
+  #print("--------")
+  #cat(colnames(at0))
 
   merged_ds <- merge(x = rh_above_90_daily1,
                      y = at0, 
                      by.x = "date_day", 
                      by.y = "date_day") %>% 
-    mutate(date_day = date_day + 1) %>%
+    mutate(date_day = date_day + 1) %>% #the weather data is used to predict the next day
     arrange(desc(date_day)) %>% 
     select(c('date_day',
              'rh_above_90_daily_14d_ma', 

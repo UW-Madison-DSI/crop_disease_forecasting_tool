@@ -12,41 +12,52 @@ library(tigris)  # For county data
 library(sf)      # For handling spatial data
 library(gridExtra)
 library(plotly)
-#tinytex::tlmgr_update()
-#tinytex::tlmgr_install("background")
 
-#install.packages("shinyBS")
-#library(shinyBS)
-#install.packages("rmarkdown")
-#install.packages("tinytex")
-#library(rmarkdown)
-#library(tinytex)
-#install.packages(c("mapview", "webshot2", "rmarkdown"))
-#library(webshot2)
-#library(webshot)
 
 source("functions/stations.R")
 source("functions/logic.R")
 source("functions/auxiliar_functions.R")
 
 
+tool_title <- "Agricultural Forecasting and Advisory System"
+
+
 ############# Settings
 station_choices <- c("All" = "all", setNames(names(stations), 
                       sapply(stations, function(station) station$name)))
+
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
 condition_text <- "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model"
-# Load county data for Wisconsin
-county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
-
 
 widhts <- 450
 
+
+###### Wisconsin
+## County
+county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
+
+## Bounds
+wi_bounds <- list(
+  min_lat = 42.49192,
+  max_lat = 47.08009,
+  min_lon = -92.88943,
+  max_lon = -86.24955
+)
+
+# Function to ensure location is within bounds
+ensure_within_bounds <- function(lat, lon, bounds) {
+  lat <- max(min(lat, bounds$max_lat), bounds$min_lat)
+  lon <- max(min(lon, bounds$max_lon), bounds$min_lon)
+  return(c(lat, lon))
+}
+
 ############# Define UI
 ui <- dashboardPage(
-  title = "Tar Spot Forecasting App (Beta)",
+
+  title = tool_title,
   
   dashboardHeader(
-    title = "Tar Spot Forecasting App (Beta)",
+    title = tool_title,
     titleWidth = widhts
   ),
   
@@ -60,13 +71,9 @@ ui <- dashboardPage(
       )
     ),
     
-    #tags$head(
-    #  tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")
-    #),
-    
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Adjust this value to set the threshold for triggering actions.",
+      title = "The action threshold defaults to a research-based appropriate level. You are encouraged to leave the threshold at the default.",
       sliderInput("risk_threshold", "Action Threshold (%)", 
                   min = 20, max = 50, value = 35, step = 1)
     ),
@@ -74,14 +81,14 @@ ui <- dashboardPage(
     # SelectInput with tooltip
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Choose a station to view its risk data.",
-      selectInput("custom_station_code", "Please Select a Station", choices = station_choices)
+      title = "Choose a weather station to view disease risk at this location.",
+      selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
     ),
     
     # DateInput with tooltip
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Pick a date to forecast risk.",
+      title = "Pick a date for which you would like a disease risk forecast.",
       dateInput("forecast_date", "Select Forecast Date", 
                 value = Sys.Date(), 
                 min = as.Date("2024-06-01"), 
@@ -91,43 +98,47 @@ ui <- dashboardPage(
     # CheckboxInput with tooltip
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Check if no fungicide has been applied recently.",
+      title = "Check if no fungicide has been applied recently; Forecasts will only be made if no fungicide has been used in the past two weeks.",
       checkboxInput("fungicide_applied", "No Fungicide in the last 14 days?", value = FALSE)
     ),
     
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Select if the crop is in the V10-R3 growth stage.",
+      title = "Check Check if no fungicide has been applied recently; Forecasts will only be made if the crop you are scouting is between V10 and R3 growth stages.",
       checkboxInput("crop_growth_stage", "Growth stage within V10-R3?", value = FALSE)
     ),
     
     tags$div(
       actionButton(
         inputId = "run_model",
-        label = "Run Forecasting Model",
+        label = "Run Forecast",
         style = "
               background-color: #FFD700; /* Yellow color */
               color: black; 
+              font-type: bolt;
               font-size: 16px; 
+              margin-top: 30px; 
               padding: 10px; 
               border-radius: 5px; 
               border: none; 
               cursor: pointer; 
-              text-align: center;"
+              text-align: center;
+              margin-left: auto; 
+              margin-right: auto;"
       )
     ),
     
     tags$p(
-          "How to use this app? Click below to see the instructions.",
+          "Need help getting started? Click below for step-by-step instructions tailored to this app.",
           style = "
-        color: gray; 
-        font-family: sans-serif; 
-        font-size: 12px; 
-        margin-top: 35px; 
-        width: 300px; /* Adjust the width as needed */
-        margin-left: auto; 
-        margin-right: auto;
-      "
+            color: gray; 
+            font-weight: sans; /* Corrected to font-weight */ 
+            font-size: 12px; 
+            margin-top: 35px; 
+            width: 300px; /* Adjust the width as needed */
+            margin-left: auto; 
+            margin-right: auto;
+          "
     ),
     
     
@@ -137,14 +148,14 @@ ui <- dashboardPage(
       tags$div(
         id = "triangleToggle",
         style = "
-          width: 0; 
-          height: 0; 
-          border-left: 15px solid transparent; 
-          border-right: 15px solid transparent; 
-          border-top: 15px solid #007bff; 
-          cursor: pointer; 
-          margin: 0 auto;
-        ",
+                  width: 0; 
+                  height: 0; 
+                  border-left: 15px solid transparent; 
+                  border-right: 15px solid transparent; 
+                  border-top: 15px solid #007bff; 
+                  cursor: pointer; 
+                  margin: 0 auto;
+                ",
         `data-toggle` = "collapse",
         `data-target` = "#collapseInstructions"
       ),
@@ -152,19 +163,38 @@ ui <- dashboardPage(
         id = "collapseInstructions",
         class = "collapse",
         style = "border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 3px;",
-        tags$h4("Instructions", style = "margin-top: 0;"),
-        tags$p("1. Use the Action Threshold slider to set the desired risk level."),
+        tags$h4("User Guide", style = "border: 1px solid #ccc; padding: 10px; margin-top: 0; 
+                border-radius: 3px;"),
+        tags$p("1. Use the Action Threshold slider to set the risk threshold. 
+                Leave the slider at the research-based default 
+               threshold unless you have informed reason to believe 
+               it should be adjusted."),
         tags$p("2. Select a station from the dropdown menu."),
         tags$p("3. Pick a forecast date to view the risk data."),
         tags$p("4. Check if no fungicide has been applied in the last 14 days."),
         tags$p("5. Ensure the crop is within the V10-R3 growth stage."),
         tags$p("6. Push Run the Model to see the map and risk trend for insights."),
-        tags$p("7. Download Report on the selected station by pushing the button at the top of the map.")
+        tags$p("7. You can also download a PDF report of the forecast obtained for your location 
+                of interest by pushing the “Download Report” button 
+                that will appear after the forecast is obtained.")
       )
     )
   ),
   
   dashboardBody(
+    tags$style(HTML("
+          .btn-primary {
+            font-weight: sans; /* Makes all buttons with the 'btn-primary' class bold */
+          }
+          p {
+            font-weight: sans; /* Makes all paragraphs bold */
+          }
+          h2 {
+            font-weight: sans; /* Makes all h2 headings bold */
+          }
+        ")
+    ),
+    
     fluidRow(
       conditionalPanel(
         condition = condition_text,
@@ -182,17 +212,17 @@ ui <- dashboardPage(
         div(
           textOutput("risk_label"),
           style = "
-          font-size: 1.5em; 
-          color: black; 
-          text-align: left; 
-          font-weight: bold; 
-          margin-bottom: 10px; 
-          margin-left: 20px;
-          padding: 10px;
-          border: 2px solid dark;
-          border-radius: 5px;
-          background-color: #f9f9f9;
-          box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);"
+                  font-size: 1.5em; 
+                  color: black; 
+                  text-align: left; 
+                  font-weight: sans; 
+                  margin-bottom: 10px; 
+                  margin-left: 20px;
+                  padding: 10px;
+                  border: 2px solid dark;
+                  border-radius: 5px;
+                  background-color: #f9f9f9;
+                  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);"
         )
       ),
       box(
@@ -204,7 +234,7 @@ ui <- dashboardPage(
       conditionalPanel(
         condition = condition_text,
         box(
-          h2(strong("Tar Spot Risk Trend"), style = "font-size:18px;"),
+          h2(strong("Tar Spot Risk Trend"), style = "font-size:18px; font-weight: sans;"),
           plotOutput("risk_trend"),
           textOutput("risk_class_text"),
           width = 12
@@ -221,7 +251,7 @@ ui <- dashboardPage(
   )
 )
 
-# Define server logic
+################################################ Define server logic
 server <- function(input, output, session) {
   
   # Reactive expression to get the selected station data or all stations
@@ -243,14 +273,10 @@ server <- function(input, output, session) {
       current <- input$forecast_date  # Access the selected date
       
       today_ct <- with_tz(current, tzone = "America/Chicago")
-      mo <- 6
-      out <- from_ct_to_gmt(today_ct, mo)
+      out <- from_ct_to_gmt(today_ct, 6) # 6 mo
       start_time <- out$start_time_gmt
       end_time <- out$end_time_gmt
       result <- call_tarspot_for_station(station_code, station$name, risk_threshold, today_ct)
-      
-      print(result)
-      
       airtemp <- api_call_wisconet_data_daily(station_code, start_time, end_time)
       return(list(tarspot = result, airtemp = airtemp))
     } else {
@@ -261,7 +287,12 @@ server <- function(input, output, session) {
   # Render the leaflet map with an initial layer control
   output$mymap <- renderLeaflet({
     leaflet() %>%
-      addTiles() %>%
+      addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+      addProviderTiles("USGS.USTopo", group = "Topographic") %>%  # USGS Topographic
+      addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%  # Esri Imagery
+      addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
+      #addProviderTiles("Esri.WorldTerrain", group = "Terrain") %>%
+      #addTiles() %>%
       setView(lng = -89.75, lat = 44.76, zoom = 7) %>%
       addPolygons(
         data = county_boundaries,
@@ -274,23 +305,48 @@ server <- function(input, output, session) {
         popup = ~NAME
       ) %>%
       addLayersControl(
+        baseGroups = c("OpenStreetMap", "Topographic", "CartoDB Positron", #"Terrain",
+                       "Esri Imagery"),
         overlayGroups = c("County Boundaries"),
         options = layersControlOptions(collapsed = TRUE)
-      ) 
+      ) %>%
+      addTiles(group = "OpenStreetMap") 
   })
   
   # Update map based on selected station
   observe({
+    station_code <- input$custom_station_code
     station_data <- selected_station_data()
-    leafletProxy("mymap") %>% clearMarkers()
-    for (station_code in names(station_data)) {
-      station <- station_data[[station_code]]
+    if (station_code == "all"){
+      for (station_code in names(station_data)) {
+        #seems like i could compute the risk forecasting here for all stations
+        station <- station_data[[station_code]]
+        
+        leafletProxy("mymap") %>%
+          addMarkers(lng = station$longitude, lat = station$latitude,
+                     popup = paste0("<strong> Station: ", station$name, "</strong><br>",
+                                    "Location: ", station$location, "<br>",
+                                    "Region: ", station$region, "<br>",
+                                    "State: ", station$state))
+      }
+    }else{
+      station <- stations[[station_code]]
+      lon_value <- station$longitude
+      lat_value <- station$latitude
+      
       leafletProxy("mymap") %>%
-        addMarkers(lng = station$longitude, lat = station$latitude,
-                   popup = paste0("<strong>", station$name, "</strong><br>",
-                                  station$location, "<br>",
-                                  "Region: ", station$region, "<br>",
-                                  "State: ", station$state))
+        clearMarkers() %>%  # Clear existing markers
+        setView(lng = lon_value, lat = lat_value, zoom = 15) %>%  # Different zoom level
+        addMarkers(
+          lng = lon_value,
+          lat = lat_value,
+          popup = paste0(
+            "<strong>", station$name, "</strong><br>",
+            station$location, "<br>",
+            "Region: ", station$region, "<br>",
+            "State: ", station$state
+          )
+        )
     }
   })
   
@@ -320,13 +376,7 @@ server <- function(input, output, session) {
       "No data available"
     }
   })
-  
-  
-  #output$current_date <- renderText({
-  #  current <- input$forecast_date
-  #  paste("")
-  #})
-  
+
   output$station_info <- renderText({
     station_code <- input$custom_station_code
     if (station_code == "all") {
@@ -334,8 +384,10 @@ server <- function(input, output, session) {
              Please select one to see the risk of Tar Spot. 
              If you applied a fungicide in the last 14 days to your crop, we cannot estimate a probability of Tar Spot.")
     } else {
+      env <- Sys.getenv("test")
+      
       station <- stations[[station_code]]
-      paste("You have selected", station$name, "in", station$state)
+      paste("You have selected ", station$name, "Station.")
     }
   })
   
@@ -378,47 +430,40 @@ server <- function(input, output, session) {
         theme_void()
     }
     
-    print(class(tarspot_plot))
-    print(class(weather_plot))
-    
     # Arrange plots only if both are valid
     if (!is.null(tarspot_plot) && !is.null(weather_plot) && !identical(weather_plot, "Error: 400")) {
       tryCatch({
-        print("here 1")
         grid.arrange(tarspot_plot, weather_plot, ncol = 2)
       }, error = function(e) {
-        print("here 2")
         message("An error occurred while arranging the plots: ", e$message)
       })
     } else if (!is.null(tarspot_plot)) {
       # Display only tarspot plot
-      print("here 3")
       grid.arrange(tarspot_plot, ncol = 1)
     } else if (!is.null(weather_plot) && !identical(weather_plot, "Error: 400")) {
       # Display only weather plot
-      print("here 4")
       grid.arrange(weather_plot, ncol = 1)
     } else {
-      print("here 5")
       message("No valid plots to display.")
     }
   })
   
-  # Create header.tex
   # Create LaTeX header file - fix escape sequences
   cat('\\usepackage{fancyhdr}
-\\usepackage[margin=1in]{geometry}
-\\usepackage{graphicx}
-\\fancypagestyle{watermark}{
-  \\fancyfootoffset{0pt}
-  \\renewcommand{\\headrulewidth}{0pt}
-  \\fancyhf{}
-  \\cfoot{\\textcolor{gray!30}{\\scalebox{4}{TarSpot Forecast}}}
-}
-\\pagestyle{watermark}
-\\AtBeginDocument{\\thispagestyle{watermark}}
-', file = "header.tex", sep = "")
-  
+    \\usepackage[margin=1in]{geometry}
+    \\usepackage{graphicx}
+    \\usepackage{color}
+    
+    \\fancypagestyle{watermark}{
+      \\fancyfootoffset{15pt}
+      \\renewcommand{\\headrulewidth}{0pt}
+      \\fancyhf{}
+      \\cfoot{\\textcolor{gray!30}{\\scalebox{4}{TarSpot Forecast}}}
+    }
+    \\pagestyle{watermark}
+    \\AtBeginDocument{\\thispagestyle{watermark}}
+    ', file = "header.tex")
+          
   # Define download handler
   output$download_report <- downloadHandler(
     filename = function() {
@@ -475,17 +520,12 @@ server <- function(input, output, session) {
           file.path(temp_dir, "report_template.Rmd"),
           output_file = file,
           params = list(
-            selected_station = station_code,
+            #selected_station = station_code,
             station_address = station_address,
             forecast_date = input$forecast_date,
             threshold = input$risk_threshold,
             fungicide = input$fungicide_applied,
             growth_stage = input$crop_growth_stage,
-            weather_summary = if (!is.null(weather_data())) {
-              summary(weather_data()$airtemp)
-            } else {
-              "No weather data available."
-            },
             tarspot = tarspot_7d
           )
         )
@@ -495,8 +535,7 @@ server <- function(input, output, session) {
     }
   )
   
-  
-  
 }
 
+################################################ The magic
 shinyApp(ui = ui, server = server)
