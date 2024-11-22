@@ -360,12 +360,15 @@ call_tarspot_for_station <- function(station_id,
                           date_day1 = floor_date(as.Date(adjusted_date), unit='days')) %>%
       arrange(desc(date_day))
     
+    print("----- here ")
+    print(rh_above_90_daily1)
+    
     at0 <- api_call_wisconet_data_daily(station_id, #start_time, 
                                         end_time)
     #fetch_at(station_id,start_time, end_time)
     at0 <- at0 %>% mutate(date_day1 = floor_date(collection_time, unit='days'),
                           date_day = as.Date(collection_time)-1) 
-  
+    print(rh_above_90_daily1)
     # Single variables
     th_rh90_14ma <- rh_above_90_daily1$rh_above_90_daily_14d_ma[1]
     at <- at0 %>% slice(1)

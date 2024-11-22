@@ -115,7 +115,7 @@ forecast_date_buttom<-tags$div(
   title = "Pick a date for which you would like a disease risk forecast.",
   dateInput("forecast_date", "Select Forecast Date", 
             value = Sys.Date(), 
-            min = as.Date("2024-05-01"), 
+            min = as.Date("2024-07-19"), 
             max = Sys.Date())
 )
 
