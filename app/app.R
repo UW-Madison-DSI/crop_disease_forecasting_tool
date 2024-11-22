@@ -55,20 +55,36 @@ ui <- dashboardPage(
         style = "height: 100px; width: auto; display: block; margin: 0 auto;"
       )
     ),
-    
+    switchInput(
+      inputId = "toggle_switch",
+      label = "Wisconet Data",  # Label next to the switch
+      value = TRUE,              # Default value (FALSE = off)
+      onLabel = "ON",             # Text displayed when switched on
+      offLabel = "OFF",           # Text displayed when switched off
+      size = "small"                 # Size of the switch (e.g., 'sm', 'lg')
+    ),
     # Control panel FROM functions/instructions.R
     risk_buttom,
-    tags$div(
-      `data-toggle` = "tooltip", 
-      title = "Choose a weather station to view disease risk at this location.",
-      selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
+    conditionalPanel(
+      condition = "input.toggle_switch == true", # Show only when the toggle switch is ON
+      tags$div(
+        `data-toggle` = "tooltip", 
+        title = "Choose a weather station to view disease risk at this location.",
+        selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
+      )
     ),
+    #tags$div(
+    #  `data-toggle` = "tooltip", 
+    #  title = "Choose a weather station to view disease risk at this location.",
+    #  selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
+    #),
     
     # Instructions panel and section FROM functions/instructions.R
     forecast_date_buttom,
     fungicide_applied_buttom,
     crop_growth_stage_buttom,
     run_model_buttom,
+    
     instructions_section,
     instructions_panel,
     instructions_block,
@@ -95,7 +111,7 @@ ui <- dashboardPage(
         div(
           downloadButton("download_report", "Download Report", 
                          class = "btn-primary", 
-                         style = "margin: 10px;"),
+                         style = "margin: 1px;"),
           style = "text-align: center;"
         )
       )
@@ -158,6 +174,7 @@ server <- function(input, output, session) {
     }
   })
   
+  
   # Fetch station weather data and risk probability
   weather_data <- reactive({
     station_code <- input$custom_station_code
@@ -207,40 +224,79 @@ server <- function(input, output, session) {
       addTiles(group = "OpenStreetMap") 
   })
   
+  output$user_mymap <- renderLeaflet({
+    leaflet() %>%
+      addTiles() %>%  # Add OpenStreetMap tiles
+      setView(lng = -93.85, lat = 42.01, zoom = 4) # Set initial view
+  })
+  
   # Update map based on selected station
   observe({
-    station_code <- input$custom_station_code
-    station_data <- selected_station_data()
-    if (station_code == "all"){
-      for (station_code in names(station_data)) {
-        #seems like i could compute the risk forecasting here for all stations
-        station <- station_data[[station_code]]
+    if (input$toggle_switch) {
+      # Add your analysis logic here
+    
+      station_code <- input$custom_station_code
+      station_data <- selected_station_data()
+      if (station_code == "all"){
+        for (station_code in names(station_data)) {
+          #seems like i could compute the risk forecasting here for all stations
+          station <- station_data[[station_code]]
+          
+          leafletProxy("mymap") %>%
+            addMarkers(lng = station$longitude, lat = station$latitude,
+                       popup = paste0("<strong> Station: ", station$name, "</strong><br>",
+                                      "Location: ", station$location, "<br>",
+                                      "Region: ", station$region, "<br>",
+                                      "State: ", station$state))
+        }
+      }else{
+        station <- stations[[station_code]]
+        lon_value <- station$longitude
+        lat_value <- station$latitude
         
         leafletProxy("mymap") %>%
-          addMarkers(lng = station$longitude, lat = station$latitude,
-                     popup = paste0("<strong> Station: ", station$name, "</strong><br>",
-                                    "Location: ", station$location, "<br>",
-                                    "Region: ", station$region, "<br>",
-                                    "State: ", station$state))
-      }
-    }else{
-      station <- stations[[station_code]]
-      lon_value <- station$longitude
-      lat_value <- station$latitude
-      
-      leafletProxy("mymap") %>%
-        clearMarkers() %>%  # Clear existing markers
-        setView(lng = lon_value, lat = lat_value, zoom = 15) %>%  # Different zoom level
-        addMarkers(
-          lng = lon_value,
-          lat = lat_value,
-          popup = paste0(
-            "<strong>", station$name, "</strong><br>",
-            station$location, "<br>",
-            "Region: ", station$region, "<br>",
-            "State: ", station$state
+          clearMarkers() %>%  # Clear existing markers
+          setView(lng = lon_value, lat = lat_value, zoom = 15) %>%  # Different zoom level
+          addMarkers(
+            lng = lon_value,
+            lat = lat_value,
+            popup = paste0(
+              "<strong>", station$name, "</strong><br>",
+              station$location, "<br>",
+              "Region: ", station$region, "<br>",
+              "State: ", station$state
+            )
           )
-        )
+      }
+    }else {
+        showNotification("Click the map to choose a location within WI", type = "default")
+        observeEvent(input$mymap_click, {
+          click <- input$mymap_click
+          paste0("Click the map to choose a location within WI ", click)
+          if (!is.null(click)) {
+            # Extract clicked coordinates
+            clicked_lat <- click$lat
+            clicked_lng <- click$lng
+            
+            # Update map with the clicked location
+            leafletProxy("mymap") %>%
+              clearMarkers() %>%
+              addMarkers(
+                lng = clicked_lng,
+                lat = clicked_lat,
+                popup = paste0(
+                  "<strong>Selected Location</strong><br>",
+                  "Latitude: ", round(clicked_lat, 4), "<br>",
+                  "Longitude: ", round(clicked_lng, 4)
+                )
+              )
+            output$selected_location <- renderText({
+              paste("Selected Location - Latitude:", round(clicked_lat, 4), 
+                    ", Longitude:", round(clicked_lng, 4))
+            })
+            
+          }
+        })
     }
   })
   
