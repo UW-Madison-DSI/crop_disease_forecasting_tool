@@ -251,8 +251,8 @@ server <- function(input, output, session) {
   
   output$user_mymap <- renderLeaflet({
     leaflet() %>%
-      addTiles() %>%  # Add OpenStreetMap tiles
-      setView(lng = -93.85, lat = 42.01, zoom = 4) # Set initial view
+      addTiles() #%>%  # Add OpenStreetMap tiles
+      #setView(lng = -93.85, lat = 42.01, zoom = 4) # Set initial view
   })
   
   # Update map based on selected station
@@ -265,6 +265,7 @@ server <- function(input, output, session) {
         for (station_code in names(station_data)) {
           station <- station_data[[station_code]]
           leafletProxy("mymap") %>%
+            setView(lng = -89.75, lat = 44.76, zoom = 7) %>%
             addMarkers(
               lng = station$longitude, lat = station$latitude,
               popup = paste0(
