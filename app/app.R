@@ -78,7 +78,18 @@ ui <- dashboardPage(
     #),
     
     # Instructions panel and section FROM functions/instructions.R
-    forecast_date_buttom,
+    #forecast_date_buttom,
+    conditionalPanel(
+      condition = "input.custom_station_code!='all'",
+      tags$div(
+        `data-toggle` = "tooltip", 
+        title = "Pick a date for which you would like a disease risk forecast.",
+        dateInput("forecast_date", "Select Forecast Date For the Station", 
+                  value = Sys.Date(), 
+                  min = NULL, #as.Date(station$earliest_api_date)-35, 
+                  max = Sys.Date())
+      )
+    ),
     fungicide_applied_buttom,
     crop_growth_stage_buttom,
     run_model_buttom,
@@ -176,6 +187,22 @@ server <- function(input, output, session) {
     station_code <- input$custom_station_code
     if (station_code != "all") {
       station <- stations[[station_code]]
+      earliest_date <- as.Date(station$earliest_api_date)
+      
+      # Check if a date is already selected; otherwise, default to Sys.Date()
+      current_forecast_date <- isolate(input$forecast_date)  # Preserve user selection
+      
+      # Ensure the selected date is within bounds
+      if (is.null(current_forecast_date) || current_forecast_date < earliest_date || current_forecast_date > Sys.Date()) {
+        current_forecast_date <- Sys.Date()  # Set default to today if no valid date is selected
+      }
+      
+      updateDateInput(session, "forecast_date",
+                      min = earliest_date,     # Earliest available date
+                      value = current_forecast_date,  # Preserve or default the date
+                      max = Sys.Date())        # Latest available date
+      
+      
       risk_threshold <- input$risk_threshold / 100
       current <- input$forecast_date  # Access the selected date
       
@@ -230,8 +257,9 @@ server <- function(input, output, session) {
   
   # Update map based on selected station
   observe({
-    if (input$custom_station_code == 'all') {
-      station_code <- input$custom_station_code
+    station_code <- input$custom_station_code
+    if (TRUE) {
+      
       station_data <- selected_station_data()
       if (station_code == "all") {
         for (station_code in names(station_data)) {
@@ -243,14 +271,33 @@ server <- function(input, output, session) {
                 "<strong> Station: ", station$name, "</strong><br>",
                 "Location: ", station$location, "<br>",
                 "Region: ", station$region, "<br>",
-                "State: ", station$state
+                "County: ", station$county, "<br>",
+                "State: ", station$state, "<br>",
+                "Station available since : ", station$earliest_api_date
               )
             )
         }
       } else {
         station <- stations[[station_code]]
+        earliest_date <- as.Date(station$earliest_api_date)
+        
+        # Check if a date is already selected; otherwise, default to Sys.Date()
+        current_forecast_date <- isolate(input$forecast_date)  # Preserve user selection
+        
+        # Ensure the selected date is within bounds
+        if (is.null(current_forecast_date) || current_forecast_date < earliest_date || current_forecast_date > Sys.Date()) {
+          current_forecast_date <- Sys.Date()  # Set default to today if no valid date is selected
+        }
+        
+        updateDateInput(session, "forecast_date",
+                        min = earliest_date,     # Earliest available date
+                        value = current_forecast_date,  # Preserve or default the date
+                        max = Sys.Date())        # Latest available date
+        
+        
         lon_value <- station$longitude
         lat_value <- station$latitude
+        showNotification(paste("Station", station$name), type = "default")
         
         leafletProxy("mymap") %>%
           clearMarkers() %>%
@@ -259,10 +306,12 @@ server <- function(input, output, session) {
             lng = lon_value,
             lat = lat_value,
             popup = paste0(
-              "<strong>", station$name, "</strong><br>",
-              station$location, "<br>",
+              "<strong> Station: ", station$name, "</strong><br>",
+              "Location: ", station$location, "<br>",
               "Region: ", station$region, "<br>",
-              "State: ", station$state
+              "County: ", station$county, "<br>",
+              "State: ", station$state, "<br>",
+              "Station available since : ", station$earliest_api_date
             )
           )
       }
