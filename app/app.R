@@ -55,14 +55,16 @@ ui <- dashboardPage(
         style = "height: 100px; width: auto; display: block; margin: 0 auto;"
       )
     ),
+    
     switchInput(
       inputId = "toggle_switch",
-      label = "Wisconet Data",  # Label next to the switch
-      value = TRUE,              # Default value (FALSE = off)
-      onLabel = "ON",             # Text displayed when switched on
-      offLabel = "OFF",           # Text displayed when switched off
-      size = "small"                 # Size of the switch (e.g., 'sm', 'lg')
+      label = "Wisconet Data",
+      value = TRUE,
+      onLabel = "ON",
+      offLabel = "OFF",
+      size = "small"
     ),
+    
     # Control panel FROM functions/instructions.R
     risk_buttom,
     conditionalPanel(
@@ -380,7 +382,7 @@ server <- function(input, output, session) {
     # Create tarspot plot
     if (!is.null(data) && nrow(data) > 0) {
       tarspot_df <- data %>%
-        mutate(Date = ymd(date_day)) %>%
+        mutate(Date = ymd(date_day)+1) %>%
         select(Date, Risk, Risk_Class)
       tarspot_plot <- plot_trend(tarspot_df, station) +
         geom_hline(yintercept = threshold, linetype = "dashed", color = "black") +
@@ -395,9 +397,7 @@ server <- function(input, output, session) {
     if (!is.null(variables_at_rh) && !identical(variables_at_rh, "Error: 400")) {
       weather_plot <- plot_weather_data(variables_at_rh, station = station)
     } else {
-      weather_plot <- ggplot() +
-        ggtitle("No Weather Data is Available") +
-        theme_void()
+      weather_plot<-NULL
     }
     
     # Arrange plots only if both are valid
