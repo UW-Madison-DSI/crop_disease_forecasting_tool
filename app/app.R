@@ -234,29 +234,31 @@ server <- function(input, output, session) {
   observe({
     if (input$toggle_switch) {
       # Add your analysis logic here
-    
+      
       station_code <- input$custom_station_code
       station_data <- selected_station_data()
-      if (station_code == "all"){
+      if (station_code == "all") {
         for (station_code in names(station_data)) {
-          #seems like i could compute the risk forecasting here for all stations
           station <- station_data[[station_code]]
-          
           leafletProxy("mymap") %>%
-            addMarkers(lng = station$longitude, lat = station$latitude,
-                       popup = paste0("<strong> Station: ", station$name, "</strong><br>",
-                                      "Location: ", station$location, "<br>",
-                                      "Region: ", station$region, "<br>",
-                                      "State: ", station$state))
+            addMarkers(
+              lng = station$longitude, lat = station$latitude,
+              popup = paste0(
+                "<strong> Station: ", station$name, "</strong><br>",
+                "Location: ", station$location, "<br>",
+                "Region: ", station$region, "<br>",
+                "State: ", station$state
+              )
+            )
         }
-      }else{
+      } else {
         station <- stations[[station_code]]
         lon_value <- station$longitude
         lat_value <- station$latitude
         
         leafletProxy("mymap") %>%
-          clearMarkers() %>%  # Clear existing markers
-          setView(lng = lon_value, lat = lat_value, zoom = 15) %>%  # Different zoom level
+          clearMarkers() %>%
+          setView(lng = lon_value, lat = lat_value, zoom = 15) %>%
           addMarkers(
             lng = lon_value,
             lat = lat_value,
@@ -268,17 +270,29 @@ server <- function(input, output, session) {
             )
           )
       }
-    }else {
-        showNotification("Click the map to choose a location within WI", type = "default")
-        observeEvent(input$mymap_click, {
-          click <- input$mymap_click
-          paste0("Click the map to choose a location within WI ", click)
-          if (!is.null(click)) {
-            # Extract clicked coordinates
-            clicked_lat <- click$lat
-            clicked_lng <- click$lng
+    } else {
+      # Toggle is OFF: Enable map click for user to select location
+      showNotification("Click the map to choose a location within WI", type = "default")
+      
+      # Observe click events on the map
+      observeEvent(input$mymap_click, {
+        click <- input$mymap_click
+        if (!is.null(click)) {
+          # Extract clicked coordinates
+          clicked_lat <- click$lat
+          clicked_lng <- click$lng
+          
+          # Define bounds for Wisconsin
+          lat_min <- 42.49192
+          lat_max <- 47.08086
+          lng_min <- -92.88811
+          lng_max <- -86.80541
+          
+          # Check if the click is within bounds
+          if (clicked_lat >= lat_min && clicked_lat <= lat_max &&
+              clicked_lng >= lng_min && clicked_lng <= lng_max) {
             
-            # Update map with the clicked location
+            # Valid click: Update map with the clicked location
             leafletProxy("mymap") %>%
               clearMarkers() %>%
               addMarkers(
@@ -290,15 +304,21 @@ server <- function(input, output, session) {
                   "Longitude: ", round(clicked_lng, 4)
                 )
               )
+            
+            # Update UI to display the clicked coordinates
             output$selected_location <- renderText({
               paste("Selected Location - Latitude:", round(clicked_lat, 4), 
                     ", Longitude:", round(clicked_lng, 4))
             })
-            
+          } else {
+            # Invalid click: Show a notification
+            showNotification("Click is outside the bounds of Wisconsin.", type = "error")
           }
-        })
+        }
+      })
     }
   })
+  
   
   risk_level <- reactive({
     crop_fung <- input$fungicide_applied
