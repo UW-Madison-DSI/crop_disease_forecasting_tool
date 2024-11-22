@@ -206,3 +206,35 @@ function(growth_stage = "yes",
     }
   }
 }
+
+
+#* Predict Wisconet Stations Risk
+#* @param date Character: Data on which to retrieve the prediction, format YYYY-dd-MM
+#* @param disease_name Character: tarspot, gray_leaf_spot, sporecaster-irr, sporecaster-noirr, frogeye_leaf_spot
+#* @post /predict_wisconet_stations_risk
+function(date = NULL, 
+         disease_name = NULL) {
+
+  if (is.null(date)){
+    input_date <- Sys.Date()
+  }else{
+    input_date <- as.Date(date)
+    if ((format(input_date, "%Y-%m") == "2024-04") 
+        || (input_date < as.Date("2022-01-01"))
+        || (input_date > Sys.Date())) {
+      return(list(error = "Due to data avilability, we can not estimate the tarspot disease on April 2024 or previous to 2022"))
+    }else{
+      risk <- retrieve_tarspot_all_stations(input_date,
+                                                        station_id = NULL, 
+                                                        disease_name = 'tarspot')
+    }
+  }
+  if (!disease_name %in% c('tarspot', 'gray_leaf_spot', 'sporecaster-irr', 'sporecaster-noirr', 'frogeye_leaf_spot')){
+    return(list(error = "Please input a valid disease name."))
+  }else{
+    estimated_risk <- disease_risk(date, disease_name)
+    return(list(risk = estimated_risk,
+                disease_name = disease_name,
+                date = input_date))
+  }
+}

@@ -125,7 +125,7 @@ api_call_wisconet_data_rh <- function(station,# start_time,
     end_date <- as_datetime(end_time, tz = "UTC")
     
     # Restar 3 meses
-    start_date <- end_date %m-% months(3)
+    start_date <- end_date %m-% weeks(6)
     
     # Convertir fecha a epoch
     start_time <- as.numeric(start_date)
