@@ -110,18 +110,32 @@ fetch_at <- function(station, start_time, end_time) {
 
 ################################################################ Function to get 60-minute relative humidity data
 api_call_wisconet_data_rh <- function(station, start_time, end_time) {
+  tryCatch({
+    endpoint <- paste0('/api/v1/stations/', station, '/measures')
+    
+    end_date <- as_datetime(end_time, tz = "UTC")
+    
+    # Restar 3 meses
+    start_date <- end_date %m-% months(3)
+    
+    # Convertir fecha a epoch
+    start_time <- as.numeric(start_date)
+    params <- list(
+      end_time = end_time,
+      start_time = start_time,
+      fields = '60min_relative_humidity_pct_avg'
+    )
+    
+    response <- GET(url = paste0(base_url, endpoint), query = params)
+    print("response from wisconet 60min relative")
+    
+    print(response)
+    scode <- response$status_code
+  }, error = function(e) {
+    stop(paste("Failed to render report:", e$message))
+  }) 
   
-  endpoint <- paste0('/api/v1/stations/', station, '/measures')
-  
-  params <- list(
-    end_time = end_time,
-    start_time = start_time,
-    fields = '60min_relative_humidity_pct_avg'
-  )
-  
-  response <- GET(url = paste0(base_url, endpoint), query = params)
-  
-  if (response$status_code == 200) {
+  if (scode == 200) {
     data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
     data <- data1$data
     
@@ -187,20 +201,25 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
 ################################################################ Function to fetch and print the number of Night hours with RH > 90% per day
 fetch_rh_above_90_daily <- function(station, start_time, end_time) {
   # Fetch the data using the API function
-  rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
-  
-  data <- rh_data$daily_rh_above_90
-  data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, 
-                                            k = 14, fill = NA, align = "right")
-  rh_above_90_daily1 <- data %>% arrange(adjusted_date) # Sort by proximity to current date
-  
-  # Return the data if it's not NULL
-  if (!is.null(rh_data)) {
-    return(rh_above_90_daily1)
-  } else {
-    cat("No data returned for the specified station.\n")
-    return(NULL)
-  }
+  tryCatch({
+    rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
+    print("here in th data")
+    print(rh_data)
+    data <- rh_data$daily_rh_above_90
+    data$rh_above_90_daily_14d_ma <- rollmean(data$hours_rh_above_90, 
+                                              k = 14, fill = NA, align = "right")
+    rh_above_90_daily1 <- data %>% arrange(adjusted_date) # Sort by proximity to current date
+    print(rh_above_90_daily1)
+    # Return the data if it's not NULL
+    if (!is.null(rh_data)) {
+      return(rh_above_90_daily1)
+    } else {
+      cat("No data returned for the specified station.\n")
+      return(NULL)
+    }
+  }, error = function(e) {
+    stop(paste("Failed to render report:", e$message))
+  })
 }
 
 
@@ -314,68 +333,75 @@ get_risk_probability <- function(station_id, station_name,
 
 
 ###################################### Prpeare the relevant data for Tarspot
-call_tarspot_for_station <- function(station_id, station_name, risk_threshold, current){
-  today_ct <- with_tz(current, tzone = "America/Chicago") #not today exactly but the curent date given by the user in time zone
-  out <- from_ct_to_gmt(today_ct, 6) # 6 mo backwards
+call_tarspot_for_station <- function(station_id, 
+                                     station_name, 
+                                     risk_threshold, 
+                                     current){
+  tryCatch({
+    today_ct <- with_tz(current, tzone = "America/Chicago") #not today exactly but the curent date given by the user in time zone
+    out <- from_ct_to_gmt(today_ct, 3) # 6 mo backwards
+    
+    # Convert both dates to Unix timestamps in GMT
+    start_time <- out$start_time_gmt
+    end_time <- out$end_time_gmt
+    
+    rh_above_90_daily <- fetch_rh_above_90_daily(station_id,start_time, end_time)
+    rh_above_90_daily1 <- rh_above_90_daily %>% mutate(date_day = as.Date(adjusted_date),
+                          date_day1 = floor_date(as.Date(adjusted_date), unit='days')) %>%
+      arrange(desc(date_day))
+    
+    at0 <- api_call_wisconet_data_daily(station_id, start_time, end_time)
+    #fetch_at(station_id,start_time, end_time)
+    at0 <- at0 %>% mutate(date_day1 = floor_date(collection_time, unit='days'),
+                          date_day = as.Date(collection_time)-1) 
   
-  # Convert both dates to Unix timestamps in GMT
-  start_time <- out$start_time_gmt
-  end_time <- out$end_time_gmt
+    # Single variables
+    th_rh90_14ma <- rh_above_90_daily1$rh_above_90_daily_14d_ma[1]
+    at <- at0 %>% slice(1)
+    mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
+    max_rh_30dma <- at$rh_max_30d_ma[1]
+    
+    #print("----------->>> here in rh above")
+    #print(head(rh_above_90_daily1,10))
+    
+    #print("----------------------------->> Daily variables, Input API")
+    #print(at0)
+    
+    #print("----------------------------->> Merge of the datasets")
+    #cat(colnames(rh_above_90_daily1))
+    #print("--------")
+    #cat(colnames(at0))
   
-  rh_above_90_daily <- fetch_rh_above_90_daily(station_id,start_time, end_time)
-  rh_above_90_daily1 <- rh_above_90_daily %>% mutate(date_day = as.Date(adjusted_date),
-                        date_day1 = floor_date(as.Date(adjusted_date), unit='days')) %>%
-    arrange(desc(date_day))
-  
-  at0 <- api_call_wisconet_data_daily(station_id, start_time, end_time)
-  #fetch_at(station_id,start_time, end_time)
-  at0 <- at0 %>% mutate(date_day1 = floor_date(collection_time, unit='days'),
-                        date_day = as.Date(collection_time)-1) 
-
-  # Single variables
-  th_rh90_14ma <- rh_above_90_daily1$rh_above_90_daily_14d_ma[1]
-  at <- at0 %>% slice(1)
-  mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
-  max_rh_30dma <- at$rh_max_30d_ma[1]
-  
-  #print("----------->>> here in rh above")
-  #print(head(rh_above_90_daily1,10))
-  
-  #print("----------------------------->> Daily variables, Input API")
-  #print(at0)
-  
-  #print("----------------------------->> Merge of the datasets")
-  #cat(colnames(rh_above_90_daily1))
-  #print("--------")
-  #cat(colnames(at0))
-
-  merged_ds <- merge(x = rh_above_90_daily1,
-                     y = at0, 
-                     by.x = "date_day", 
-                     by.y = "date_day") %>% 
-    mutate(date_day = date_day + 1) %>% #the weather data is used to predict the next day
-    arrange(desc(date_day)) %>% 
-    select(c('date_day',
-             'rh_above_90_daily_14d_ma', 
-             'rh_max',
-             'rh_max_30d_ma',
-             'air_temp_avg_c_30d_ma', 
-             'air_temp_avg_c')) %>% slice(1:7)
-  
-  merged_ds <- merged_ds %>%
-    rowwise() %>%
-    mutate(risk_output = list(get_risk_probability(station_id = station_id,
-                                                   station_name = station_name,
-                                                   risk_threshold = risk_threshold,
-                                                   mat_30dma = air_temp_avg_c_30d_ma,
-                                                   max_rh_30dma = rh_max_30d_ma,
-                                                   th_rh90_14ma = rh_above_90_daily_14d_ma,
-                                                   url_ts = url_ts)),
-           Risk = risk_output$Risk,
-           Risk_Class = risk_output$Risk_Class,
-           Station = risk_output$station_name) %>%
-    select(-risk_output)
-  
-  return(merged_ds)
+    merged_ds <- merge(x = rh_above_90_daily1,
+                       y = at0, 
+                       by.x = "date_day", 
+                       by.y = "date_day") %>% 
+      mutate(date_day = date_day + 1) %>% #the weather data is used to predict the next day
+      arrange(desc(date_day)) %>% 
+      select(c('date_day',
+               'rh_above_90_daily_14d_ma', 
+               'rh_max',
+               'rh_max_30d_ma',
+               'air_temp_avg_c_30d_ma', 
+               'air_temp_avg_c')) %>% slice(1:7)
+    
+    merged_ds <- merged_ds %>%
+      rowwise() %>%
+      mutate(risk_output = list(get_risk_probability(station_id = station_id,
+                                                     station_name = station_name,
+                                                     risk_threshold = risk_threshold,
+                                                     mat_30dma = air_temp_avg_c_30d_ma,
+                                                     max_rh_30dma = rh_max_30d_ma,
+                                                     th_rh90_14ma = rh_above_90_daily_14d_ma,
+                                                     url_ts = url_ts)),
+             Risk = risk_output$Risk,
+             Risk_Class = risk_output$Risk_Class,
+             Station = risk_output$station_name) %>%
+      select(-risk_output)
+    
+    return(merged_ds)
+  }, error = function(e) {
+    stop(paste("Failed to render report in fetchin:", e$message))
+  })
 }
 
