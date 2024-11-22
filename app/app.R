@@ -183,7 +183,10 @@ server <- function(input, output, session) {
       out <- from_ct_to_gmt(today_ct, 6) # 6 mo
       start_time <- out$start_time_gmt
       end_time <- out$end_time_gmt
-      result <- call_tarspot_for_station(station_code, station$name, risk_threshold, today_ct)
+      result <- call_tarspot_for_station(station_code, 
+                                         station$name, 
+                                         risk_threshold, 
+                                         today_ct)
       airtemp <- api_call_wisconet_data_daily(station_code, #start_time, 
                                               end_time)
       return(list(tarspot = result, airtemp = airtemp))
@@ -199,8 +202,6 @@ server <- function(input, output, session) {
       addProviderTiles("USGS.USTopo", group = "Topographic") %>%  # USGS Topographic
       addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%  # Esri Imagery
       addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
-      #addProviderTiles("Esri.WorldTerrain", group = "Terrain") %>%
-      #addTiles() %>%
       setView(lng = -89.75, lat = 44.76, zoom = 7) %>%
       addPolygons(
         data = county_boundaries,

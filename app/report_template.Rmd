@@ -23,8 +23,6 @@ params:
 ![PlantPath](PLANPATHCO_color-flush.png){ width=40% }
 ![PlantPath](DATASCIE_color-flush.png){ width=40% }
 
-*Report Generated On: *`r format(Sys.time(), "%Y-%m-%d %H:%M")`
-
 ## Specifications
 - **Station Address**: `r params$station_address`
 - **Forecast Date**: `r params$forecast_date`
@@ -56,11 +54,24 @@ if (!is.null(params$tarspot) && nrow(params$tarspot) > 0) {
 }
 ```
 
+
+*Report Generated On: *`r format(Sys.time(), "%Y-%m-%d %H:%M")`
+
 --------------------------------------------------------------------------------------------------------
 **Note:** 
-*This information is only a guide, and its based on multi-year research across multiple locations to generate the models that underlay the forecast risk. Contributors and data managers assume no liability resulting from the use of these estimates. These should be used as a part of a multi-pronged approach to pest management which includes scouting and other agricultural professional insight. Individuals making decisions based on this tool assume responsibility for results on those decisions.*
+*This information is a guide, and its based on multi-year research across multiple locations to generate the models that underlay the forecast risk. Contributors and data managers assume no liability resulting from the use of these estimates. These should be used as a part of a multi-pronged approach to pest management which includes scouting and other agricultural professional insight. Individuals making decisions based on this tool assume responsibility for results on those decisions.*
 
 **Acknowledgments:**
 *This report utilizes data from the Wisconet Weather Network. We acknowledge the contributions of researchers and staff from the University of Wisconsin-Madison, who developed the Tar Spot Forecasting model and the Open Source Program Office for their support on developing this tool.*
 
-**Contact Information:** *Maria Oros, Data Scientist, Data Science Institute at UW-Madison, email: moros2@wisc.edu*
+**Contact Information:**  
+
+- **Open Source Program Office**  
+  Email: [ospo@datascience.wisc.edu](mailto:ospo@datascience.wisc.edu)
+
+- **Dr. Damon Smith**  
+  Email: [damon.smith@wisc.edu](mailto:damon.smith@wisc.edu)
+
+- **Maria Oros**  
+  Data Scientist, Data Science Institute at UW-Madison  
+  Email: [moros2@wisc.edu](mailto:moros2@wisc.edu)

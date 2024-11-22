@@ -73,7 +73,16 @@ contact_info <- tags$div(
     tags$span(
       tags$img(src = "https://cdn-icons-png.flaticon.com/512/732/732200.png", 
                alt = "Email Icon", style = "width: 16px; height: 16px; margin-right: 8px;"),
-      "Maria Oros (Data Scientist): ",
+      "Dr. Damon Smith: ",
+      tags$a(href = "mailto:dlsmith26@wisc.edu", "dlsmith26@wisc.edu")
+    ),
+    style = "margin-bottom: 10px;"
+  ),
+  tags$div(
+    tags$span(
+      tags$img(src = "https://cdn-icons-png.flaticon.com/512/732/732200.png", 
+               alt = "Email Icon", style = "width: 16px; height: 16px; margin-right: 8px;"),
+      "Maria Oros (software mantainer): ",
       tags$a(href = "mailto:maria.oros@wisc.edu", "maria.oros@wisc.edu")
     ),
     style = "margin-bottom: 10px;"
