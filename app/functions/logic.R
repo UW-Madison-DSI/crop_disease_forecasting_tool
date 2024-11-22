@@ -17,8 +17,15 @@ url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 tarspot_api_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
 
 ################################################################ Function to get weather data from Wisconet API
-api_call_wisconet_data_daily <- function(station, start_time, end_time) {
+api_call_wisconet_data_daily <- function(station, end_time) {
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
+  end_date <- as_datetime(end_time, tz = "UTC")
+  
+  # api call
+  start_date <- end_date %m-% months(3)
+  
+  # date to epoch
+  start_time <- as.numeric(start_date)
   
   params <- list(
     end_time = end_time,
@@ -97,7 +104,8 @@ api_call_wisconet_data_daily <- function(station, start_time, end_time) {
 fetch_at <- function(station, start_time, end_time) {
   
   # Fetch the data using the API function
-  data_df <- api_call_wisconet_data_daily(station, start_time, end_time)
+  data_df <- api_call_wisconet_data_daily(station, #start_time, 
+                                          end_time)
   
   # Plot the data if it is not NULL
   if (!is.null(data_df)) {
@@ -109,7 +117,8 @@ fetch_at <- function(station, start_time, end_time) {
 }
 
 ################################################################ Function to get 60-minute relative humidity data
-api_call_wisconet_data_rh <- function(station, start_time, end_time) {
+api_call_wisconet_data_rh <- function(station,# start_time, 
+                                      end_time) {
   tryCatch({
     endpoint <- paste0('/api/v1/stations/', station, '/measures')
     
@@ -199,10 +208,12 @@ api_call_wisconet_data_rh <- function(station, start_time, end_time) {
 }
 
 ################################################################ Function to fetch and print the number of Night hours with RH > 90% per day
-fetch_rh_above_90_daily <- function(station, start_time, end_time) {
+fetch_rh_above_90_daily <- function(station, #start_time, 
+                                    end_time) {
   # Fetch the data using the API function
   tryCatch({
-    rh_data <- api_call_wisconet_data_rh(station, start_time, end_time)
+    rh_data <- api_call_wisconet_data_rh(station, #start_time, 
+                                         end_time)
     print("here in th data")
     print(rh_data)
     data <- rh_data$daily_rh_above_90
@@ -252,10 +263,8 @@ get_risk_probability <- function(station_id, station_name,
   # Check if the request was successful
   if (probability) {
     # Retrieve relevant values
-
     probability_class <- classify_risk(probability,.2, risk_threshold)
-    #if_else(probab>risk_threshold,"High", "Low")
-    
+
     dframe<-data.frame(
       Station = station_name,
       AirTemp_C_30dma=mat_30dma,
@@ -339,18 +348,20 @@ call_tarspot_for_station <- function(station_id,
                                      current){
   tryCatch({
     today_ct <- with_tz(current, tzone = "America/Chicago") #not today exactly but the curent date given by the user in time zone
-    out <- from_ct_to_gmt(today_ct, 3) # 6 mo backwards
+    out <- from_ct_to_gmt(today_ct, 3) # 3 mo backwards
     
     # Convert both dates to Unix timestamps in GMT
     start_time <- out$start_time_gmt
     end_time <- out$end_time_gmt
     
-    rh_above_90_daily <- fetch_rh_above_90_daily(station_id,start_time, end_time)
+    rh_above_90_daily <- fetch_rh_above_90_daily(station_id,#start_time, 
+                                                 end_time)
     rh_above_90_daily1 <- rh_above_90_daily %>% mutate(date_day = as.Date(adjusted_date),
                           date_day1 = floor_date(as.Date(adjusted_date), unit='days')) %>%
       arrange(desc(date_day))
     
-    at0 <- api_call_wisconet_data_daily(station_id, start_time, end_time)
+    at0 <- api_call_wisconet_data_daily(station_id, #start_time, 
+                                        end_time)
     #fetch_at(station_id,start_time, end_time)
     at0 <- at0 %>% mutate(date_day1 = floor_date(collection_time, unit='days'),
                           date_day = as.Date(collection_time)-1) 
@@ -360,17 +371,6 @@ call_tarspot_for_station <- function(station_id,
     at <- at0 %>% slice(1)
     mat_30dma <- at$air_temp_avg_c_30d_ma[1]  
     max_rh_30dma <- at$rh_max_30d_ma[1]
-    
-    #print("----------->>> here in rh above")
-    #print(head(rh_above_90_daily1,10))
-    
-    #print("----------------------------->> Daily variables, Input API")
-    #print(at0)
-    
-    #print("----------------------------->> Merge of the datasets")
-    #cat(colnames(rh_above_90_daily1))
-    #print("--------")
-    #cat(colnames(at0))
   
     merged_ds <- merge(x = rh_above_90_daily1,
                        y = at0, 

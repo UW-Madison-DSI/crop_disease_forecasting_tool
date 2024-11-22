@@ -19,6 +19,10 @@ params:
   tarspot: NULL
 ---
 
+![OSPO](OPENSOURDA_color-flush.png){ width=40% }
+![PlantPath](PLANPATHCO_color-flush.png){ width=40% }
+![PlantPath](DATASCIE_color-flush.png){ width=40% }
+
 *Report Generated On: *`r format(Sys.time(), "%Y-%m-%d %H:%M")`
 
 ## Specifications
@@ -52,10 +56,7 @@ if (!is.null(params$tarspot) && nrow(params$tarspot) > 0) {
 }
 ```
 
-![OSPO](OPENSOURDA_color-flush.png){ width=50% }
-![PlantPath](PLANPATHCO_color-flush.png){ width=50% }
-
-### --------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------
 **Note:** 
 *This information is only a guide, and its based on multi-year research across multiple locations to generate the models that underlay the forecast risk. Contributors and data managers assume no liability resulting from the use of these estimates. These should be used as a part of a multi-pronged approach to pest management which includes scouting and other agricultural professional insight. Individuals making decisions based on this tool assume responsibility for results on those decisions.*
 

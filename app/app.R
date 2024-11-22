@@ -22,21 +22,17 @@ source("functions/instructions.R")
 
 tool_title <- "Agricultural Forecasting and Advisory System"
 
-
 ####################################################################### Settings
 station_choices <- c("All" = "all", setNames(names(stations), 
                       sapply(stations, function(station) station$name)))
 
-logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
+logo_src = "logos/uw-logo-vertical-color-reverse-web-digital.svg"
 condition_text <- "input.custom_station_code != 'all' && input.fungicide_applied && input.crop_growth_stage && input.run_model"
 
 widhts <- 450
 
-###### AOI: Wisconsin
-county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 
-
-############################################# Define UI
+################################################################ Define UI
 ui <- dashboardPage(
 
   title = tool_title,
@@ -56,29 +52,29 @@ ui <- dashboardPage(
       )
     ),
     
-    switchInput(
-      inputId = "toggle_switch",
-      label = "Wisconet Data",
-      value = TRUE,
-      onLabel = "ON",
-      offLabel = "OFF",
-      size = "small"
-    ),
+    #switchInput(
+    #  inputId = "toggle_switch",
+    #  label = "Wisconet Data",
+    #  value = TRUE,
+    #  onLabel = "ON",
+    #  offLabel = "OFF",
+    #  size = "small"
+    #),
     
     # Control panel FROM functions/instructions.R
     risk_buttom,
-    conditionalPanel(
-      condition = "input.toggle_switch == true", # Show only when the toggle switch is ON
-      tags$div(
-        `data-toggle` = "tooltip", 
-        title = "Choose a weather station to view disease risk at this location.",
-        selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
-      )
+    tags$div(
+      `data-toggle` = "tooltip", 
+      title = "Choose a weather station to view disease risk at this location.",
+      selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
     ),
-    #tags$div(
-    #  `data-toggle` = "tooltip", 
-    #  title = "Choose a weather station to view disease risk at this location.",
-    #  selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
+    #conditionalPanel(
+    #  condition = "input.toggle_switch == true", # Show only when the toggle switch is ON
+    #  tags$div(
+    #    `data-toggle` = "tooltip", 
+    #    title = "Choose a weather station to view disease risk at this location.",
+    #    selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
+    #  )
     #),
     
     # Instructions panel and section FROM functions/instructions.R
@@ -86,7 +82,6 @@ ui <- dashboardPage(
     fungicide_applied_buttom,
     crop_growth_stage_buttom,
     run_model_buttom,
-    
     instructions_section,
     instructions_panel,
     instructions_block,
@@ -114,7 +109,7 @@ ui <- dashboardPage(
           downloadButton("download_report", "Download Report", 
                          class = "btn-primary", 
                          style = "margin: 1px;"),
-          style = "text-align: center;"
+          style = "text-align: center; margin-bottom: 10px;"
         )
       )
     ),
@@ -176,7 +171,6 @@ server <- function(input, output, session) {
     }
   })
   
-  
   # Fetch station weather data and risk probability
   weather_data <- reactive({
     station_code <- input$custom_station_code
@@ -190,7 +184,8 @@ server <- function(input, output, session) {
       start_time <- out$start_time_gmt
       end_time <- out$end_time_gmt
       result <- call_tarspot_for_station(station_code, station$name, risk_threshold, today_ct)
-      airtemp <- api_call_wisconet_data_daily(station_code, start_time, end_time)
+      airtemp <- api_call_wisconet_data_daily(station_code, #start_time, 
+                                              end_time)
       return(list(tarspot = result, airtemp = airtemp))
     } else {
       return(NULL)
@@ -234,9 +229,7 @@ server <- function(input, output, session) {
   
   # Update map based on selected station
   observe({
-    if (input$toggle_switch) {
-      # Add your analysis logic here
-      
+    if (input$custom_station_code == 'all') {
       station_code <- input$custom_station_code
       station_data <- selected_station_data()
       if (station_code == "all") {
@@ -283,12 +276,6 @@ server <- function(input, output, session) {
           # Extract clicked coordinates
           clicked_lat <- click$lat
           clicked_lng <- click$lng
-          
-          # Define bounds for Wisconsin
-          lat_min <- 42.49192
-          lat_max <- 47.08086
-          lng_min <- -92.88811
-          lng_max <- -86.80541
           
           # Check if the click is within bounds
           if (clicked_lat >= lat_min && clicked_lat <= lat_max &&
@@ -356,8 +343,6 @@ server <- function(input, output, session) {
              Please select one to see the risk of Tar Spot. 
              If you applied a fungicide in the last 14 days to your crop, we cannot estimate a probability of Tar Spot.")
     } else {
-      env <- Sys.getenv("test")
-      
       station <- stations[[station_code]]
       paste("You have selected ", station$name, "Station.")
     }
