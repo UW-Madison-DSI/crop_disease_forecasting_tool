@@ -6,6 +6,16 @@ library(ggplot2)
 library(dplyr)
 library(scales)
 
+
+
+##################################################### AOI: Wisconsin
+county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
+# Define bounds for Wisconsin
+lat_min <- 42.49192
+lat_max <- 47.08086
+lng_min <- -92.88811
+lng_max <- -86.80541
+
 ################################################################ My functions
 # Function to convert Fahrenheit to Celsius
 fahrenheit_to_celsius <- function(temp_f) {
@@ -205,7 +215,8 @@ copy_report_files <- function(temp_dir) {
     rmd = c(from = "report_template.Rmd", to = file.path(temp_dir, "report_template.Rmd")),
     header = c(from = "header.tex", to = file.path(temp_dir, "header.tex")),
     logo1 = c(from = "logos/OPENSOURDA_color-flush.png", to = file.path(temp_dir, "OPENSOURDA_color-flush.png")),
-    logo2 = c(from = "logos/PLANPATHCO_color-flush.png", to = file.path(temp_dir, "PLANPATHCO_color-flush.png"))
+    logo2 = c(from = "logos/PLANPATHCO_color-flush.png", to = file.path(temp_dir, "PLANPATHCO_color-flush.png")),
+    logo3 = c(from = "logos/DATASCIE_color-flush.png", to = file.path(temp_dir, "DATASCIE_color-flush.png") )
   )
   
   for (item in files_to_copy) {
