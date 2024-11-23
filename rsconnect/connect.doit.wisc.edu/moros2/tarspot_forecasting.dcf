@@ -5,7 +5,7 @@ account: moros2
 server: connect.doit.wisc.edu
 hostUrl: https://connect.doit.wisc.edu/__api__
 appId: 365
-bundleId: 2655
+bundleId: 2657
 url: https://connect.doit.wisc.edu/forecasting_crop_disease/
 version: 1
 asMultiple: FALSE

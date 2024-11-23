@@ -209,7 +209,7 @@ function(growth_stage = "yes",
 
 
 #* Predict Wisconet Stations Risk
-#* @param date Character: Data on which to retrieve the prediction, format YYYY-dd-MM
+#* @param date Character: Data on which to retrieve the prediction, format YYYY-MM-dd
 #* @param disease_name Character: tarspot, gray_leaf_spot, sporecaster-irr, sporecaster-noirr, frogeye_leaf_spot
 #* @post /predict_wisconet_stations_risk
 function(date, 
@@ -229,8 +229,8 @@ function(date,
       return(list(error = "Due to data avilability, we can not estimate the tarspot disease on April 2024 or previous to 2022"))
     }else{
       risk <- retrieve_tarspot_all_stations(input_date,
-                                                        station_id = station_id, 
-                                                        disease_name = disease_name)
+                                              station_id = station_id, 
+                                              disease_name = disease_name)
       return(list(risk = risk,
                   disease_name = disease_name,
                   date = input_date))
