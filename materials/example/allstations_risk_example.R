@@ -4,6 +4,7 @@ library(dplyr)     # For data manipulation
 library(purrr)
 library(lubridate)
 
+##################################################this is the code that is prodctive in the api
 
 base_url <- 'https://wisconet.wisc.edu'
 
@@ -474,7 +475,56 @@ retrieve_tarspot_all_stations <- function(input_date,
 
 
 
-retrieve_tarspot_all_stations('2024-11-01', 'ANGO', 'gls')
+#retrieve_tarspot_all_stations('2024-11-01', 'ANGO', 'gls')
+
+# Load required libraries
+library(httr)
+library(jsonlite)
+library(dplyr)
+
+# Definir la función
+fetch_forecasting_data <- function(date) {
+  # Construir la URL dinámica con la fecha proporcionada
+  api_url <- paste0("https://connect.doit.wisc.edu/forecasting_crop_disease/predict_wisconet_stations_risk?date=", date)
+  
+  # Realizar la solicitud POST
+  response <- POST(
+    url = api_url,
+    add_headers("Content-Type" = "application/json")
+  )
+  
+  # Verificar el código de estado
+  if (status_code(response) == 200) {
+    # Extraer el contenido de la respuesta
+    response_content <- content(response, as = "parsed", type = "application/json")
+    
+    # Manejar el campo `stations_risk`
+    json_string <- response_content$stations_risk[[1]]  # Extraer la cadena JSON
+    
+    # Convertir la cadena JSON a una lista
+    stations_data <- fromJSON(json_string)
+    
+    # Aplanar los datos en un data frame
+    stations_df <- bind_rows(lapply(stations_data, bind_rows)) %>%
+      mutate(across(c(latitude, longitude, tarspot_risk), as.numeric))  # Convertir columnas relevantes a numéricas
+    
+    # Devolver el data frame
+    return(stations_df)
+    
+  } else {
+    # En caso de error, devolver el mensaje
+    stop(paste("Error: Código de estado", status_code(response)))
+  }
+}
+
+# Llamar a la función con una fecha específica
+result_df <- fetch_forecasting_data("2024-07-11")
+
+# Inspeccionar los primeros registros
+print(head(result_df))
+
+
+
 # Example
 #api_call_wisconet_data_daily('ANGO', '2024-11-01')
 #api_call_wisconet_data_rh('ANGO', '2024-11-01')

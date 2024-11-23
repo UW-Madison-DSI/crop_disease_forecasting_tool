@@ -10,7 +10,6 @@ base_url <- 'https://wisconet.wisc.edu'
 
 
 
-
 logistic_f <- function(logit) {
   probability<-exp(logit) / (1 + exp(logit))
   return(probability)
@@ -30,10 +29,10 @@ calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot) {
   
   class <- if (ensemble_prob < 0.2) {
     "low"
-  } else if (ensemble_prob < 0.35) {
-    "moderate"
-  } else {
+  } else if (ensemble_prob > 0.35) {
     "high"
+  } else {
+    "moderate"
   }
   
   return(list(tarspot_risk = ensemble_prob, tarspot_risk_class = class))
@@ -58,7 +57,7 @@ calculate_gray_leaf_spot_risk <- function(minAT21,
 calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA) {
   # Logistic regression formula for non-irrigated model
   logit_nirr <- (-0.47 * maxAT30MA) - (1.01 * maxWS30MA) + 16.65
-  ensemble_prob <- logistic_f(logit_GLS)
+  ensemble_prob <- logistic_f(logit_nirr)
   
   return(list(sporec_nirr_risk = ensemble_prob, sporec_nirr_risk_class = "NoClass"))
 }
@@ -75,6 +74,7 @@ calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA) {
   return(list(sporec_irr_30in_risk = prob_logit_irr_30, 
               sporec_irr_15in_risk = prob_logit_irr_15))
 }
+
 ################################### wisconet stations
 current_wisconet_stations <- function(input_date) {
   # Validate the input_date
@@ -85,8 +85,6 @@ current_wisconet_stations <- function(input_date) {
   }
   
   tryCatch({
-    # API URL
-    
     # Make the GET request
     stations_url <- 'https://wisconet.wisc.edu/api/v1/stations/'
     response <- GET(stations_url, add_headers(Accept = "application/json"))
@@ -100,10 +98,6 @@ current_wisconet_stations <- function(input_date) {
       filtered_data <- data %>% mutate(earliest_api_date = as.Date(earliest_api_date, format = "%m/%d/%Y"),
                                        forecasting_date = input_date) %>% filter((earliest_api_date <= low_date)
                                                                                  & (!station_id %in% c('WNTEST1', 'MITEST1')))
-      
-      # Filter stations where earliest_api_date < input_date - 30 days
-      print("Number of stations ")
-      print(nrow(filtered_data))
       
       return(filtered_data)
     } else {
@@ -139,14 +133,6 @@ current_wisconet_stations <- function(input_date) {
       filtered_data <- data %>% mutate(earliest_api_date = as.Date(earliest_api_date, format = "%m/%d/%Y"),
                                        forecasting_date = input_date) %>% 
                               filter((earliest_api_date <= low_date) & (!station_id %in% c('WNTEST1', 'MITEST1')))
-      # Convert earliest_api_date to Date format
-      print("Low date")
-      print(low_date)
-      print(input_date)
-      
-      # Filter stations where earliest_api_date < input_date - 30 days
-      print("Number of stations ")
-      print(nrow(filtered_data))
       
       return(filtered_data)
     } else {
@@ -225,12 +211,11 @@ api_call_wisconet_data_daily <- function(station, end_time) {
     
     print('---------------------------------------- Here in RH---------')
     print(result_df)
-    print('---------------------------------------- Here in RH---------')
+
     # Return the closest row
     current_time <- Sys.time()
     result_df <- result_df %>%
       arrange(desc(collection_time)) %>%
-      #arrange(abs(difftime(collection_time, current_time, units = "secs"))) %>%
       slice_head(n = 1) %>%
       select(o_collection_time, 
              air_temp_max_c_30d_ma,
@@ -238,10 +223,7 @@ api_call_wisconet_data_daily <- function(station, end_time) {
              air_temp_avg_c_30d_ma, 
              rh_max_30d_ma, 
              dp_min_30d_c_ma)
-    
-    print('---------------------------------------- 222Here in RH---------')
-    print(result_df)
-    print('---------------------------------------- 222Here in RH---------')
+
     return(result_df)
   } else {
     warning(paste("Error fetching data for station:", station, "with status code:", response$status_code))
@@ -266,9 +248,6 @@ api_call_wisconet_data_rh <- function(station,# start_time,
     )
     
     response <- GET(url = paste0(base_url, endpoint), query = params)
-    print("response from wisconet 60min relative")
-    
-    print(response)
     scode <- response$status_code
   }, error = function(e) {
     stop(paste("Failed to render report:", e$message))
@@ -288,8 +267,6 @@ api_call_wisconet_data_rh <- function(station,# start_time,
       rh_avg = NA,  # Placeholder for relative humidity values
       stringsAsFactors = FALSE
     )
-    
-    
     
     # Process measures to get '60min_relative_humidity_pct_avg'
     for (i in seq_along(data$measures)) {
@@ -315,9 +292,6 @@ api_call_wisconet_data_rh <- function(station,# start_time,
       ) %>%
       arrange(desc(adjusted_date))
     
-    
-    print(result_df)
-    
     # Group by date and sum the counts of night hours where RH >= 90 for each day
     daily_rh_above_90 <- result_df %>%
       group_by(adjusted_date) %>%
@@ -330,12 +304,6 @@ api_call_wisconet_data_rh <- function(station,# start_time,
     # Calculate 14-day rolling mean for RH >= 90 hours
     daily_rh_above_90 <- daily_rh_above_90%>%
       arrange(desc(adjusted_date)) %>% slice_head(n = 1)
-    
-    #arrange(abs(difftime(collection_time, current_time, units = "secs"))) %>%
-    #%>%
-    #select(collection_time, air_temp_avg_c_30d_ma, rh_max_30d_ma)
-    print(daily_rh_above_90)
-    print("----------------------- +++++ --- +++++ ---------------------------------")
     
     return(daily_rh_above_90 %>% select(adjusted_date, rh_above_90_daily_14d_ma))
   } else {
@@ -353,8 +321,10 @@ convert_to_api_output <- function(dataframe, disease_name) {
     dataframe <- dataframe %>%
       select(
         station_id,
-        forecasting_date.x,
-        station_name.x,
+        latitude, longitude, region, state,
+        earliest_api_date,
+        forecasting_date,
+        station_name,
         air_temp_avg_c_30d_ma,
         rh_max_30d_ma,
         rh_above_90_daily_14d_ma,
@@ -365,6 +335,8 @@ convert_to_api_output <- function(dataframe, disease_name) {
     dataframe <- dataframe %>%
       select(
         station_id,
+        latitude, longitude, region, state,
+        earliest_api_date,
         forecasting_date,
         station_name,
         air_temp_min_c_21d_ma,
@@ -376,6 +348,8 @@ convert_to_api_output <- function(dataframe, disease_name) {
     dataframe <- dataframe %>%
       select(
         station_id,
+        latitude, longitude, region, state,
+        earliest_api_date,
         forecasting_date,
         station_name,
         air_temp_max_c_30d_ma, 
@@ -395,15 +369,13 @@ convert_to_api_output <- function(dataframe, disease_name) {
 }
 
 
-#allstations <- current_wisconet_stations(input_date = '2024-08-01')
-#stations <- allstations %>% filter(station_id == "ANGO")
-
 retrieve_tarspot_all_stations <- function(input_date,
                                           input_station_id, 
                                           disease_name = 'tarspot') {
-  # Example usage
+  
   allstations <- current_wisconet_stations(input_date = input_date)
   print(nrow(allstations))
+  
   if (!is.null(input_station_id)) {
     stations <- allstations %>% filter(station_id == input_station_id)
     print(stations)
@@ -411,37 +383,28 @@ retrieve_tarspot_all_stations <- function(input_date,
     stations <- allstations
   }
   
-  print("---------------------------------------------------")
-  print(input_date)
-  print(input_station_id) 
-  print(disease_name)
-  print("---------------------------------------------------")
-  # Corrected condition: use nrow instead of nrows
-  if (nrow(stations) == 0) {
+  N<-nrow(stations)
+    
+  if (N == 0) {
     print("The selected station was not available to forecasting, please choose another one")
     return(NULL)
   } else {
-    # Fetch and process daily data
+    # Fetch and process daily data eg max, mi, avg air temp, dp, others
     daily_enriched <- stations %>%
       mutate(daily_data = map(station_id, ~ api_call_wisconet_data_daily(.x, input_date))) %>%
       filter(!map_lgl(daily_data, is.null)) %>%
       unnest_wider(daily_data)
     
-    # Enrich the dataset with tarspot or GLS risk based on `disease_name`
     if (disease_name == 'tarspot') {
-      print(daily_enriched)
-      
-      # Fetch and process RH data
+      # Fetch and process RH data for tarspot
       rh_enriched <- stations %>%
         mutate(rh_nh_data = map(station_id, ~ api_call_wisconet_data_rh(.x, input_date))) %>%
         filter(!map_lgl(rh_nh_data, is.null)) %>%
-        unnest_wider(rh_nh_data)
+        unnest_wider(rh_nh_data) %>% select(station_id, rh_above_90_daily_14d_ma)
       
-      # Join the results
-      enriched_stations <- daily_enriched %>% left_join(rh_enriched, by = "station_id")
-      
-      print("------------------ COLNAMES ------------------------")
-      print(colnames(enriched_stations))
+      # Join the datasets
+      enriched_stations <- daily_enriched %>% left_join(rh_enriched, 
+                                                        by = "station_id")
       
       enriched_stations1 <- enriched_stations %>%
         filter(
@@ -460,21 +423,6 @@ retrieve_tarspot_all_stations <- function(input_date,
           tarspot_risk_class = map_chr(tarspot_results, "tarspot_risk_class")
         ) %>%
         select(-tarspot_results)  # Remove intermediate list column
-      #write.csv(enriched_stations1, "materials/enriched_stations.csv", row.names = FALSE)
-      
-      print("Filtered and enriched stations data:")
-      print(enriched_stations1)
-      print(colnames(enriched_stations))
-      print(enriched_stations1 %>% select(station_id, forecasting_date.x, station_name.x, 
-                                          air_temp_avg_c_30d_ma, 
-                                          rh_max_30d_ma, rh_above_90_daily_14d_ma,
-                                          tarspot_risk, tarspot_risk_class))
-      api_output <- convert_to_api_output(enriched_stations1, disease_name)
-      
-      # print result JSON
-      return(list(stations_risk = api_output,
-                  status = 200,
-                  disease_name = disease_name)) 
     }
     
     if (disease_name == 'gls') {
@@ -494,21 +442,6 @@ retrieve_tarspot_all_stations <- function(input_date,
           gls_risk_class = map_chr(gls_results, "gls_risk_class")
         ) %>%
         select(-gls_results)
-      
-      print("Filtered and enriched stations data:")
-      print(enriched_stations1)
-      print(colnames(enriched_stations))
-      
-      print(enriched_stations1 %>% select(station_id, forecasting_date, station_name, 
-                                          air_temp_min_c_21d_ma, dp_min_30d_c_ma,
-                                          gls_risk, gls_risk_class))
-      
-      api_output <- convert_to_api_output(enriched_stations1, disease_name)
-      
-      # output
-      return(list(stations_risk = api_output,
-                  status = 200,
-                  disease_name = disease_name))
     }
     
     #sporecaster calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA)
@@ -529,22 +462,15 @@ retrieve_tarspot_all_stations <- function(input_date,
           sporec_irr_15in_risk = map_dbl(sporecast_irr_results, "sporec_irr_15in_risk")
         ) %>%
         select(-sporecast_irr_results)
-      
-      print("Filtered and enriched stations data irrigation:")
-      print(enriched_stations1)
-      print(colnames(enriched_stations1))
-      
-      print(enriched_stations1 %>% select(station_id, forecasting_date, station_name, 
-                                          air_temp_max_c_30d_ma, rh_max_30d_ma,
-                                          sporec_irr_30in_risk, sporec_irr_15in_risk))
-      
-      api_output <- convert_to_api_output(enriched_stations1, disease_name)
-      
-      # Output
-      return(list(stations_risk = api_output,
-                  status = 200,
-                  disease_name = disease_name))
     }
+    
+    api_output <- convert_to_api_output(enriched_stations1, disease_name)
+    
+    # Output
+    return(list(stations_risk = api_output,
+                n_stations = N,
+                status = 200,
+                disease_name = disease_name))
   }  
 }
 
