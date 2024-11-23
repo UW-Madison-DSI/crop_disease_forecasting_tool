@@ -5,9 +5,9 @@ account: moros2
 server: connect.doit.wisc.edu
 hostUrl: https://connect.doit.wisc.edu/__api__
 appId: 365
-bundleId: 2398
+bundleId: 2655
 url: https://connect.doit.wisc.edu/forecasting_crop_disease/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: .github/workflows/r-cicd.yml|.RData|app/app.R|app/functions/auxiliar_functions.R|app/functions/logic.R|app/functions/stations.R|LICENSE.md|README.md|tests/testthat/test-calculate_non_irrigated_risk.R|tests/testthat.R|materials
+ignoredFiles: .github/workflows/r-cmd-check.yml|.RData|install_dependencies.R|LICENSE.md|README.md|tests/testthat/test-logit_functions.R|tests/testthat.R|texput.log|app|materials
