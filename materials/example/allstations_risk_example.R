@@ -254,6 +254,28 @@ api_call_wisconet_data_rh <- function(station,# start_time,
   }
 }
 
+library(dplyr)
+library(jsonlite)
+
+# formating dfor api
+convert_to_api_output <- function(dataframe) {
+  dataframe %>%
+    select(
+      station_id,
+      forecasting_date.x,
+      station_name.x,
+      air_temp_avg_c_30d_ma,
+      rh_max_30d_ma,
+      rh_above_90_daily_14d_ma,
+      tarspot_risk,
+      tarspot_risk_class
+    ) %>%
+    # list
+    as_tibble() %>%
+    split(1:nrow(.)) %>%
+    toJSON(auto_unbox = TRUE, pretty = TRUE)
+}
+
 
 
 retrieve_tarspot_all_stations <- function(input_date,
@@ -292,43 +314,48 @@ retrieve_tarspot_all_stations <- function(input_date,
       # Join the results
       enriched_stations <- daily_enriched %>%
         left_join(rh_enriched, by = "station_id")
-      
+      # Writing the enriched_stations dataframe to a CSV file
       # Enrich the dataset with tarspot risk
-      enriched_stations1 <- enriched_stations #%>%
-      #  mutate(
-      #    tarspot_results = pmap(
-      #      list(air_temp_avg_c_30d_ma, rh_max_30d_ma, rh_above_90_daily_14d_ma),
-      #      ~ calculate_tarspot_risk(..1, ..2, ..3)
-      #    )
-      #  ) %>%
-      #  mutate(
-      #    tarspot_risk = map_dbl(tarspot_results, "tarspot_risk"),
-      #    tarspot_risk_class = map_chr(tarspot_results, "tarspot_risk_class")
-      #  ) %>%
-      #  select(-tarspot_results)  # Remove intermediate list column
-      
+      enriched_stations1 <- enriched_stations %>%
+        filter(
+          !is.na(air_temp_avg_c_30d_ma) & 
+            !is.na(rh_max_30d_ma) & 
+            !is.na(rh_above_90_daily_14d_ma)
+        ) %>%
+        mutate(
+          tarspot_results = pmap(
+            list(air_temp_avg_c_30d_ma, rh_max_30d_ma, rh_above_90_daily_14d_ma),
+            ~ calculate_tarspot_risk(..1, ..2, ..3)
+          )
+        ) %>%
+        mutate(
+          tarspot_risk = map_dbl(tarspot_results, "tarspot_risk"),
+          tarspot_risk_class = map_chr(tarspot_results, "tarspot_risk_class")
+        ) %>%
+        select(-tarspot_results)  # Remove intermediate list column
+      write.csv(enriched_stations1, "materials/enriched_stations.csv", row.names = FALSE)
       
       print("Filtered and enriched stations data:")
       print(enriched_stations1)
-      print(colnames(enriched_stations1))
+      print(colnames(enriched_stations))
     }
+  
+    print(enriched_stations1%>%select(station_id,forecasting_date.x, station_name.x, 
+                                     air_temp_avg_c_30d_ma, 
+                                     rh_max_30d_ma,rh_above_90_daily_14d_ma,
+                                     tarspot_risk, tarspot_risk_class
+                                     ))
+
+    api_output <- convert_to_api_output(enriched_stations1)
     
-    
-    #print(enriched_stations1)#%>%select(station_id,#forecasting_date.x, station_name.x, 
-                             #        air_temp_avg_c_30d_ma, 
-                            #         rh_max_30d_ma,rh_above_90_daily_14d_ma,
-                                     #tarspot_risk, tarspot_risk_class
-                           #          ))
-    #station_timezone, 
-    #        forecasting_date, #risk, collection_time,
-    #         air_temp_avg_c_30d_ma, rh_max_30d_ma))
-    
-      
+    # Imprimir el resultado JSON
+    return(list(stations_risk=api_output,
+                status=200))  
   }
 }
 
 
-retrieve_tarspot_all_stations('2020-11-01')
+retrieve_tarspot_all_stations('2024-08-01')
 # Example
 #api_call_wisconet_data_daily('ANGO', '2024-11-01')
 #api_call_wisconet_data_rh('ANGO', '2024-11-01')

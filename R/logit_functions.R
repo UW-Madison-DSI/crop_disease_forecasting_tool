@@ -4,31 +4,52 @@ logistic <- function(logit) {
   return(probability)
 }
 
+classify_risk<-function(ensemble_prob, l_thr, h_thr){
+  if (ensemble_prob<=l_thr){
+    return("Low")
+  }else{
+    if (ensemble_prob>=h_thr){
+      return("High")
+    }else{
+      return("Moderate")
+    }
+  }
+}
 
 # function to calculate risk for any disease
 calculate_disease_risk <- function(logit_values, thresholds, disease_name) {
-  probabilities <- sapply(logit_values, logistic)
-  cat("Probabilities ",disease_name,': ', probabilities)
-  ensemble_prob <- mean(probabilities)
-  cat("Ensemble ",disease_name,': ', ensemble_prob,'\n')
-  
-  
-  if (thresholds[2] == 1.0 & thresholds[1]==1.0) {
+  tryCatch({
+    probabilities <- sapply(logit_values, logistic)
+    cat("Probabilities ", disease_name, ': ', probabilities, '\n')
+    
+    ensemble_prob <- mean(probabilities)
+    cat("Ensemble ", disease_name, ': ', ensemble_prob, '\n')
+    
+    if (thresholds[2] == 1.0 & thresholds[1] == 1.0) {
+      # Return results as a list
+      risk_classification <- 'NoRiskClass'
+    } else {
+      # Ensure the classify_risk function is properly defined
+      risk_classification <- classify_risk(ensemble_prob, thresholds[1], thresholds[2])
+    }
+    cat("\nThresholds: ", thresholds[1], thresholds[2], "Risk Classification: ", risk_classification, '\n')
+    
     # Return results as a list
-    risk_classification <- 'NoRiskClass'
-  } else {
-    # Ensure the classify_risk function is properly defined
-    risk_classification <- classify_risk(ensemble_prob, thresholds[1], thresholds[2])
-  }
-  cat("\n thresholds ",thresholds[1],thresholds[2], risk_classification)  
-  # Return results as a list
-  return(list(
-    code='Success',
-    disease = disease_name,
-    probability = round(ensemble_prob * 100, 2),  # Convert probability to percentage
-    risk_class = risk_classification
-  ))
+    return(list(
+      code = 'Success',
+      disease = disease_name,
+      probability = round(ensemble_prob * 100, 2),  # Convert probability to percentage
+      risk_class = risk_classification
+    ))
+  }, error = function(e) {
+    # Handle the error gracefully
+    return(list(
+      code = 'Error',
+      message = paste("Failed to calculate disease risk:", e$message)
+    ))
+  })
 }
+
 
 # Function to calculate risk for Tar Spot based on two logistic regression models
 calculate_tarspot_risk <- function(meanAT, maxRH, 

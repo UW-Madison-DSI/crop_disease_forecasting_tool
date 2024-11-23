@@ -1,6 +1,11 @@
-library(httr)      # For API requests
-library(jsonlite)  # For parsing JSON
-library(dplyr)     # For data manipulation
+library(zoo)
+library(scales)
+
+library(tidyr)
+
+library(httr) 
+library(jsonlite)
+library(dplyr)
 library(purrr)
 library(lubridate)
 
@@ -10,17 +15,36 @@ base_url <- 'https://wisconet.wisc.edu'
 
 
 
-logistic <- function(logit) {
+logistic_f <- function(logit) {
   probability<-exp(logit) / (1 + exp(logit))
   return(probability)
 }
 
+# Function to convert Fahrenheit to Celsius
+fahrenheit_to_celsius <- function(temp_f) {
+  (temp_f - 32) * 5/9
+}
 
-calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot) {
+# Function to convert current time to GMT and subtract a number of months
+from_ct_to_gmt <- function(current_time, mo){
+  # Subtract months from the current time in Central Time
+  past_time_ct <- current_time - months(mo)
+  
+  # Convert both dates to Unix timestamps in GMT
+  start_time <- as.integer(as.POSIXct(past_time_ct, tz = "GMT"))
+  end_time <- as.integer(as.POSIXct(current_time, tz = "GMT"))
+  
+  return(list(
+    start_time_gmt = start_time,
+    end_time_gmt = end_time
+  ))
+}
+
+tarspot_risk_function <- function(meanAT, maxRH, rh90_night_tot) {
   logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH)
   logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot)
   logit_values <- c(logit_LR4, logit_LR6)
-  probability <- sapply(logit_values, logistic)
+  probability <- sapply(logit_values, logistic_f)
   ensemble_prob <- mean(probability)
   
   class <- if (ensemble_prob < 0.2) {
@@ -92,7 +116,7 @@ api_call_wisconet_data_daily <- function(station, end_time) {
   params <- list(
     end_time = as.numeric(end_date),
     start_time = as.numeric(start_date),
-    fields = 'daily_air_temp_f_max,daily_air_temp_f_min,daily_relative_humidity_pct_max'
+    fields = 'daily_air_temp_f_max,daily_air_temp_f_min,daily_relative_humidity_pct_max,daily_dew_point_f_min'
   )
   
   # Make API request
@@ -113,7 +137,8 @@ api_call_wisconet_data_daily <- function(station, end_time) {
       collection_time = collection_time_chicago,
       air_temp_max_f = NA,
       air_temp_min_f = NA,
-      rh_max = NA
+      rh_max = NA,
+      min_dp = NA
     )
     
     # Populate measures
@@ -123,6 +148,7 @@ api_call_wisconet_data_daily <- function(station, end_time) {
         if (measures[j, 1] == 4) result_df$air_temp_max_f[i] <- measures[j, 2]
         if (measures[j, 1] == 6) result_df$air_temp_min_f[i] <- measures[j, 2]
         if (measures[j, 1] == 20) result_df$rh_max[i] <- measures[j, 2]
+        if (measures[j, 1] == 12) result_df$min_dp[i] <- measures[j, 2]
       }
     }
     
@@ -134,8 +160,10 @@ api_call_wisconet_data_daily <- function(station, end_time) {
     # Calculate 30-day moving averages
     result_df <- result_df %>%
       mutate(
+        air_temp_min_c_30d_ma = rollmean(air_temp_min_c, k = 30, fill = NA, align = "right"),
         air_temp_avg_c_30d_ma = rollmean(air_temp_avg_c, k = 30, fill = NA, align = "right"),
-        rh_max_30d_ma = rollmean(rh_max, k = 30, fill = NA, align = "right")
+        rh_max_30d_ma = rollmean(rh_max, k = 30, fill = NA, align = "right"),
+        dp_min_30d_ma = rollmean(min_dp, k = 30, fill = NA, align = "right")
       )
     
     print('---------------------------------------- Here in RH---------')
@@ -147,7 +175,10 @@ api_call_wisconet_data_daily <- function(station, end_time) {
       arrange(desc(collection_time)) %>%
       #arrange(abs(difftime(collection_time, current_time, units = "secs"))) %>%
       slice_head(n = 1) %>%
-      select(o_collection_time, air_temp_avg_c_30d_ma, rh_max_30d_ma)
+      select(o_collection_time, 
+             air_temp_min_c_30d_ma, air_temp_avg_c_30d_ma, 
+             rh_max_30d_ma, 
+             dp_min_30d_ma)
     
     print('---------------------------------------- 222Here in RH---------')
     print(result_df)
@@ -254,6 +285,27 @@ api_call_wisconet_data_rh <- function(station,# start_time,
   }
 }
 
+library(dplyr)
+library(jsonlite)
+
+# formating dfor api
+convert_to_api_output <- function(dataframe) {
+  dataframe %>%
+    select(
+      station_id,
+      forecasting_date.x,
+      station_name.x,
+      air_temp_avg_c_30d_ma,
+      rh_max_30d_ma,
+      rh_above_90_daily_14d_ma,
+      tarspot_risk,
+      tarspot_risk_class
+    ) %>%
+    # list
+    as_tibble() %>%
+    split(1:nrow(.)) %>%
+    toJSON(auto_unbox = TRUE, pretty = TRUE)
+}
 
 
 retrieve_tarspot_all_stations <- function(input_date,
@@ -266,69 +318,72 @@ retrieve_tarspot_all_stations <- function(input_date,
   }else{
     stations <- allstations
   }
+
   
-  cond=TRUE
-  if (cond==TRUE){
-    if (!is.null(stations$error)) {
-      print(stations$error)
-    } else {
-      print(stations)
-      print(" here again -------")
-      # Fetch and process daily data
-      daily_enriched <- stations %>%
-        mutate(daily_data = map(station_id, ~ api_call_wisconet_data_daily(.x, input_date))) %>%
-        filter(!map_lgl(daily_data, is.null)) %>%
-        unnest_wider(daily_data)
+  if (!is.null(stations$error)) {
+    print(stations$error)
+  } else {
+    print(stations)
+    print(" here again -------")
+    # Fetch and process daily data
+    daily_enriched <- stations %>%
+      mutate(daily_data = map(station_id, ~ api_call_wisconet_data_daily(.x, input_date))) %>%
+      filter(!map_lgl(daily_data, is.null)) %>%
+      unnest_wider(daily_data)
       
-      print("Here ----->>>>>>>>>>>>>>>>>>>>>>>>>>")
-      print(daily_enriched)# %>% select(station_id, air_temp_avg_c_30d_ma, rh_max_30d_ma))
+    print("Here ----->>>>>>>>>>>>>>>>>>>>>>>>>>")
+    print(daily_enriched)# %>% select(station_id, air_temp_avg_c_30d_ma, rh_max_30d_ma))
       
-      # Fetch and process RH data
-      rh_enriched <- stations %>%
-        mutate(rh_nh_data = map(station_id, ~ api_call_wisconet_data_rh(.x, input_date))) %>%
-        filter(!map_lgl(rh_nh_data, is.null)) %>%
-        unnest_wider(rh_nh_data)
+    # Fetch and process RH data
+    rh_enriched <- stations %>%
+      mutate(rh_nh_data = map(station_id, ~ api_call_wisconet_data_rh(.x, input_date))) %>%
+      filter(!map_lgl(rh_nh_data, is.null)) %>%
+      unnest_wider(rh_nh_data)
       
-      # Join the results
-      enriched_stations <- daily_enriched %>%
-        left_join(rh_enriched, by = "station_id")
-      
-      # Enrich the dataset with tarspot risk
-      enriched_stations1 <- enriched_stations #%>%
-      #  mutate(
-      #    tarspot_results = pmap(
-      #      list(air_temp_avg_c_30d_ma, rh_max_30d_ma, rh_above_90_daily_14d_ma),
-      #      ~ calculate_tarspot_risk(..1, ..2, ..3)
-      #    )
-      #  ) %>%
-      #  mutate(
-      #    tarspot_risk = map_dbl(tarspot_results, "tarspot_risk"),
-      #    tarspot_risk_class = map_chr(tarspot_results, "tarspot_risk_class")
-      #  ) %>%
-      #  select(-tarspot_results)  # Remove intermediate list column
-      
+    # Join the results
+    enriched_stations <- daily_enriched %>% left_join(rh_enriched, by = "station_id")
+    # Writing the enriched_stations dataframe to a CSV file
+    # Enrich the dataset with tarspot risk
+    if (disease_name=='tarspot'){
+      enriched_stations1 <- enriched_stations %>%
+        filter(
+          !is.na(air_temp_avg_c_30d_ma) & 
+            !is.na(rh_max_30d_ma) & 
+            !is.na(rh_above_90_daily_14d_ma)
+        ) %>%
+        mutate(
+        tarspot_results = pmap(
+          list(air_temp_avg_c_30d_ma, rh_max_30d_ma, rh_above_90_daily_14d_ma),
+          ~ tarspot_risk_function(..1, ..2, ..3)
+        )
+        ) %>%
+        mutate(
+          tarspot_risk = map_dbl(tarspot_results, "tarspot_risk"),
+          tarspot_risk_class = map_chr(tarspot_results, "tarspot_risk_class")
+        ) %>%
+        select(-tarspot_results)  # Remove intermediate list column
       
       print("Filtered and enriched stations data:")
       print(enriched_stations1)
-      print(colnames(enriched_stations1))
+      print(colnames(enriched_stations))
+      
+      print(enriched_stations1%>%select(station_id,forecasting_date.x, station_name.x, 
+                                        air_temp_avg_c_30d_ma, 
+                                        rh_max_30d_ma,rh_above_90_daily_14d_ma,
+                                        tarspot_risk, tarspot_risk_class
+      ))
+      
+      api_output <- convert_to_api_output(enriched_stations1)
+      
+      # output
+      return(list(stations_risk=api_output,
+                  status=200))
+    }else{
+      ################# here will go sporecaster
+      return(list(stations_risk=api_output,
+                  status=200))
     }
     
-    
-    #print(enriched_stations1)#%>%select(station_id,#forecasting_date.x, station_name.x, 
-    #        air_temp_avg_c_30d_ma, 
-    #         rh_max_30d_ma,rh_above_90_daily_14d_ma,
-    #tarspot_risk, tarspot_risk_class
-    #          ))
-    #station_timezone, 
-    #        forecasting_date, #risk, collection_time,
-    #         air_temp_avg_c_30d_ma, rh_max_30d_ma))
-    
-    
+      
   }
 }
-
-
-#retrieve_tarspot_all_stations('2020-11-01')
-# Example
-#api_call_wisconet_data_daily('ANGO', '2024-11-01')
-#api_call_wisconet_data_rh('ANGO', '2024-11-01')

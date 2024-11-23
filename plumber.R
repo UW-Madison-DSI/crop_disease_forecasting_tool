@@ -3,7 +3,7 @@ library(plumber)
 
 source("R/logit_functions.R")
 source("R/crop_mangm_validations.R")
-
+source("R/all_stations_api_functions.R")
 
 #* @apiTitle Crop Disease Risk Prediction API
 #* @apiDescription This API predicts the risk of crop diseases (Spore, Tarspoter, Gray Leaf Spot and Frog Eye Leaf Spot) based on environmental data and user inputs.
@@ -212,9 +212,13 @@ function(growth_stage = "yes",
 #* @param date Character: Data on which to retrieve the prediction, format YYYY-dd-MM
 #* @param disease_name Character: tarspot, gray_leaf_spot, sporecaster-irr, sporecaster-noirr, frogeye_leaf_spot
 #* @post /predict_wisconet_stations_risk
-function(date = NULL, 
+function(date, 
+         station_id = NULL,
          disease_name = NULL) {
-
+  
+  if (is.null(disease_name)){
+    disease_name <- 'tarspot'
+  }
   if (is.null(date)){
     input_date <- Sys.Date()
   }else{
@@ -225,16 +229,11 @@ function(date = NULL,
       return(list(error = "Due to data avilability, we can not estimate the tarspot disease on April 2024 or previous to 2022"))
     }else{
       risk <- retrieve_tarspot_all_stations(input_date,
-                                                        station_id = NULL, 
-                                                        disease_name = 'tarspot')
+                                                        station_id = station_id, 
+                                                        disease_name = disease_name)
+      return(list(risk = risk,
+                  disease_name = disease_name,
+                  date = input_date))
     }
-  }
-  if (!disease_name %in% c('tarspot', 'gray_leaf_spot', 'sporecaster-irr', 'sporecaster-noirr', 'frogeye_leaf_spot')){
-    return(list(error = "Please input a valid disease name."))
-  }else{
-    estimated_risk <- disease_risk(date, disease_name)
-    return(list(risk = estimated_risk,
-                disease_name = disease_name,
-                date = input_date))
   }
 }
