@@ -210,30 +210,49 @@ function(growth_stage = "yes",
 
 #* Predict Wisconet Stations Risk
 #* @param date Character: Data on which to retrieve the prediction, format YYYY-MM-dd
-#* @param disease_name Character: tarspot, gray_leaf_spot, sporecaster-irr, sporecaster-noirr, frogeye_leaf_spot
+#* @param station_id Character: Station id eg ALTN
+#* @param disease_name Character: tarspot, gls, sporecaster-irr // sporecaster-noirr, frogeye_leaf_spot
 #* @post /predict_wisconet_stations_risk
 function(date, 
          station_id = NULL,
          disease_name = NULL) {
   
-  if (is.null(disease_name)){
+  # Default value for disease_name
+  if (is.null(disease_name)) {
     disease_name <- 'tarspot'
   }
-  if (is.null(date)){
-    input_date <- Sys.Date()
-  }else{
-    input_date <- as.Date(date)
-    if ((format(input_date, "%Y-%m") == "2024-04") 
-        || (input_date < as.Date("2022-01-01"))
-        || (input_date > Sys.Date())) {
-      return(list(error = "Due to data avilability, we can not estimate the tarspot disease on April 2024 or previous to 2022"))
-    }else{
-      risk <- retrieve_tarspot_all_stations(input_date,
-                                              station_id = station_id, 
-                                              disease_name = disease_name)
-      return(list(risk = risk,
-                  disease_name = disease_name,
-                  date = input_date))
-    }
+  
+  # Validate and handle input_date
+  input_date <- if (is.null(date)) Sys.Date() else as.Date(date)
+  
+  # Check for invalid dates
+  if ((format(input_date, "%Y-%m") == "2024-04") || 
+      (input_date < as.Date("2022-01-01")) || 
+      (input_date > Sys.Date())) {
+    return(list(
+      error = "Data is unavailable for April 2024 or dates prior to 2022.",
+      status = 400,
+      disease_name = disease_name,
+      date = input_date
+    ))
   }
+  
+  # Try retrieving risk and handle errors
+  tryCatch({
+    risk <- retrieve_tarspot_all_stations(input_date, station_id, disease_name)
+    return(list(
+      stations_risk = risk$stations_risk,
+      status = risk$status,
+      disease_name = disease_name,
+      date = input_date
+    ))
+  }, error = function(e) {
+    return(list(
+      stations_risk = NULL,
+      status = 400,
+      disease_name = disease_name,
+      date = input_date,
+      error = conditionMessage(e)  # Include error message for debugging
+    ))
+  })
 }
