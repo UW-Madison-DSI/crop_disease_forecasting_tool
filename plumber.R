@@ -242,6 +242,7 @@ function(date,
     risk <- retrieve_tarspot_all_stations(input_date, station_id, disease_name)
     return(list(
       stations_risk = risk$stations_risk,
+      n_stations = risk$n_stations,
       status = risk$status,
       disease_name = disease_name,
       date = input_date
@@ -249,6 +250,7 @@ function(date,
   }, error = function(e) {
     return(list(
       stations_risk = NULL,
+      n_stations = 0,
       status = 400,
       disease_name = disease_name,
       date = input_date,
