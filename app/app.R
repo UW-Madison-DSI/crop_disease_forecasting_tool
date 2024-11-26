@@ -18,6 +18,7 @@ source("functions/stations.R")
 source("functions/logic.R")
 source("functions/auxiliar_functions.R")
 source("functions/instructions.R")
+source("functions/heatmap.R")
 
 
 tool_title <- "Agricultural Forecasting and Advisory System"
@@ -193,7 +194,7 @@ server <- function(input, output, session) {
       current <- input$forecast_date  # Access the selected date
       
       today_ct <- with_tz(current, tzone = "America/Chicago")
-      out <- from_ct_to_gmt(today_ct, 6) # 6 mo
+      out <- from_ct_to_gmt(today_ct, 1.5) # 6 mo
       end_time <- out$end_time_gmt
       result <- call_tarspot_for_station(station_code, 
                                          station$name, 
@@ -239,19 +240,62 @@ server <- function(input, output, session) {
       addTiles() #%>%  # Add OpenStreetMap tiles
   })
   
+  stations_data <- reactiveVal(data.frame())
+  
+  observeEvent(input$update, {
+    req(input$date)
+    tryCatch({
+      data <- fetch_forecasting_data(as.character(input$date))
+      stations_data(data)
+      print("ok")
+    }, error = function(e) {
+      showNotification("Error uploading data. Check Date.", type = "error")
+    })
+  })
+  
+  # Crear función de paleta de colores
+  color_palette <- colorNumeric(
+    palette = "magma",
+    domain = c(100, 0)
+  )
+  
   # Update map based on selected station
   observe({
     station_code <- input$custom_station_code
+    #this is the condition on the map interactivity
     if (TRUE) {
-      
-      station_data <- selected_station_data()
-      if (station_code == "all") {
-        for (station_code in names(station_data)) {
-          station <- station_data[[station_code]]
+      if (input$toggle_switch==TRUE){
+        station_data <- selected_station_data()
+        if (station_code == "all") {
+          for (station_code in names(station_data)) {
+            station <- station_data[[station_code]]
+            leafletProxy("mymap") %>%
+              setView(lng = -89.75, lat = 44.76, zoom = 7) %>%
+              addMarkers(
+                lng = station$longitude, lat = station$latitude,
+                popup = paste0(
+                  "<strong> Station: ", station$name, "</strong><br>",
+                  "Location: ", station$location, "<br>",
+                  "Region: ", station$region, "<br>",
+                  "County: ", station$county, "<br>",
+                  "State: ", station$state, "<br>",
+                  "Station available since : ", station$earliest_api_date
+                )
+              )
+          }
+        } else {
+          station <- stations[[station_code]]
+  
+          lon_value <- station$longitude
+          lat_value <- station$latitude
+          showNotification(paste("Station", station$name), type = "default")
+          
           leafletProxy("mymap") %>%
-            setView(lng = -89.75, lat = 44.76, zoom = 7) %>%
+            clearMarkers() %>%
+            setView(lng = lon_value, lat = lat_value, zoom = 15) %>%
             addMarkers(
-              lng = station$longitude, lat = station$latitude,
+              lng = lon_value,
+              lat = lat_value,
               popup = paste0(
                 "<strong> Station: ", station$name, "</strong><br>",
                 "Location: ", station$location, "<br>",
@@ -262,28 +306,64 @@ server <- function(input, output, session) {
               )
             )
         }
-      } else {
-        station <- stations[[station_code]]
-
-        lon_value <- station$longitude
-        lat_value <- station$latitude
-        showNotification(paste("Station", station$name), type = "default")
-        
-        leafletProxy("mymap") %>%
-          clearMarkers() %>%
-          setView(lng = lon_value, lat = lat_value, zoom = 15) %>%
-          addMarkers(
-            lng = lon_value,
-            lat = lat_value,
-            popup = paste0(
-              "<strong> Station: ", station$name, "</strong><br>",
-              "Location: ", station$location, "<br>",
-              "Region: ", station$region, "<br>",
-              "County: ", station$county, "<br>",
-              "State: ", station$state, "<br>",
-              "Station available since : ", station$earliest_api_date
+      }else if (input$toggle_switch==FALSE){
+        showNotification("This is a heatmap", type = "default")
+        output$risk_map <- renderLeaflet({
+          data <- stations_data()
+          req(nrow(data) > 0)
+          
+          map <- leaflet(data) %>%
+            addProviderTiles(providers$CartoDB.Positron) %>%
+            setView(
+              lng = mean(data$longitude, na.rm = TRUE),
+              lat = mean(data$latitude, na.rm = TRUE),
+              zoom = 7
             )
-          )
+          
+          if (input$show_heatmap) {
+            map <- map %>%
+              addHeatmap(
+                lng = ~longitude,
+                lat = ~latitude,
+                intensity = ~tarspot_risk,
+                blur = input$blur,
+                max = 100,
+                radius = input$radius,
+                minOpacity = input$opacity
+              )
+          }
+          
+          if (input$show_stations) {
+            map <- map %>%
+              addCircleMarkers(
+                lng = ~longitude,
+                lat = ~latitude,
+                popup = ~popup_content,
+                radius = 6,
+                color = "black",
+                fillColor = ~color_palette(tarspot_risk), # Color based on `tarspot_risk`
+                fillOpacity = 0.8,
+                weight = 1.5,
+                label = ~station_name,
+                labelOptions = labelOptions(
+                  style = list("font-weight" = "normal", padding = "3px 8px"),
+                  textsize = "12px",
+                  direction = "auto"
+                )
+              )
+          }
+          
+          # ADD legend
+          map %>%
+            addLegend(
+              position = "bottomright",
+              title = "Tar Spot Risk (%)",
+              pal = color_palette,
+              values = ~tarspot_risk,
+              opacity = 0.8,
+              labFormat = labelFormat(suffix = "%")
+            )
+        })
       }
     } else {
       # Toggle is OFF: Enable map click for user to select location
