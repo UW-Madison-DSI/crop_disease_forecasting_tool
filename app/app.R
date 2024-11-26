@@ -52,14 +52,14 @@ ui <- dashboardPage(
       )
     ),
     
-    #switchInput(
-    #  inputId = "toggle_switch",
-    #  label = "Wisconet Data",
-    #  value = TRUE,
-    #  onLabel = "ON",
-    #  offLabel = "OFF",
-    #  size = "small"
-    #),
+    switchInput(
+      inputId = "toggle_switch",
+      label = "Wisconet Data",
+      value = TRUE,
+      onLabel = "ON",
+      offLabel = "OFF",
+      size = "small"
+    ),
     
     # Control panel FROM functions/instructions.R
     risk_buttom,
@@ -79,16 +79,13 @@ ui <- dashboardPage(
     
     # Instructions panel and section FROM functions/instructions.R
     #forecast_date_buttom,
-    conditionalPanel(
-      condition = "input.custom_station_code!='all'",
-      tags$div(
+    tags$div(
         `data-toggle` = "tooltip", 
         title = "Pick a date for which you would like a disease risk forecast.",
         dateInput("forecast_date", "Select Forecast Date For the Station", 
                   value = Sys.Date(), 
-                  min = NULL, #as.Date(station$earliest_api_date)-35, 
+                  min = '2024-05-01', #as.Date(station$earliest_api_date)-35, 
                   max = Sys.Date())
-      )
     ),
     fungicide_applied_buttom,
     crop_growth_stage_buttom,
@@ -187,28 +184,16 @@ server <- function(input, output, session) {
     station_code <- input$custom_station_code
     if (station_code != "all") {
       station <- stations[[station_code]]
-      earliest_date <- as.Date(station$earliest_api_date)
+      #earliest_date <- as.Date(station$earliest_api_date)
       
       # Check if a date is already selected; otherwise, default to Sys.Date()
-      current_forecast_date <- isolate(input$forecast_date)  # Preserve user selection
-      
-      # Ensure the selected date is within bounds
-      if (is.null(current_forecast_date) || current_forecast_date < earliest_date || current_forecast_date > Sys.Date()) {
-        current_forecast_date <- Sys.Date()  # Set default to today if no valid date is selected
-      }
-      
-      updateDateInput(session, "forecast_date",
-                      min = earliest_date,     # Earliest available date
-                      value = current_forecast_date,  # Preserve or default the date
-                      max = Sys.Date())        # Latest available date
-      
-      
+      #current_forecast_date <- isolate(input$forecast_date)  # Preserve user selection
+
       risk_threshold <- input$risk_threshold / 100
       current <- input$forecast_date  # Access the selected date
       
       today_ct <- with_tz(current, tzone = "America/Chicago")
       out <- from_ct_to_gmt(today_ct, 6) # 6 mo
-      start_time <- out$start_time_gmt
       end_time <- out$end_time_gmt
       result <- call_tarspot_for_station(station_code, 
                                          station$name, 
@@ -280,21 +265,7 @@ server <- function(input, output, session) {
         }
       } else {
         station <- stations[[station_code]]
-        earliest_date <- as.Date(station$earliest_api_date)
-        
-        # Check if a date is already selected; otherwise, default to Sys.Date()
-        current_forecast_date <- isolate(input$forecast_date)  # Preserve user selection
-        
-        # Ensure the selected date is within bounds
-        if (is.null(current_forecast_date) || current_forecast_date < earliest_date || current_forecast_date > Sys.Date()) {
-          current_forecast_date <- Sys.Date()  # Set default to today if no valid date is selected
-        }
-        
-        updateDateInput(session, "forecast_date",
-                        min = earliest_date,     # Earliest available date
-                        value = current_forecast_date,  # Preserve or default the date
-                        max = Sys.Date())        # Latest available date
-        
+        #earliest_date <- as.Date(station$earliest_api_date)
         
         lon_value <- station$longitude
         lat_value <- station$latitude
