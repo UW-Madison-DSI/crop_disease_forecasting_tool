@@ -8,107 +8,12 @@ library(tidyr)
 library(dplyr)
 library(jsonlite)
 
+
+source("R/logit_functions.R")
+
+
 base_url <- 'https://wisconet.wisc.edu'
 
-
-############################################################# Preparation
-logistic_f <- function(logit) {
-  probability<-exp(logit) / (1 + exp(logit))
-  return(probability)
-}
-
-fahrenheit_to_celsius <- function(fahrenheit) {
-  celsius <- (fahrenheit - 32) * 5 / 9
-  return(celsius)
-}
-
-
-
-############################################################# Risk functions
-calculate_tarspot_risk_function <- function(meanAT, maxRH, rh90_night_tot) {
-  logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH)
-  logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot)
-  logit_values <- c(logit_LR4, logit_LR6)
-  probability <- sapply(logit_values, logistic_f)
-  ensemble_prob <- mean(probability)
-  
-  class <- if (ensemble_prob < 0.2) {
-    "low"
-  } else if (ensemble_prob > 0.35) {
-    "high"
-  } else {
-    "moderate"
-  }
-  
-  return(list(tarspot_risk = ensemble_prob, tarspot_risk_class = class))
-}
-
-calculate_gray_leaf_spot_risk_function <- function(minAT21, 
-                                                   minDP30) {
-  prob <- logistic_f(-2.9467-(0.03729 * minAT21) + (0.6534 * minDP30))
-  
-  class <- if (prob < 0.2) {
-    "low"
-  } else if (prob > 0.6) {
-    "high"
-  } else {
-    "moderate"
-  }
-  
-  return(list(gls_risk = prob, gls_risk_class = class))
-}
-
-calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA) {
-  # Logistic regression formula for non-irrigated model
-  logit_nirr <- (-0.47 * maxAT30MA) - (1.01 * maxWS30MA) + 16.65
-  ensemble_prob <- logistic_f(logit_nirr)
-  
-  return(list(sporec_nirr_risk = ensemble_prob, sporec_nirr_risk_class = "NoClass"))
-}
-
-# Irrigated Sporecaster Risk
-calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA) {
-  # Logistic regression formula for irrigated model
-  logit_irr_30 <- (-2.38 *1) + (0.65 * maxAT30MA) + (0.38 * maxRH30MA) - 52.65
-  prob_logit_irr_30 <- logistic_f(logit_irr_30)
-  
-  logit_irr_15 <- (-2.38 * 0) + (0.65 * maxAT30MA) + (0.38 * maxRH30MA) - 52.65
-  prob_logit_irr_15 <- logistic_f(logit_irr_15)
-  
-  return(list(sporec_irr_30in_risk = prob_logit_irr_30, 
-              sporec_irr_15in_risk = prob_logit_irr_15))
-}
-
-calculate_sporecaster_risk <- function(maxAT30MA, maxWS30MA, maxRH30MA){
-  # un used yet
-  sporec_irr_risk = calculate_irrigated_risk(maxAT30MA, maxRH30MA)
-  sporec_no_irr_risk = calculate_non_irrigated_risk(maxAT30MA, maxWS30MA)
-  return(list(sporec_irr_30in_risk = sporec_irr_risk$sporec_irr_30in_risk, 
-              sporec_irr_15in_risk = sporec_irr_risk$sporec_irr_15in_risk,
-              sporec_no_irr_risk = sporec_no_irr_risk$sporec_nirr_risk))
-}
-
-
-# Frogeye Leaf Spot
-calculate_frogeye_leaf_spot_function <- function(maxAT30, rh80tot30) {
-  # Logistic regression formula, no rrigation needed
-  logit_fe <- -5.92485 -(0.1220 * maxAT30) + (0.1732 * rh80tot30)
-  prob_logit_fe <- logistic_f(logit_fe)
-  
-  class <- if (prob_logit_fe < 0.5) {
-    "low"
-  } else if (prob_logit_fe > 0.6) {
-    "high"
-  } else {
-    "moderate"
-  }
-  
-  # Calculate risk using the general disease risk function
-  return(list(
-    fe_risk = prob_logit_fe,
-    fe_risk_class = class
-  ))
-}
 
 ############################################################# wisconet stations
 current_wisconet_stations <- function(input_date) {
@@ -193,23 +98,16 @@ api_call_wisconet_data_daily <- function(station, end) {
   end_date <- as.POSIXct(end, tz = "UTC")
   start_date <- end_date %m-% days(35)
   
-  # Debugging output
-  print(paste("End Date (POSIXct):", end_date))
-  print(paste("Start Date (POSIXct):", start_date))
-  print(paste("End Date (Unix):", as.numeric(end_date)))
-  print(paste("Start Date (Unix):", as.numeric(start_date)))
-  
   params <- list(
     end_time = as.numeric(end_date),
     start_time = as.numeric(start_date),
     fields = 'daily_air_temp_f_max,daily_air_temp_f_min,daily_relative_humidity_pct_max,daily_dew_point_f_min,daily_wind_speed_mph_avg'
   )
-  print(params)
+  
   # Make API request
   response <- GET(url = paste0(base_url, endpoint), query = params)
-  
-  
   print(response)
+  
   if (response$status_code == 200) {
     data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
     data <- data1$data
@@ -289,14 +187,8 @@ api_call_wisconet_data_rh <- function(station,# start_time,
   end_date <- as.POSIXct(end, tz = "UTC")
   start_date <- end_date %m-% days(35)
   
-  # Debugging output
-  print(paste("End Date (POSIXct):", end_date))
-  print(paste("Start Date (POSIXct):", start_date))
-  print(paste("End Date (Unix):", as.numeric(end_date)))
-  print(paste("Start Date (Unix):", as.numeric(start_date)))
   
   tryCatch({
-    
     # Convert to epoch times
     params <- list(
       end_time = as.numeric(end_date),
@@ -345,24 +237,28 @@ api_call_wisconet_data_rh <- function(station,# start_time,
                                 floor_date(collection_time_ct - days(1), unit = "day"),  # Subtract 1 day for early morning hours
                                 floor_date(collection_time_ct, unit = "day")),
         
-        rh_night_above_90 = if_else(rh_avg >= 90 & (hour >= 20 | hour <= 6), 1, 0)
+        rh_night_above_90 = if_else(rh_avg >= 90 & (hour >= 20 | hour <= 6), 1, 0),
+        rh_night_above_80 = if_else(rh_avg >= 80, 1, 0)
       ) %>%
       arrange(desc(adjusted_date))
     
     # Group by date and sum the counts of night hours where RH >= 90 for each day
     daily_rh_above_90 <- result_df %>%
       group_by(adjusted_date) %>%
-      summarise(hours_rh_above_90 = sum(rh_night_above_90, na.rm = TRUE)) %>%
+      summarise(hours_rh_above_90 = sum(rh_night_above_90, na.rm = TRUE),
+                hours_rh_above_80 = sum(rh_night_above_80, na.rm = TRUE),) %>%
       ungroup() 
     daily_rh_above_90$rh_above_90_daily_14d_ma <- rollmean(daily_rh_above_90$hours_rh_above_90,
                                                            k = 14, fill = NA,
                                                            align = "right")
-    
+    daily_rh_above_90$rh_above_80_daily_30d_ma <- rollmean(daily_rh_above_90$hours_rh_above_80,
+                                                           k = 30, fill = NA,
+                                                           align = "right")
     # Calculate 14-day rolling mean for RH >= 90 hours
     daily_rh_above_90 <- daily_rh_above_90%>%
       arrange(desc(adjusted_date)) %>% slice_head(n = 1)
     
-    return(daily_rh_above_90 %>% select(adjusted_date, rh_above_90_daily_14d_ma))
+    return(daily_rh_above_90 %>% select(adjusted_date, rh_above_90_daily_14d_ma, rh_above_80_daily_30d_ma))
   } else{
     print(paste("Error:", scode))
     print(content(response, as = "text", encoding = "UTF-8"))  # Log detailed error
@@ -399,7 +295,7 @@ convert_to_api_output <- function(dataframe, disease_name) {
         gls_risk,
         gls_risk_class
       )
-  } else if (disease_name=="sporecaster"){
+  } else if (disease_name=="sporecaster-irr"){
     dataframe <- dataframe %>%
       select(
         station_id,
@@ -412,7 +308,18 @@ convert_to_api_output <- function(dataframe, disease_name) {
         sporec_irr_30in_risk, 
         sporec_irr_15in_risk
       )
-  } else {
+  } else if (disease_name=='frogeye_leaf_spot'){
+    dataframe <- dataframe %>%
+      select(station_id,
+             latitude, longitude, region, state,
+             earliest_api_date,
+             forecasting_date,
+             station_name,
+             air_temp_avg_c_30d_ma, 
+             rh_above_80_daily_30d_ma,
+             frogeye_risk, 
+             frogeye_risk_class)
+  }else {
     stop("Error: Columns for either 'tarspot' or 'gls' risks are missing.")
   }
   
@@ -452,34 +359,53 @@ retrieve_tarspot_all_stations <- function(input_date,
       filter(!map_lgl(daily_data, is.null)) %>%
       unnest_wider(daily_data)
     
-    if (disease_name == 'tarspot') {
+    if (disease_name %in% c('tarspot', 'frogeye_leaf_spot')) {
       # Fetch and process RH data for tarspot
       rh_enriched <- stations %>%
         mutate(rh_nh_data = map(station_id, ~ api_call_wisconet_data_rh(.x, input_date))) %>%
         filter(!map_lgl(rh_nh_data, is.null)) %>%
-        unnest_wider(rh_nh_data) %>% select(station_id, rh_above_90_daily_14d_ma)
+        unnest_wider(rh_nh_data) %>% select(station_id, rh_above_90_daily_14d_ma, rh_above_80_daily_30d_ma)
       
       # Join the datasets
       enriched_stations <- daily_enriched %>% left_join(rh_enriched, 
                                                         by = "station_id")
       
-      enriched_stations1 <- enriched_stations %>%
-        filter(
-          !is.na(air_temp_avg_c_30d_ma) & 
-            !is.na(rh_max_30d_ma) & 
-            !is.na(rh_above_90_daily_14d_ma)
-        ) %>%
-        mutate(
-          tarspot_results = pmap(
-            list(air_temp_avg_c_30d_ma, rh_max_30d_ma, rh_above_90_daily_14d_ma),
-            ~ calculate_tarspot_risk_function(..1, ..2, ..3)
-          )
-        ) %>%
-        mutate(
-          tarspot_risk = map_dbl(tarspot_results, "tarspot_risk"),
-          tarspot_risk_class = map_chr(tarspot_results, "tarspot_risk_class")
-        ) %>%
-        select(-tarspot_results)  # Remove intermediate list column
+      if (disease_name=='tarspot'){
+        enriched_stations1 <- enriched_stations %>%
+          filter(
+            !is.na(air_temp_avg_c_30d_ma) & 
+              !is.na(rh_max_30d_ma) & 
+              !is.na(rh_above_90_daily_14d_ma)
+          ) %>%
+          mutate(
+            tarspot_results = pmap(
+              list(air_temp_avg_c_30d_ma, rh_max_30d_ma, rh_above_90_daily_14d_ma),
+              ~ calculate_tarspot_risk_function(..1, ..2, ..3)
+            )
+          ) %>%
+          mutate(
+            tarspot_risk = map_dbl(tarspot_results, "tarspot_risk"),
+            tarspot_risk_class = map_chr(tarspot_results, "tarspot_risk_class")
+          ) %>%
+          select(-tarspot_results)
+      }else{
+        enriched_stations1 <- enriched_stations %>%
+          filter(
+            !is.na(air_temp_avg_c_30d_ma) & 
+              !is.na(rh_above_80_daily_30d_ma)
+          ) %>%
+          mutate(
+            frogeye_leaf_spot_results = pmap(
+              list(air_temp_avg_c_30d_ma, rh_above_80_daily_30d_ma),
+              ~ calculate_frogeye_leaf_spot_function(..1, ..2)
+            )
+          ) %>%
+          mutate(
+            frogeye_risk = map_dbl(frogeye_leaf_spot_results, "fe_risk"),
+            frogeye_risk_class = map_chr(frogeye_leaf_spot_results, "fe_risk_class")
+          ) %>%
+          select(-frogeye_leaf_spot_results)
+        }
     }
     
     if (disease_name == 'gls') {
@@ -491,7 +417,7 @@ retrieve_tarspot_all_stations <- function(input_date,
         mutate(
           gls_results = pmap(
             list(air_temp_min_c_21d_ma, dp_min_30d_c_ma),
-            ~ calculate_gray_leaf_spot_risk(..1, ..2)
+            ~ calculate_gray_leaf_spot_risk_function(..1, ..2)
           )
         ) %>%
         mutate(
