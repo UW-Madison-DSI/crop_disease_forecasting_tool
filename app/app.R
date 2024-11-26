@@ -65,28 +65,28 @@ ui <- dashboardPage(
     risk_buttom,
     tags$div(
       `data-toggle` = "tooltip", 
-      title = "Choose a weather station to view disease risk at this location.",
-      selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
+      title = "Pick a date for which you would like a disease risk forecast.",
+      dateInput("forecast_date", "Select Forecast Date For the Station", 
+                value = Sys.Date(), 
+                min = '2024-05-01', #as.Date(station$earliest_api_date)-35, 
+                max = Sys.Date())
     ),
-    #conditionalPanel(
-    #  condition = "input.toggle_switch == true", # Show only when the toggle switch is ON
-    #  tags$div(
-    #    `data-toggle` = "tooltip", 
-    #    title = "Choose a weather station to view disease risk at this location.",
-    #    selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
-    #  )
-    #),
+    conditionalPanel(
+      condition = "input.forecast_date", # Show only when the toggle switch is ON
+      tags$div(
+        `data-toggle` = "tooltip", 
+        title = "Choose a weather station to view disease risk at this location.",
+        selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
+      )
+    ),
     
     # Instructions panel and section FROM functions/instructions.R
-    #forecast_date_buttom,
-    tags$div(
-        `data-toggle` = "tooltip", 
-        title = "Pick a date for which you would like a disease risk forecast.",
-        dateInput("forecast_date", "Select Forecast Date For the Station", 
-                  value = Sys.Date(), 
-                  min = '2024-05-01', #as.Date(station$earliest_api_date)-35, 
-                  max = Sys.Date())
-    ),
+    
+    #tags$div(
+    #  `data-toggle` = "tooltip", 
+    #  title = "Choose a weather station to view disease risk at this location.",
+    #  selectInput("custom_station_code", "Please Select a Weather Station", choices = station_choices)
+    #),
     fungicide_applied_buttom,
     crop_growth_stage_buttom,
     run_model_buttom,
@@ -237,7 +237,6 @@ server <- function(input, output, session) {
   output$user_mymap <- renderLeaflet({
     leaflet() %>%
       addTiles() #%>%  # Add OpenStreetMap tiles
-      #setView(lng = -93.85, lat = 42.01, zoom = 4) # Set initial view
   })
   
   # Update map based on selected station
@@ -265,8 +264,7 @@ server <- function(input, output, session) {
         }
       } else {
         station <- stations[[station_code]]
-        #earliest_date <- as.Date(station$earliest_api_date)
-        
+
         lon_value <- station$longitude
         lat_value <- station$latitude
         showNotification(paste("Station", station$name), type = "default")
