@@ -1,7 +1,7 @@
 library(plumber)
 
 
-source("R/logit_functions.R")
+
 source("R/crop_mangm_validations.R")
 source("R/all_stations_api_functions.R")
 
@@ -10,14 +10,11 @@ source("R/all_stations_api_functions.R")
 
 
 #* Predict Tarspot Risk
-#* @param growth_stage Character: 'yes' if the growth stage of the crop is between ("V10" to "R3"), "no" otherwise
-#* @param fungicide_applied Character: "yes" if fungicide was applied in the last 14 days, "no" otherwise
 #* @param mean_air_temp_30d_ma Numeric: 30-day moving average of mean air temperature (°C)
 #* @param max_rh_30d_ma Numeric: 30-day moving average of max relative humidity (%)
 #* @param tot_nhrs_rh90_14d_ma Numeric: 14-day moving average of total nighttime hours with 90% relative humidity (%) or above for each day.
 #* @post /predict_tarspot_risk
-function(growth_stage = "yes", 
-         fungicide_applied = "no", 
+function(
          mean_air_temp_30d_ma, 
          max_rh_30d_ma, 
          tot_nhrs_rh90_14d_ma) {
@@ -32,10 +29,10 @@ function(growth_stage = "yes",
   convert_to_numeric(environment(), numeric_vars)
   
   
-  if (fungicide_applied=='yes' || growth_stage=='no') {
+  if (is.null(mean_air_temp_30d_ma) || is.null(max_rh_30d_ma) || is.null(tot_nhrs_rh90_14d_ma)) {
     return(list(valid = FALSE, 
                 message = "We can not compute the Tarspot Risk.", 
-                reason = "Fungicide applied in last 14d or growth stage not in the valid ranges."))
+                reason = "Invalid input."))
   } else {
     # Call the tarspot risk calculation function
     result <- calculate_tarspot_risk_function(mean_air_temp_30d_ma, 
@@ -54,13 +51,10 @@ function(growth_stage = "yes",
 }
 
 #* Predict Gray Leaf Spot Risk
-#* @param growth_stage Character: 'yes' if the growth stage of the crop is between ("V10" to "R3"), "no" otherwise
-#* @param fungicide_applied Character: "yes" if fungicide was applied in the last 14 days, "no" otherwise
 #* @param min_air_temp_21d_ma Numeric: 21-day moving average of minimum air temperature (°C)
 #* @param min_dewpoint_30d_ma Numeric: 30-day moving average of minimum dew point (°C)
 #* @post /predict_gray_leaf_spot_risk
-function(growth_stage = "yes", 
-         fungicide_applied = "no", 
+function(
          min_air_temp_21d_ma, 
          min_dewpoint_30d_ma) {
   
@@ -70,10 +64,10 @@ function(growth_stage = "yes",
   convert_to_numeric(environment(), numeric_vars)
   
   
-  if (fungicide_applied=='yes' || growth_stage=='no') {
+  if (is.null(min_air_temp_21d_ma) || is.null(min_dewpoint_30d_ma)) {
     return(list(valid = FALSE, 
                 message = "We can not compute the Gray Leaf Spot Risk.", 
-                reason = "Fungicide applied in last 14d or growth stage not in the valid ranges."))
+                reason = "Missing inputs"))
   } else {
     # Call the gray leaf spot risk calculation function
     result <- calculate_gray_leaf_spot_risk_function(min_air_temp_21d_ma, 
@@ -125,21 +119,17 @@ function(max_air_temp_30d_ma,
 }
 
 #* Predict FrogEye Leaf Spot Risk
-#* @param growth_stage Character: "yes" if the growth stage of your crop is between ("R1" to "R5"), "no" otherwise
-#* @param fungicide_applied Character: "yes" if fungicide was applied in the last 14 days, "no" otherwise
 #* @param max_air_temp_30d_ma Numeric: 21-day moving average of maximum air temperature (°C)
 #* @param relative_humidity_80tot_30d_ma Numeric: 30-day moving average of is the daily total hours where relative humidity (%) was 80% or above. 
 #* @post /predict_frogeye_leaf_spot_risk
-function(growth_stage = "yes", 
-         fungicide_applied = "no", 
-         max_air_temp_30d_ma, 
+function(max_air_temp_30d_ma, 
          relative_humidity_80tot_30d_ma) {
   
   numeric_vars <- c("max_air_temp_30d_ma", "relative_humidity_80tot_30d_ma")
   
   convert_to_numeric(environment(), numeric_vars)
   
-  if (fungicide_applied=='yes' || growth_stage=='no') {
+  if (is.null(max_air_temp_30d_ma) || is.null(relative_humidity_80tot_30d_ma)) {
     return(list(valid = FALSE, 
                 message = "We can not compute the FrogEye Risk.", 
                 reason = "Fungicide applied in last 14d or growth stage not in the valid ranges."))
@@ -159,12 +149,12 @@ function(growth_stage = "yes",
 }
 
 
-#* Predict Wisconet Stations Risk
-#* @param date Character: Data on which to retrieve the prediction, format YYYY-MM-dd
+#* Predict the previous disease Risk on the active Wisconet Stations
+#* @param forecasting_date Character: Forecasting date, format YYYY-MM-dd
 #* @param station_id Character: Station id eg ALTN
-#* @param disease_name Character: tarspot, gls, sporecaster-irr // sporecaster-noirr, frogeye_leaf_spot
+#* @param disease_name Character: tarspot, gls, sporecaster-irr, frogeye_leaf_spot // sporecaster-noirr
 #* @post /predict_wisconet_stations_risk
-function(date, 
+function(forecasting_date, 
          station_id = NULL,
          disease_name = NULL) {
   
@@ -174,7 +164,7 @@ function(date,
   }
   
   # Validate and handle input_date
-  input_date <- if (is.null(date)) Sys.Date() else as.Date(date)
+  input_date <- if (is.null(forecasting_date)) Sys.Date() else as.Date(forecasting_date)
   
   # Check for invalid dates
   if ((format(input_date, "%Y-%m") == "2024-04") || 
@@ -184,7 +174,7 @@ function(date,
       error = "Data is unavailable for April 2024 or dates prior to 2022.",
       status = 400,
       disease_name = disease_name,
-      date = input_date
+      forecasting_date = input_date
     ))
   }
   
@@ -192,19 +182,19 @@ function(date,
   tryCatch({
     risk <- retrieve_tarspot_all_stations(input_date, station_id, disease_name)
     return(list(
-      stations_risk = risk$stations_risk,
-      n_stations = risk$n_stations,
       status = risk$status,
       disease_name = disease_name,
-      date = input_date
+      forecasting_date = input_date,
+      n_stations = risk$n_stations,
+      stations_risk = risk$stations_risk
     ))
   }, error = function(e) {
     return(list(
-      stations_risk = NULL,
-      n_stations = 0,
       status = 400,
       disease_name = disease_name,
-      date = input_date,
+      forecasting_date = input_date,
+      n_stations = 0,
+      stations_risk = NULL,
       error = conditionMessage(e)  # Include error message for debugging
     ))
   })
