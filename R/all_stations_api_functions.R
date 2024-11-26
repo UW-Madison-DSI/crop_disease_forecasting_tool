@@ -5,11 +5,13 @@ library(purrr)
 library(lubridate)
 library(zoo)
 library(tidyr)
+library(dplyr)
+library(jsonlite)
 
 base_url <- 'https://wisconet.wisc.edu'
 
 
-
+############################################################# Preparation
 logistic_f <- function(logit) {
   probability<-exp(logit) / (1 + exp(logit))
   return(probability)
@@ -20,7 +22,10 @@ fahrenheit_to_celsius <- function(fahrenheit) {
   return(celsius)
 }
 
-calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot) {
+
+
+############################################################# Risk functions
+calculate_tarspot_risk_function <- function(meanAT, maxRH, rh90_night_tot) {
   logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH)
   logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot)
   logit_values <- c(logit_LR4, logit_LR6)
@@ -38,20 +43,19 @@ calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot) {
   return(list(tarspot_risk = ensemble_prob, tarspot_risk_class = class))
 }
 
-calculate_gray_leaf_spot_risk <- function(minAT21, 
-                                          minDP30) {
-  logit_GLS <- -2.9467-(0.03729 * minAT21) + (0.6534 * minDP30)
-  ensemble_prob <- logistic_f(logit_GLS)
+calculate_gray_leaf_spot_risk_function <- function(minAT21, 
+                                                   minDP30) {
+  prob <- logistic_f(-2.9467-(0.03729 * minAT21) + (0.6534 * minDP30))
   
-  class <- if (ensemble_prob < 0.2) {
+  class <- if (prob < 0.2) {
     "low"
-  } else if (ensemble_prob > 0.6) {
+  } else if (prob > 0.6) {
     "high"
   } else {
     "moderate"
   }
   
-  return(list(gls_risk = ensemble_prob, gls_risk_class = class))
+  return(list(gls_risk = prob, gls_risk_class = class))
 }
 
 calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA) {
@@ -65,17 +69,48 @@ calculate_non_irrigated_risk <- function(maxAT30MA, maxWS30MA) {
 # Irrigated Sporecaster Risk
 calculate_irrigated_risk <- function(maxAT30MA, maxRH30MA) {
   # Logistic regression formula for irrigated model
-  logit_irr_30 <- (-2.38) + (0.65 * maxAT30MA) + (0.38 * maxRH30MA) - 52.65
+  logit_irr_30 <- (-2.38 *1) + (0.65 * maxAT30MA) + (0.38 * maxRH30MA) - 52.65
   prob_logit_irr_30 <- logistic_f(logit_irr_30)
   
-  logit_irr_15 <- (0.65 * maxAT30MA) + (0.38 * maxRH30MA) - 52.65
+  logit_irr_15 <- (-2.38 * 0) + (0.65 * maxAT30MA) + (0.38 * maxRH30MA) - 52.65
   prob_logit_irr_15 <- logistic_f(logit_irr_15)
   
   return(list(sporec_irr_30in_risk = prob_logit_irr_30, 
               sporec_irr_15in_risk = prob_logit_irr_15))
 }
 
-################################### wisconet stations
+calculate_sporecaster_risk <- function(maxAT30MA, maxWS30MA, maxRH30MA){
+  # un used yet
+  sporec_irr_risk = calculate_irrigated_risk(maxAT30MA, maxRH30MA)
+  sporec_no_irr_risk = calculate_non_irrigated_risk(maxAT30MA, maxWS30MA)
+  return(list(sporec_irr_30in_risk = sporec_irr_risk$sporec_irr_30in_risk, 
+              sporec_irr_15in_risk = sporec_irr_risk$sporec_irr_15in_risk,
+              sporec_no_irr_risk = sporec_no_irr_risk$sporec_nirr_risk))
+}
+
+
+# Frogeye Leaf Spot
+calculate_frogeye_leaf_spot_function <- function(maxAT30, rh80tot30) {
+  # Logistic regression formula, no rrigation needed
+  logit_fe <- -5.92485 -(0.1220 * maxAT30) + (0.1732 * rh80tot30)
+  prob_logit_fe <- logistic_f(logit_fe)
+  
+  class <- if (prob_logit_fe < 0.5) {
+    "low"
+  } else if (prob_logit_fe > 0.6) {
+    "high"
+  } else {
+    "moderate"
+  }
+  
+  # Calculate risk using the general disease risk function
+  return(list(
+    fe_risk = prob_logit_fe,
+    fe_risk_class = class
+  ))
+}
+
+############################################################# wisconet stations
 current_wisconet_stations <- function(input_date) {
   # Validate the input_date
   if (is.null(input_date)) {
@@ -94,10 +129,14 @@ current_wisconet_stations <- function(input_date) {
       # Parse the JSON response
       data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
       low_date <- as.Date(input_date- 31, format = "%Y-%m-%d")
+      print("Low date")
+      print(low_date)
+      filtered_data <- data %>% mutate(earliest_api_date = as.Date(earliest_api_date, format = "%Y-%m-%d"),
+                                       forecasting_date = input_date) %>% 
+        filter((earliest_api_date <= low_date) & (!station_id %in% c('WNTEST1', 'MITEST1')))
       
-      filtered_data <- data %>% mutate(earliest_api_date = as.Date(earliest_api_date, format = "%m/%d/%Y"),
-                                       forecasting_date = input_date) %>% filter((earliest_api_date <= low_date)
-                                                                                 & (!station_id %in% c('WNTEST1', 'MITEST1')))
+      print("-------- Filtered data --------")
+      print(filtered_data)
       
       return(filtered_data)
     } else {
@@ -110,7 +149,7 @@ current_wisconet_stations <- function(input_date) {
   })
 }
 
-############################################# Daily measurements
+############################################################# Daily measurements
 current_wisconet_stations <- function(input_date) {
   # Validate the input_date
   if (is.null(input_date)) {
@@ -132,7 +171,7 @@ current_wisconet_stations <- function(input_date) {
       
       filtered_data <- data %>% mutate(earliest_api_date = as.Date(earliest_api_date, format = "%m/%d/%Y"),
                                        forecasting_date = input_date) %>% 
-                              filter((earliest_api_date <= low_date) & (!station_id %in% c('WNTEST1', 'MITEST1')))
+        filter((earliest_api_date <= low_date) & (!station_id %in% c('WNTEST1', 'MITEST1')))
       
       return(filtered_data)
     } else {
@@ -145,24 +184,32 @@ current_wisconet_stations <- function(input_date) {
   })
 }
 
-##################### Daily measurements
-api_call_wisconet_data_daily <- function(station, end_time) {
+
+
+############################################################# Daily measurements from Wisconet
+api_call_wisconet_data_daily <- function(station, end) {
   endpoint <- paste0('/api/v1/stations/', station, '/measures')
   
-  
-  end_date <- as.POSIXct(end_time, tz = "UTC")
+  end_date <- as.POSIXct(end, tz = "UTC")
   start_date <- end_date %m-% days(35)
   
-  # Convert to epoch times
+  # Debugging output
+  print(paste("End Date (POSIXct):", end_date))
+  print(paste("Start Date (POSIXct):", start_date))
+  print(paste("End Date (Unix):", as.numeric(end_date)))
+  print(paste("Start Date (Unix):", as.numeric(start_date)))
+  
   params <- list(
     end_time = as.numeric(end_date),
     start_time = as.numeric(start_date),
-    fields = 'daily_air_temp_f_max,daily_air_temp_f_min,daily_relative_humidity_pct_max,daily_dew_point_f_min'
+    fields = 'daily_air_temp_f_max,daily_air_temp_f_min,daily_relative_humidity_pct_max,daily_dew_point_f_min,daily_wind_speed_mph_avg'
   )
-  
+  print(params)
   # Make API request
   response <- GET(url = paste0(base_url, endpoint), query = params)
   
+  
+  print(response)
   if (response$status_code == 200) {
     data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
     data <- data1$data
@@ -193,13 +240,16 @@ api_call_wisconet_data_daily <- function(station, end_time) {
       }
     }
     
-    # Convert to Celsius and calculate averages
-    result_df$min_dp_c <- fahrenheit_to_celsius(result_df$min_dp_f)
-    result_df$air_temp_max_c <- fahrenheit_to_celsius(result_df$air_temp_max_f)
-    result_df$air_temp_min_c <- fahrenheit_to_celsius(result_df$air_temp_min_f)
-    result_df$air_temp_avg_c <- fahrenheit_to_celsius(rowMeans(result_df[c("air_temp_max_f", "air_temp_min_f")], na.rm = TRUE))
+    # Convert temperatures from Fahrenheit to Celsius
+    result_df <- result_df %>%
+      mutate(
+        min_dp_c = fahrenheit_to_celsius(min_dp_f),
+        air_temp_max_c = fahrenheit_to_celsius(air_temp_max_f),
+        air_temp_min_c = fahrenheit_to_celsius(air_temp_min_f),
+        air_temp_avg_c = fahrenheit_to_celsius((air_temp_max_f + air_temp_min_f) / 2) # Avoid rowMeans for clarity
+      )
     
-    # Calculate 30-day moving averages
+    # Calculate 30-day and 21-day moving averages
     result_df <- result_df %>%
       mutate(
         air_temp_max_c_30d_ma = rollmean(air_temp_max_c, k = 30, fill = NA, align = "right"),
@@ -209,9 +259,9 @@ api_call_wisconet_data_daily <- function(station, end_time) {
         dp_min_30d_c_ma = rollmean(min_dp_c, k = 30, fill = NA, align = "right")
       )
     
-    print('---------------------------------------- Here in RH---------')
-    print(result_df)
-
+    #print('---------------------------------------- Here in RH---------')
+    #print(result_df)
+    
     # Return the closest row
     current_time <- Sys.time()
     result_df <- result_df %>%
@@ -223,7 +273,7 @@ api_call_wisconet_data_daily <- function(station, end_time) {
              air_temp_avg_c_30d_ma, 
              rh_max_30d_ma, 
              dp_min_30d_c_ma)
-
+    
     return(result_df)
   } else {
     warning(paste("Error fetching data for station:", station, "with status code:", response$status_code))
@@ -233,12 +283,19 @@ api_call_wisconet_data_daily <- function(station, end_time) {
 
 ################################
 api_call_wisconet_data_rh <- function(station,# start_time, 
-                                      end_time) {
+                                      end) {
+  endpoint <- paste0('/api/v1/stations/', station, '/measures')
+  
+  end_date <- as.POSIXct(end, tz = "UTC")
+  start_date <- end_date %m-% days(35)
+  
+  # Debugging output
+  print(paste("End Date (POSIXct):", end_date))
+  print(paste("Start Date (POSIXct):", start_date))
+  print(paste("End Date (Unix):", as.numeric(end_date)))
+  print(paste("Start Date (Unix):", as.numeric(start_date)))
+  
   tryCatch({
-    endpoint <- paste0('/api/v1/stations/', station, '/measures')
-    
-    end_date <- as.POSIXct(end_time, tz = "UTC")
-    start_date <- end_date %m-% days(18)
     
     # Convert to epoch times
     params <- list(
@@ -306,16 +363,14 @@ api_call_wisconet_data_rh <- function(station,# start_time,
       arrange(desc(adjusted_date)) %>% slice_head(n = 1)
     
     return(daily_rh_above_90 %>% select(adjusted_date, rh_above_90_daily_14d_ma))
-  } else {
-    print(paste("Error: ", response$status_code))
+  } else{
+    print(paste("Error:", scode))
+    print(content(response, as = "text", encoding = "UTF-8"))  # Log detailed error
     return(NULL)
   }
 }
 
-library(dplyr)
-library(jsonlite)
-
-# formating dfor api
+############################################## api output
 convert_to_api_output <- function(dataframe, disease_name) {
   if (disease_name=="tarspot") {
     dataframe <- dataframe %>%
@@ -344,7 +399,7 @@ convert_to_api_output <- function(dataframe, disease_name) {
         gls_risk,
         gls_risk_class
       )
-  } else if (disease_name=="sporecaster-irr"){
+  } else if (disease_name=="sporecaster"){
     dataframe <- dataframe %>%
       select(
         station_id,
@@ -368,13 +423,15 @@ convert_to_api_output <- function(dataframe, disease_name) {
     toJSON(auto_unbox = TRUE, pretty = TRUE)
 }
 
-
+######################################## Main logic
 retrieve_tarspot_all_stations <- function(input_date,
                                           input_station_id, 
                                           disease_name = 'tarspot') {
   
   allstations <- current_wisconet_stations(input_date = input_date)
-  print(nrow(allstations))
+  print("---------------------------------------------------------")
+  print("---------------------------------------------------------")
+  paste0("N stations: ",nrow(allstations))
   
   if (!is.null(input_station_id)) {
     stations <- allstations %>% filter(station_id == input_station_id)
@@ -384,7 +441,7 @@ retrieve_tarspot_all_stations <- function(input_date,
   }
   
   N<-nrow(stations)
-    
+  
   if (N == 0) {
     print("The selected station was not available to forecasting, please choose another one")
     return(NULL)
@@ -415,7 +472,7 @@ retrieve_tarspot_all_stations <- function(input_date,
         mutate(
           tarspot_results = pmap(
             list(air_temp_avg_c_30d_ma, rh_max_30d_ma, rh_above_90_daily_14d_ma),
-            ~ calculate_tarspot_risk(..1, ..2, ..3)
+            ~ calculate_tarspot_risk_function(..1, ..2, ..3)
           )
         ) %>%
         mutate(
@@ -449,7 +506,7 @@ retrieve_tarspot_all_stations <- function(input_date,
       enriched_stations1 <- daily_enriched %>%
         filter(
           !is.na(air_temp_max_c_30d_ma) & 
-            !is.na(rh_max_30d_ma)
+            !is.na(rh_max_30d_ma) 
         ) %>%
         mutate(
           sporecast_irr_results = pmap(
@@ -473,7 +530,3 @@ retrieve_tarspot_all_stations <- function(input_date,
                 disease_name = disease_name))
   }  
 }
-
-
-
-
