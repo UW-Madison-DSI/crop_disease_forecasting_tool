@@ -16,6 +16,8 @@ base_url <- 'https://wisconet.wisc.edu'
 url_ts <- "https://connect.doit.wisc.edu/forecasting_crop_disease"
 tarspot_api_url <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_tarspot_risk"
 
+
+
 ################################################################ Function to get weather data from Wisconet API
 api_call_wisconet_data_daily <- function(station, end_time) {
   endpoint <- paste0('/api/v1/stations/', station, '/measures')

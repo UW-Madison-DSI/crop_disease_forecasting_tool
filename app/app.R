@@ -24,6 +24,31 @@ county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 
 tool_title <- "Agricultural Forecasting and Advisory System"
 
+risk_class_function <- function(risk, disease_name, threshold) {
+  if (disease_name == "gls") {
+    return(ifelse(risk <= threshold * 0.5, "Low",
+                  ifelse(risk <= threshold, "Moderate", "High")))
+  } else {
+    return("No Class") # Default case for unsupported diseases
+  }
+}
+
+custom_disease_name <- function(disease){
+  if (disease=='tarspot'){
+    return(
+      "Tar Spot"
+    )
+  }else if (disease=='gls'){
+    return(
+      "Gray Leaf Spot"
+    )
+  }else if (disease=='frogeye_leaf_spot'){
+    return(
+      "Frogeye Leaf Spot"
+    )
+  }
+}
+
 # UI 
 ui <- navbarPage(
   title = tool_title,
@@ -209,21 +234,12 @@ ui <- navbarPage(
     )
   ),
   
-  # Tab 2: Growth Projection
-  #tabPanel(
-  #  title = "Growth Projection",
-  #  fluidPage(
-  #    h3("Growth Projection"),
-  #    p("This section will display growth projection data.")
-  #  )
-  #),
-  
   # Tab 4: Weather Charts
   tabPanel(
     title = "Weather Charts",
     fluidPage(
       h3("Weather Charts"),
-      textOutput("summary_info"),
+      textOutput("weather_charts"),
       p("This section will display weather-related charts for the choosed Wisconet Station.")
     )
   ),
@@ -234,7 +250,7 @@ ui <- navbarPage(
     fluidPage(
       h3("Downloads"),
       textOutput("download_report"),
-      p("This section will provide downloadable content as a summary of the risk trend for the specified disease forecasting,station and forecasting date."),
+      p("This section will provide downloadable content as a summary of the risk trend for the specified disease, wisconet station and forecasting date."),
       div(
         downloadButton("download_report", "Download Report", 
                        class = "btn-primary", 
@@ -252,21 +268,6 @@ ui <- navbarPage(
   
 )
 
-custom_disease_name <- function(disease){
-  if (disease=='tarspot'){
-    return(
-      "Tar Spot"
-    )
-  }else if (disease=='gls'){
-    return(
-      "Gray Leaf Spot"
-    )
-  }else if (disease=='frogeye_leaf_spot'){
-    return(
-      "Frogeye Leaf Spot"
-    )
-  }
-}
 
 server <- function(input, output, session) {
   # Fetch fresh data directly based on user inputs
@@ -287,16 +288,15 @@ server <- function(input, output, session) {
     stations_data()
   })
   
-  # Create the color palette with a dynamic domain
-  color_palette <- colorNumeric(
-    palette = "viridis",
-    domain = c(0, 100)
-  )
-  
-  
-  # Render Leaflet map
+  ################################################################## This is the section 1 risk_map
   output$risk_map <- renderLeaflet({
     data <- stations_data()
+    
+    risk_max <- min(max(data$risk)+1,100)
+    color_palette <- colorNumeric(
+      palette = "viridis",
+      domain = c(0, risk_max)
+    )
     if (is.null(data) || nrow(data) == 0) {
       return(
         leaflet() %>%
@@ -404,69 +404,56 @@ server <- function(input, output, session) {
     }
   })
   
-  # Fetch station weather data and risk probability
-  weather_data <- reactive({
-    station_code <- shared_data$w_station_id
-    if (station_code %notin% c("", NULL)) {
-      station <- stations[[station_code]]
-      #earliest_date <- as.Date(station$earliest_api_date)
-      
-      # Check if a date is already selected; otherwise, default to Sys.Date()
-      #current_forecast_date <- isolate(input$forecast_date)  # Preserve user selection
-      
-      risk_threshold <- input$risk_threshold / 100
-      current <- input$forecast_date  # Access the selected date
-      
-      today_ct <- with_tz(current, tzone = "America/Chicago")
-      out <- from_ct_to_gmt(today_ct, 1.5) # 6 mo
-      end_time <- out$end_time_gmt
-      result <- call_tarspot_for_station(station_code, 
-                                         'Something', 
-                                         risk_threshold, 
-                                         today_ct)
-      airtemp <- api_call_wisconet_data_daily(station_code, #start_time, 
-                                              end_time)
-      return(list(tarspot = result, airtemp = airtemp))
-    } else {
-      return(NULL)
-    }
-  })
-  
+
   output$station_count <- renderText({
     data <- stations_data()
-    
+    print(input$disease_name)
+    print(input$risk_threshold)
     if (is.null(data) || nrow(data) == 0) {
       return("No stations available.")
     }
     # Calculate mean risk, excluding NA values
     if (input$disease_name=='tarspot'){
       avg_risk <- mean(data$tarspot_risk, na.rm = TRUE)
+      data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, .35)
     }
     if (input$disease_name=='gls'){
       avg_risk <- mean(data$gls_risk, na.rm = TRUE)
+      data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, .5)
     }
     if (input$disease_name=='frogeye_leaf_spot'){
       avg_risk <- mean(data$frogeye_risk, na.rm = TRUE)
+      data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, .6)
     }
+    
+    risk_counts <- table(data$risk_class)
+    
+    # Construct a descriptive text
+    risk_summary <- paste(names(risk_counts), risk_counts, sep = ": ", collapse = " | ")
+    
     paste(
-      "Number of stations: ", nrow(data),
-      " | Mean Risk for the selected forecasting date: ", sprintf("%.2f%%", 100*avg_risk),
-      "\n ",
-      "\n Please check our section About to have a broader suggestion on whether to use this risk forecasting based on the crop practices."
+      "Number of stations: ", nrow(data), "\n",
+      "Mean Risk for the selected forecasting date: ", sprintf("%.1f%%", 100 * avg_risk)#,
+      #"\n Stations per Risk Class: ", risk_summary
     )
   })
   
-  output$summary_info <- renderText({
-    paste(
-      "Disease Selected:", input$disease_name, "\n",
-      
-      "Forecast Date:", input$forecast_date, "\n",
-      
-      "Selected Station ID:", ifelse(is.null(shared_data$w_station_id), "None", shared_data$w_station_id)
-    )
+  ################################################################## This is the section 2 or tab panel Weather Charts
+  output$weather_charts <- renderText({
+    if(!is.null(shared_data$w_station_id)){
+      paste(
+        "Disease Selected:", input$disease_name, "\n",
+        
+        "Forecast Date:", input$forecast_date, "\n",
+        
+        "Selected Station ID:", ifelse(is.null(shared_data$w_station_id), "None", shared_data$w_station_id)
+      )
+    }else{
+      print("No station")
+    }
   })
   
-  
+  ################################################################## This is the section 3 Download
   # Create LaTeX header file - fix escape sequences
   cat('\\usepackage{fancyhdr}
     \\usepackage[margin=1in]{geometry}

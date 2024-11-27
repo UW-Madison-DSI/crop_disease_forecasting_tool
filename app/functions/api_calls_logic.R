@@ -128,6 +128,61 @@ process_stations_data <- function(stations_data, risk_col) {
   })
 }
 
+adecuate_output <- function(disease_name, stations_df) {
+  print(stations_df)
+  tryCatch({
+    if (disease_name == 'tarspot') {
+      stations_df <- stations_df %>%
+        mutate(
+          across(c(latitude, longitude, tarspot_risk), as.numeric),
+          risk = 100 * tarspot_risk,  # Scale risk
+          popup_content = sprintf(
+            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            station_name,
+            region,
+            risk,
+            date
+          )
+        )
+      return(stations_df)
+    }
+    
+    if (disease_name == 'gls') {
+      stations_df <- stations_df %>%
+        mutate(
+          across(c(latitude, longitude, gls_risk), as.numeric),
+          risk = 100 * gls_risk,  # Scale risk
+          popup_content = sprintf(
+            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Gray Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            station_name,
+            region,
+            risk,
+            date
+          )
+        )
+      return(stations_df)
+    }
+    
+    if (disease_name == 'frogeye_leaf_spot') {
+      stations_df <- stations_df %>%
+        mutate(
+          across(c(latitude, longitude, frogeye_risk), as.numeric),
+          risk = 100 * frogeye_risk,  # Scale risk
+          popup_content = sprintf(
+            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Frogeye Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            station_name,
+            region,
+            risk,
+            date
+          )
+        )
+      return(stations_df)
+    }
+  }, error = function(e) {
+    message(paste0("Error processing data: ", e$message))
+    return(NULL)
+  })
+}
 
 fetch_forecasting_data <- function(date, disease_name) {
   tryCatch({
@@ -140,7 +195,6 @@ fetch_forecasting_data <- function(date, disease_name) {
       add_headers("Content-Type" = "application/json")
     )
     
-    # Check for valid response
     if (status_code(response) != 200) {
       stop(paste("API Error:", status_code(response), "Message:", content(response, as = "text")))
     }
@@ -156,54 +210,56 @@ fetch_forecasting_data <- function(date, disease_name) {
     
     stations_df <- bind_rows(lapply(stations_data, bind_rows))
     print(stations_df)
-    
-    if (disease_name=='tarspot'){
-      stations_df<- stations_df %>% mutate(
-        across(c(latitude, longitude, tarspot_risk), as.numeric),
-        risk = 100 * tarspot_risk,  # Scale risk
-        popup_content = sprintf(
-          "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-          station_name,
-          region,
-          risk,
-          date
+    #dataframe_formatted <- adecuate_output(disease_name, stations_df)
+    if (disease_name == 'tarspot') {
+      stations_df <- stations_df %>%
+        mutate(
+          across(c(latitude, longitude, tarspot_risk), as.numeric),
+          risk = 100 * tarspot_risk,  # Scale risk
+          popup_content = sprintf(
+            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            station_name,
+            region,
+            risk,
+            date
+          )
         )
-      )
       return(stations_df)
     }
     
-    if (disease_name=='gls'){
-      stations_df<- stations_df %>% mutate(
-        across(c(latitude, longitude, gls_risk), as.numeric),
-        risk = 100 * gls_risk,  # Scale risk
-        popup_content = sprintf(
-          "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Gray Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-          station_name,
-          region,
-          risk,
-          date
+    if (disease_name == 'gls') {
+      stations_df <- stations_df %>%
+        mutate(
+          across(c(latitude, longitude, gls_risk), as.numeric),
+          risk = 100 * gls_risk,  # Scale risk
+          popup_content = sprintf(
+            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Gray Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            station_name,
+            region,
+            risk,
+            date
+          )
         )
-      )
       return(stations_df)
     }
     
-    if (disease_name=='frogeye_leaf_spot'){
-      stations_df<- stations_df %>% mutate(
-        across(c(latitude, longitude, frogeye_risk), as.numeric),
-        risk = 100 * frogeye_risk,  # Scale risk
-        popup_content = sprintf(
-          "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Frogeye Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-          station_name,
-          region,
-          risk,
-          date
+    if (disease_name == 'frogeye_leaf_spot') {
+      stations_df <- stations_df %>%
+        mutate(
+          across(c(latitude, longitude, frogeye_risk), as.numeric),
+          risk = 100 * frogeye_risk,  # Scale risk
+          popup_content = sprintf(
+            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Frogeye Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            station_name,
+            region,
+            risk,
+            date
+          )
         )
-      )
       return(stations_df)
     }
-    
   }, error = function(e) {
-    message(paste0("Error fetching data: ", e$message))
+    message(paste0("Error processing data: ", e$message))
     return(NULL)
   })
 }
