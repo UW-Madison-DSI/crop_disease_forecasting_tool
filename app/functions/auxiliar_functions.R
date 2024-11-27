@@ -9,7 +9,6 @@ library(scales)
 
 
 ##################################################### AOI: Wisconsin
-county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 # Define bounds for Wisconsin
 lat_min <- 42.49192
 lat_max <- 47.08086
