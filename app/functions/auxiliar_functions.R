@@ -15,6 +15,7 @@ lat_max <- 47.08086
 lng_min <- -92.88811
 lng_max <- -86.80541
 
+
 ################################################################ My functions
 # Function to convert Fahrenheit to Celsius
 fahrenheit_to_celsius <- function(temp_f) {
