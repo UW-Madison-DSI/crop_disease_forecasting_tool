@@ -153,3 +153,40 @@ run_model_buttom<-tags$div(
               margin-right: auto;"
   )
 )
+
+
+#---------------------------------------------------
+about_page<-fluidPage(
+  h3("About the Agricultural Forecasting and Advisory System"),
+  p("This application provides weather-based forecasting and risk assessments for various crop diseases, helping farmers and agricultural researchers make data-driven decisions."),
+  h4("Features:"),
+  tags$ul(
+    tags$li("Interactive weather map with disease risk visualization"),
+    tags$li("Dynamic data for different forecasting dates and diseases"),
+    tags$li("Downloadable Report")
+  ),
+  h4("How It Works:"),
+  p("The application uses data from trusted weather and agricultural sources to forecast the risk of crop diseases."),
+  tags$ul(
+    tags$li("Select a disease and forecasting date to view the risk map."),
+    tags$li("The map highlights disease risk levels across different weather stations."),
+    tags$li("Users can click on stations to get more details and center the map on specific locations.")
+  ),
+  h4("Credits:"),
+  p("This application was developed by a multidisciplinary team of data scientists and agricultural researchers."),
+  tags$ul(
+    tags$li("Weather data provided by: Wisconet Stations"),
+    tags$li("Crop disease data provided by: Plant Pathology at UW Madison"),
+    tags$li("This is an innitiative from: the Open Source Program Office at UW Madison")
+  ),
+  h4("Contact Us:"),
+  p("For inquiries or feedback, please reach out to us:"),
+  tags$ul(
+    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: ospo@datascienceinstitute.wisc.edu")),
+    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: damon.smith@wisc.edu")),
+    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: maria.oros@wisc.edu")),
+    tags$li(tags$a(href = "https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git", "Github Repo: https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git"))
+  ),
+  h4("Acknowledgments:"),
+  p("This project is supported by OSPO and relies on contributions from multiple research groups.")
+)
