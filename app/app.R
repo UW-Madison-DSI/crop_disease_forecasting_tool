@@ -12,14 +12,15 @@ options(tigris_use_cache = TRUE)
 
 #library(sf)
 
-source("functions/logic.R")
+
 source("functions/auxiliar_functions.R")
 source("functions/api_calls_logic.R")
+source("functions/instructions.R")
+source("functions/logic.R")
 
 
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
-
 
 tool_title <- "Agricultural Forecasting and Advisory System"
 
@@ -28,6 +29,17 @@ ui <- navbarPage(
   title = tool_title,
   theme = shinythemes::shinytheme("flatly"),  # Add a theme for better aesthetics
   id = "navbar", 
+  
+  tags$head(
+    tags$style(HTML("
+    .logo-container img {
+      max-height: 80px;
+      max-width: 100%;
+      margin: 10px auto;
+      display: block;
+    }
+  "))
+  ),
   # Add custom CSS for UW-Madison branding
   #tags$head(
   #  tags$style(HTML("
@@ -88,9 +100,8 @@ ui <- navbarPage(
           class = "logo-container",
           tags$img(
             src = logo_src,
-            style = "max-width: 100%; height: auto; display: block; margin: 0 auto;"
+            style = "max-width: 100%; max-height: 80px; display: block; margin: 10px auto;" # Limit height
           )
-          
         ),
         hr(),  # Horizontal line for visual separation
         dateInput(
@@ -116,38 +127,76 @@ ui <- navbarPage(
           class = "btn-primary"
         ),
         hr(),  # Horizontal line for visual separation
+        h4("Crop Management"),
+        checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
+        checkboxInput("growth_stage", "Growth stage in the recommended range?", value = TRUE),
+        conditionalPanel(
+          condition = "input.disease_name == 'tarspot'",
+          sliderInput(
+            "risk_threshold",
+            "Risk Threshold (Tar Spot):",
+            min = 20,
+            max = 50,
+            value = 35,
+            step = 1
+          )
+        ),
+        conditionalPanel(
+          condition = "input.disease_name == 'gls'",
+          sliderInput(
+            "risk_threshold",
+            "Risk Threshold (Gray Leaf Spot):",
+            min = 10,
+            max = 40,
+            value = 25,
+            step = 1
+          )
+        ),
+        conditionalPanel(
+          condition = "input.disease_name == 'frogeye_leaf_spot'",
+          sliderInput(
+            "risk_threshold",
+            "Risk Threshold (Frogeye Leaf Spot):",
+            min = 5,
+            max = 30,
+            value = 15,
+            step = 1
+          )
+        ),
+        
+        hr(),  # Horizontal line for visual separation
         h4("Map Layers"),
         checkboxInput("show_stations", "Show Stations", value = TRUE),
         checkboxInput("show_heatmap", "Show Heat Map", value = TRUE),
-        hr(),
-        h4("Visualization Settings"),
-        sliderInput(
-          "radius", 
-          "Heat Map Radius:", 
-          min = 5, 
-          max = 50, 
-          value = 15,
-          step = 1
-        ),
-        sliderInput(
-          "blur", 
-          "Heat Map Blur:", 
-          min = 1, 
-          max = 30, 
-          value = 20,
-          step = 1
-        ),
-        sliderInput(
-          "opacity", 
-          "Heat Map Opacity:", 
-          min = 0, 
-          max = 1, 
-          value = 0.8,
-          step = 0.1
-        )
+        #hr(),
+        #h4("Visualization Settings"),
+        #sliderInput(
+        #  "radius", 
+        #  "Heat Map Radius:", 
+        #  min = 5, 
+        #  max = 50, 
+        #  value = 15,
+        #  step = 1
+        #),
+        #sliderInput(
+        #  "blur", 
+        #  "Heat Map Blur:", 
+        #  min = 1, 
+        #  max = 30, 
+        #  value = 20,
+        #  step = 1
+        #),
+        #sliderInput(
+        #  "opacity", 
+        #  "Heat Map Opacity:", 
+        #  min = 0, 
+        #  max = 1, 
+        #  value = 0.8,
+        #  step = 0.1
+        #)
       ),
       mainPanel(
-        leafletOutput("risk_map", height = 600),
+        leafletOutput("risk_map", height = 700),
         div(
           textOutput("map_info"),
           style = "margin-top: 10px; color: #666;"
@@ -174,7 +223,8 @@ ui <- navbarPage(
     title = "Weather Charts",
     fluidPage(
       h3("Weather Charts"),
-      p("This section will display weather-related charts.")
+      textOutput("summary_info"),
+      p("This section will display weather-related charts for the choosed Wisconet Station.")
     )
   ),
   
@@ -183,51 +233,40 @@ ui <- navbarPage(
     title = "Downloads",
     fluidPage(
       h3("Downloads"),
-      p("This section will provide downloadable content.")
+      textOutput("download_report"),
+      p("This section will provide downloadable content as a summary of the risk trend for the specified disease forecasting,station and forecasting date."),
+      div(
+        downloadButton("download_report", "Download Report", 
+                       class = "btn-primary", 
+                       style = "margin: 1px;"),
+        style = "text-align: center; margin-bottom: 10px;"
+      )
     )
   ),
   
   # Tab 6: About
   tabPanel(
     title = "About",
-    fluidPage(
-      h3("About the Agricultural Forecasting and Advisory System"),
-      p("This application provides weather-based forecasting and risk assessments for various crop diseases, helping farmers and agricultural researchers make data-driven decisions."),
-      h4("Features:"),
-      tags$ul(
-        tags$li("Interactive weather map with disease risk visualization"),
-        tags$li("Dynamic data for different forecasting dates and diseases"),
-        tags$li("Downloadable Report")
-      ),
-      h4("How It Works:"),
-      p("The application uses data from trusted weather and agricultural sources to forecast the risk of crop diseases."),
-      tags$ul(
-        tags$li("Select a disease and forecasting date to view the risk map."),
-        tags$li("The map highlights disease risk levels across different weather stations."),
-        tags$li("Users can click on stations to get more details and center the map on specific locations.")
-      ),
-      h4("Credits:"),
-      p("This application was developed by a multidisciplinary team of data scientists and agricultural researchers."),
-      tags$ul(
-        tags$li("Weather data provided by: Wisconet Stations"),
-        tags$li("Crop disease data provided by: Plant Pathology at UW Madison"),
-        tags$li("This is an innitiative from: the Open Source Program Office at UW Madison")
-      ),
-      h4("Contact Us:"),
-      p("For inquiries or feedback, please reach out to us:"),
-      tags$ul(
-        tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: ospo@datascienceinstitute.wisc.edu")),
-        tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: damon.smith@wisc.edu")),
-        tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: maria.oros@wisc.edu")),
-        tags$li(tags$a(href = "https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git", "Github Repo: https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git"))
-      ),
-      h4("Acknowledgments:"),
-      p("This project is supported by OSPO and relies on contributions from multiple research groups.")
-    )
+    about_page
   )
   
 )
 
+custom_disease_name <- function(disease){
+  if (disease=='tarspot'){
+    return(
+      "Tar Spot"
+    )
+  }else if (disease=='gls'){
+    return(
+      "Gray Leaf Spot"
+    )
+  }else if (disease=='frogeye_leaf_spot'){
+    return(
+      "Frogeye Leaf Spot"
+    )
+  }
+}
 
 server <- function(input, output, session) {
   # Fetch fresh data directly based on user inputs
@@ -236,6 +275,10 @@ server <- function(input, output, session) {
     req(input$disease_name)
     fetch_forecasting_data(as.character(input$forecast_date), input$disease_name)
   })
+  
+  output$slider_value <- renderText({
+    paste("Selected Risk Threshold Value:", input$risk_threshold)
+  }) 
   
   # Update stations data when "Update Map" button is clicked
   observeEvent(input$update, {
@@ -250,6 +293,7 @@ server <- function(input, output, session) {
     domain = c(0, 100)
   )
   
+  
   # Render Leaflet map
   output$risk_map <- renderLeaflet({
     data <- stations_data()
@@ -257,14 +301,14 @@ server <- function(input, output, session) {
       return(
         leaflet() %>%
           addProviderTiles(providers$CartoDB.Positron) %>%
-          setView(lng = -89.4, lat = 43.1, zoom = 7)
+          setView(lng = -89.75, lat = 44.76, zoom = 7.2)
       )
     }
     
     map <- leaflet(data) %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
       setView(
-        lng = -89.75, lat = 44.76, zoom = 7
+        lng = -89.75, lat = 44.76, zoom = 7.2
       )
     
     # Conditional layers
@@ -274,9 +318,9 @@ server <- function(input, output, session) {
           lng = ~longitude,
           lat = ~latitude,
           intensity = ~risk,
-          blur = input$blur %||% 20,
+          blur = 20,
           max = 1,
-          radius = input$radius %||% 15,
+          radius = 15,
           minOpacity = input$opacity %||% 0.8
         )
     }
@@ -289,7 +333,7 @@ server <- function(input, output, session) {
         addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%  # Esri Imagery
         #addProviderTiles(providers$CartoDB.Positron) %>%
         setView(
-          lng = -89.75, lat = 44.76, zoom = 7
+          lng = -89.75, lat = 44.76, zoom = 7.2
         ) %>%
         addCircleMarkers(
           lng = ~longitude,
@@ -312,7 +356,8 @@ server <- function(input, output, session) {
           "bottomright",                # Position of the legend
           pal = color_palette,          # The color palette function
           values = data$risk,           # The range of risk values
-          title = "Risk (%)",           # Legend title
+          title = paste0("Predicted Risk (%) of \n", 
+                         custom_disease_name(input$disease_name)),           # Legend title
           labFormat = labelFormat(suffix = "%"),  # Add % suffix to labels
           opacity = 1                   # Opacity of the legend
         )%>%
@@ -338,19 +383,52 @@ server <- function(input, output, session) {
     return(map)
   })
   
+  shared_data <- reactiveValues(
+    w_station_id = NULL
+  )
+  
   # Observe click event to center the map on the selected station
   observeEvent(input$risk_map_marker_click, {
     click <- input$risk_map_marker_click
     print(click)
     if (!is.null(click$id)) {
       station_id <- click$id  # Extract the station ID from the click event
+      shared_data$w_station_id <- click$id 
       showNotification(paste("Selected Station ID:", station_id), type = "message")
       # Use station_id for further processing
       print(paste("Station ID:", station_id))
     }
     if (!is.null(click)) {
       leafletProxy("risk_map") %>%
-        setView(lng = click$lng, lat = click$lat, zoom = 10)  # Adjust zoom level as needed
+        setView(lng = click$lng, lat = click$lat, zoom = 11)  # Adjust zoom level as needed
+    }
+  })
+  
+  # Fetch station weather data and risk probability
+  weather_data <- reactive({
+    station_code <- shared_data$w_station_id
+    if (station_code %notin% c("", NULL)) {
+      station <- stations[[station_code]]
+      #earliest_date <- as.Date(station$earliest_api_date)
+      
+      # Check if a date is already selected; otherwise, default to Sys.Date()
+      #current_forecast_date <- isolate(input$forecast_date)  # Preserve user selection
+      
+      risk_threshold <- input$risk_threshold / 100
+      current <- input$forecast_date  # Access the selected date
+      
+      today_ct <- with_tz(current, tzone = "America/Chicago")
+      out <- from_ct_to_gmt(today_ct, 1.5) # 6 mo
+      end_time <- out$end_time_gmt
+      result <- call_tarspot_for_station(station_code, 
+                                         'Something', 
+                                         risk_threshold, 
+                                         today_ct)
+      airtemp <- api_call_wisconet_data_daily(station_code, #start_time, 
+                                              end_time)
+      return(list(tarspot = result, airtemp = airtemp))
+    } else {
+      return(NULL)
     }
   })
   
@@ -360,7 +438,6 @@ server <- function(input, output, session) {
     if (is.null(data) || nrow(data) == 0) {
       return("No stations available.")
     }
-    
     # Calculate mean risk, excluding NA values
     if (input$disease_name=='tarspot'){
       avg_risk <- mean(data$tarspot_risk, na.rm = TRUE)
@@ -379,6 +456,80 @@ server <- function(input, output, session) {
     )
   })
   
+  output$summary_info <- renderText({
+    paste(
+      "Disease Selected:", input$disease_name, "\n",
+      
+      "Forecast Date:", input$forecast_date, "\n",
+      
+      "Selected Station ID:", ifelse(is.null(shared_data$w_station_id), "None", shared_data$w_station_id)
+    )
+  })
+  
+  
+  # Create LaTeX header file - fix escape sequences
+  cat('\\usepackage{fancyhdr}
+    \\usepackage[margin=1in]{geometry}
+    \\usepackage{graphicx}
+    \\usepackage{color}
+    
+    \\fancypagestyle{watermark}{
+      \\fancyfootoffset{15pt}
+      \\renewcommand{\\headrulewidth}{0pt}
+      \\fancyhf{}
+      \\cfoot{\\textcolor{gray!30}{\\scalebox{4}{TarSpot Forecast}}}
+    }
+    \\pagestyle{watermark}
+    \\AtBeginDocument{\\thispagestyle{watermark}}
+    ', file = "header.tex")
+  
+  output$download_report <- downloadHandler(
+    filename = function() {
+      paste0("UWMadison_TarSpotForecast_Report_", shared_data$w_station_id, "_", Sys.Date(), ".pdf")
+    },
+    content = function(file) {
+      # Create temporary directory
+      temp_dir <- tempdir()
+      
+      # Copy required files
+      copy_report_files(temp_dir)
+      
+      # Prepare Tar Spot data
+      #tarspot_7d <- prepare_tarspot_data(weather_data())
+      
+      # Get station information
+      #station_address <- get_station_address(shared_data$w_station_id, stations)
+      
+      # Prepare report parameters
+      report_params <- list(
+        #station_address = station_address,
+        forecast_date = input$forecast_date,
+        threshold = input$risk_threshold,
+        fungicide = input$fungicide_applied,
+        growth_stage = input$crop_growth_stage,
+        tarspot = NULL
+      )
+      
+      # Render the report
+      tryCatch({
+        rmarkdown::render(
+          file.path(temp_dir, "report_template.Rmd"),
+          output_file = file,
+          params = list(
+            #selected_station = station_code,
+            #station_address = station_address,
+            forecast_date = input$forecast_date,
+            threshold = input$risk_threshold,
+            fungicide = input$fungicide_applied,
+            growth_stage = input$crop_growth_stage,
+            tarspot = NULL
+          )
+        )
+      }, error = function(e) {
+        stop(paste("Failed to render report:", e$message))
+      })
+    }
+  )
 }
 
 

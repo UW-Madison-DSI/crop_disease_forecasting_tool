@@ -11,7 +11,6 @@ render_combined_plot <- function(tarspot_plot, weather_plot) {
 }
 
 ############ this is a mini test to include the heat map
-## still need to check how to "store" to not call any time suring the day
 # api call, tarspot
 call_tarspot_for_station <- function(station_id, risk_threshold, current) {
   tryCatch({
@@ -107,8 +106,9 @@ process_stations_data <- function(stations_data, risk_col) {
           is.na(station_name) | is.na(risk),
           "Incomplete info",
           sprintf(
-            "<strong>Station:</strong> %s <br><strong>Risk:</strong> %.1f%%",
+            "<strong>Station:</strong> %s <br><strong>Region:</strong> %s <br><strong>Risk:</strong> %.1f%%",
             station_name,
+            region,
             risk
           )
         )
@@ -135,7 +135,6 @@ fetch_forecasting_data <- function(date, disease_name) {
       "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_wisconet_stations_risk?forecasting_date=%s&disease_name=%s",
       date, disease_name
     )
-    #api_url <- paste0("https://connect.doit.wisc.edu/forecasting_crop_disease/predict_wisconet_stations_risk?forecasting_date=", date)
     response <- POST(
       url = api_url,
       add_headers("Content-Type" = "application/json")
@@ -163,8 +162,9 @@ fetch_forecasting_data <- function(date, disease_name) {
         across(c(latitude, longitude, tarspot_risk), as.numeric),
         risk = 100 * tarspot_risk,  # Scale risk
         popup_content = sprintf(
-          "<strong>Station:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+          "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
           station_name,
+          region,
           risk,
           date
         )
@@ -177,8 +177,9 @@ fetch_forecasting_data <- function(date, disease_name) {
         across(c(latitude, longitude, gls_risk), as.numeric),
         risk = 100 * gls_risk,  # Scale risk
         popup_content = sprintf(
-          "<strong>Station:</strong> %s<br><strong>Gray Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+          "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Gray Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
           station_name,
+          region,
           risk,
           date
         )
@@ -191,8 +192,9 @@ fetch_forecasting_data <- function(date, disease_name) {
         across(c(latitude, longitude, frogeye_risk), as.numeric),
         risk = 100 * frogeye_risk,  # Scale risk
         popup_content = sprintf(
-          "<strong>Station:</strong> %s<br><strong>Frogeye Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+          "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Frogeye Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
           station_name,
+          region,
           risk,
           date
         )
