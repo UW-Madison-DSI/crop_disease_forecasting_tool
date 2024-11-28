@@ -6,51 +6,38 @@ output:
       in_header: header.tex
 fontsize: 12pt
 geometry: margin=1in
-header-includes:
-  - \usepackage{fancyhdr}
-  - \usepackage{xcolor}
-  - \usepackage{graphicx}
 params:
-  station_address: NULL
+  disease: NULL
   forecast_date: NULL
   threshold: NULL
   fungicide: NULL
   growth_stage: NULL
-  tarspot: NULL
+  risk_table: NULL
 ---
 
-![OSPO](OPENSOURDA_color-flush.png){ width=40% }
-![PlantPath](PLANPATHCO_color-flush.png){ width=40% }
-![PlantPath](DATASCIE_color-flush.png){ width=40% }
-
 ## Specifications
-- **Station Address**: `r params$station_address`
-- **Forecast Date**: `r params$forecast_date`
-- **Risk Threshold**: `r params$threshold`%
+- **Disease Name: **: `r params$disease`
+- **Forecast Date: **: `r params$forecast_date`
+- **Risk Threshold: **: `r params$threshold`%
 - **No Fungicide Applied in the last 14 days?**: `r ifelse(params$fungicide, "Yes", "No")`
 - **Growth Stage Within V10-R3?**: `r ifelse(params$growth_stage, "Yes", "No")`
 
-## Tar Spot Risk summary
+## Summary
 ```{r, echo=FALSE}
 library(dplyr)
 library(knitr)
 
-if (!is.null(params$tarspot) && nrow(params$tarspot) > 0) {
+if (!is.null(params$risk_table) && nrow(params$risk_table) > 0) {
   # Select specific columns to display
-  tarspot_table <- params$tarspot %>%
-    select(Date = date_day, 
-           Risk, 
-           Category = Risk_Class)%>%
-    mutate(Risk = scales::percent(Risk*.01, accuracy = 1))
-  
+  tarspot_table <- params$risk_table
   # Render the table
   kable(
     tarspot_table,
-    caption = "Risk Trend in the Seven Days Leading up to the Settled Forecast Date",
+    caption = "Risk Trend in the last week",
     format = "markdown"
   )
 } else {
-  cat("No Tar Spot data available.")
+  cat("No Risk data available.")
 }
 ```
 
