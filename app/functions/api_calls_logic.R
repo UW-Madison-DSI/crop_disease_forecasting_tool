@@ -205,11 +205,9 @@ fetch_forecasting_data <- function(date, disease_name) {
       stop("No stations_risk data in API response")
     }
     
-    json_string <- response_content$stations_risk[[1]]
-    stations_data <- fromJSON(json_string)
-    
+    stations_data <- fromJSON(response_content$stations_risk[[1]])
     stations_df <- bind_rows(lapply(stations_data, bind_rows))
-    print(stations_df)
+    
     #dataframe_formatted <- adecuate_output(disease_name, stations_df)
     if (disease_name == 'tarspot') {
       stations_df <- stations_df %>%
