@@ -60,15 +60,22 @@ See example of how to do an api call on this tool [HERE](https://github.com/UW-M
 │   ├── crop_mangm_validations.R      <- Crop management validations
 │   ├── logit_function.R              <- Core functions for forecasting disease api
 │   ├── all_stations_api_functions.R  <- Construction of the stations risk estimates
-├── materials                       <- Examples of API calls and plug in with Wisconet
+├── materials                     <- Examples of API calls and plug in with Wisconet
 │   ├── call_wisconet                 <- Wisconet call example
 │   ├── docs                          <- Documentation of the schema
 │   ├── example                       <- Examples to call the API
-├── app                             <- Shinny dashboard code.
+├── app                           <- Shinny dashboard code.
 │   ├── app.R                         <- app logic, ui and server
-│   ├── functions                     <- APP functions
-│   │   ├── logic.R                       <- Logic to call the Wisconet Station weather data and call the forecasting models on the preparation of the inputs
-│   │   ├── stations.R                    <- List of stations currently active from Wisconet  
+│   ├── server.R                      <- app logic, ui and server
+│   ├── ui.R                          <- app logic, ui and server
+│   ├── report_template.Rmd         <- markdown for pdf report
+│   ├── www                         <- web styles and pages
+│   ├── logos                       <- logos
+│   ├── functions                   <- APP functions
+│   │   ├── api_calls_logic.R         <- Logic to call the Wisconet Station weather data and call the forecasting models on the preparation of the inputs
+│   │   ├── auxiliar_functions.R      <- List of stations currently active from Wisconet  
+│   │   ├── instructions.R            <- List of stations currently active from Wisconet  
+│   │   ├── punctual_estimates.R      <- TBD 
 ├── test                            <- Code Testing modules
 │   ├── testthat.R    
  ```
