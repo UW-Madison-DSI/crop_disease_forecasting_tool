@@ -71,13 +71,13 @@ ui <- navbarPage(
         # Conditional panel for Frogeye Leaf Spot
         conditionalPanel(
           condition = "input.disease_name == 'frogeye_leaf_spot'",
-          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
+          checkboxInput("crop_growth_stage", "Growth stage in the R1-R5 range?", value = TRUE),
           sliderInput(
             "risk_threshold",
             "Risk Threshold:",
-            min = 5,
+            min = 40,
             max = 50,
-            value = 35,
+            value = 50,
             step = 1
           )
         ),
@@ -89,9 +89,9 @@ ui <- navbarPage(
           sliderInput(
             "risk_threshold",
             "Risk Threshold:",
-            min = 5,
-            max = 50,
-            value = 35,
+            min = 40,
+            max = 60,
+            value = 60,
             step = 1
           )
         ),

@@ -35,7 +35,9 @@ Our API includes the risk models: Tarspot, Gray Leaf Spot, FrogEye Leaf Spot and
 - `/predict_frogeye_leaf_spot_risk`  
   Predicts the probability and risk level for **Frogeye**.
 
-
+- `/predict_wisconet_stations_risk`  
+  Predicts the probability of the previous models for **all the active stations, or the specified one**, given a forecast date and disease name as inputs.
+  
 Method: `POST` 
 
 Response: A JSON object containing the predicted probability of tar spot incidence and the associated risk level.
@@ -57,14 +59,14 @@ See example of how to do an api call on this tool [HERE](https://github.com/UW-M
 ├── R                               <- Main functionalities for API
 │   ├── crop_mangm_validations.R      <- Crop management validations
 │   ├── logit_function.R              <- Core functions for forecasting disease api
-│   ├── var_schema.R                  <- Variables schema
+│   ├── all_stations_api_functions.R  <- Construction of the stations risk estimates
 ├── materials                       <- Examples of API calls and plug in with Wisconet
 │   ├── call_wisconet                 <- Wisconet call example
 │   ├── docs                          <- Documentation of the schema
 │   ├── example                       <- Examples to call the API
 ├── app                             <- Shinny dashboard code.
 │   ├── app.R                         <- app logic, ui and server
-│   ├── functions                     <- API functions
+│   ├── functions                     <- APP functions
 │   │   ├── logic.R                       <- Logic to call the Wisconet Station weather data and call the forecasting models on the preparation of the inputs
 │   │   ├── stations.R                    <- List of stations currently active from Wisconet  
 ├── test                            <- Code Testing modules
