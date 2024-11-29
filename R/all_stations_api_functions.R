@@ -26,57 +26,17 @@ current_wisconet_stations <- function(input_date) {
   
   tryCatch({
     # Make the GET request
-    stations_url <- 'https://wisconet.wisc.edu/api/v1/stations/'
-    response <- GET(stations_url, add_headers(Accept = "application/json"))
+    response <- GET('https://wisconet.wisc.edu/api/v1/stations/', add_headers(Accept = "application/json"))
     
     # Check if the request was successful
     if (status_code(response) == 200) {
       # Parse the JSON response
       data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
       low_date <- as.Date(input_date- 31, format = "%Y-%m-%d")
-      print("Low date")
-      print(low_date)
       filtered_data <- data %>% mutate(earliest_api_date = as.Date(earliest_api_date, format = "%Y-%m-%d"),
                                        forecasting_date = input_date) %>% 
         filter((earliest_api_date <= low_date) & (!station_id %in% c('WNTEST1', 'MITEST1')))
       
-      print("-------- Filtered data --------")
-      print(filtered_data)
-      
-      return(filtered_data)
-    } else {
-      # Return an error if the response status code is not 200
-      return(list(error = paste("HTTP request failed with status code:", status_code(response))))
-    }
-  }, error = function(e) {
-    # Handle any errors that occur during the API request or processing
-    return(list(error = conditionMessage(e)))
-  })
-}
-
-############################################################# Daily measurements
-current_wisconet_stations <- function(input_date) {
-  # Validate the input_date
-  if (is.null(input_date)) {
-    input_date <- Sys.Date()
-  } else {
-    input_date <- as.Date(input_date)
-  }
-  
-  tryCatch({
-    # Make the GET request
-    stations_url <- 'https://wisconet.wisc.edu/api/v1/stations/'
-    response <- GET(stations_url, add_headers(Accept = "application/json"))
-    
-    # Check if the request was successful
-    if (status_code(response) == 200) {
-      # Parse the JSON response
-      data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
-      low_date <- as.Date(input_date- 31, format = "%Y-%m-%d")
-      
-      filtered_data <- data %>% mutate(earliest_api_date = as.Date(earliest_api_date, format = "%m/%d/%Y"),
-                                       forecasting_date = input_date) %>% 
-        filter((earliest_api_date <= low_date) & (!station_id %in% c('WNTEST1', 'MITEST1')))
       
       return(filtered_data)
     } else {
@@ -156,9 +116,7 @@ api_call_wisconet_data_daily <- function(station, end) {
         rh_max_30d_ma = rollmean(rh_max, k = 30, fill = NA, align = "right"),
         dp_min_30d_c_ma = rollmean(min_dp_c, k = 30, fill = NA, align = "right")
       )
-    
-    #print('---------------------------------------- Here in RH---------')
-    #print(result_df)
+
     
     # Return the closest row
     result_df <- result_df %>%
@@ -335,9 +293,6 @@ retrieve_tarspot_all_stations <- function(input_date,
                                           disease_name = 'tarspot') {
   
   allstations <- current_wisconet_stations(input_date = input_date)
-  print("---------------------------------------------------------")
-  print("---------------------------------------------------------")
-  paste0("N stations: ",nrow(allstations))
   
   if (!is.null(input_station_id)) {
     stations <- allstations %>% filter(station_id == input_station_id)

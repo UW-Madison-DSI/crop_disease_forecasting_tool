@@ -137,7 +137,7 @@ crop_growth_stage_buttom<-tags$div(
 #---------------------------------------------------
 about_page<-fluidPage(
   h3("About the Agricultural Forecasting and Advisory System"),
-  p("This application provides weather-based forecasting and risk assessments for various crop diseases, helping farmers and agricultural researchers make data-driven decisions."),
+  p("This application provides weather-based forecasting and risk assessments for various crop diseases, helping farmers and agricultural researchers to make data-driven decisions."),
   hr(),
   h4("Features:"),
   tags$ul(
@@ -155,11 +155,11 @@ about_page<-fluidPage(
   ),
   hr(),
   h4("Credits:"),
-  p("This application was developed by a multidisciplinary team of data scientists and agricultural researchers."),
+  p("This project is supported by The Open Source Program Office and relies on contributions from multiple research groups."),
   tags$ul(
+    tags$li("This is an innitiative from: the Open Source Program Office at UW Madison"),
     tags$li("Weather data provided by: Wisconet Stations"),
-    tags$li("Crop disease data provided by: Plant Pathology at UW Madison"),
-    tags$li("This is an innitiative from: the Open Source Program Office at UW Madison")
+    tags$li("Crop disease models provided by: Plant Pathologist at UW Madison")
   ),
   hr(),
   h4("Contact Us:"),
@@ -212,9 +212,6 @@ about_page<-fluidPage(
       )
     )
   ),
-  hr(),
-  h4("Acknowledgments:"),
-  p("This project is supported by The Open Source Program Office and relies on contributions from multiple research groups."),
   hr(),
   h4("For Developers:"),
   tags$div(
