@@ -10,8 +10,6 @@ library(tigris)  # For geographic boundary data
 library(sf)      # For spatial data manipulation
 options(tigris_use_cache = TRUE)
 library(DT)
-#library(sf)
-
 
 source("functions/auxiliar_functions.R")
 source("functions/api_calls_logic.R")
@@ -25,8 +23,14 @@ county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 tool_title <- "Agricultural Forecasting and Advisory System"
 
 risk_class_function <- function(risk, disease_name, threshold) {
-  if (disease_name == "gls") {
-    return(ifelse(risk <= threshold * 0.5, "Low",
+  if (disease_name == "tarspot") {
+    return(ifelse(risk <= threshold/100, "Low",
+                  ifelse(risk <= .5, "Moderate", "High")))
+  } else if (disease_name == "gls") {
+    return(ifelse(risk <= threshold/100, "Low",
+                  ifelse(risk <= .6, "Moderate", "High")))
+  } else if (disease_name == "frogeye_leaf_spot") {
+    return(ifelse(risk <= threshold/100, "Low",
                   ifelse(risk <= threshold, "Moderate", "High")))
   } else {
     return("No Class") # Default case for unsupported diseases
@@ -49,8 +53,37 @@ custom_disease_name <- function(disease){
   }
 }
 
+plot_data<-function(data, input){
+  if (!is.null(data)) {
+    # Select the appropriate risk column based on the disease
+    if (input$disease_name == 'tarspot') {
+      data$Risk_Class <- risk_class_function(data$tarspot_risk, input$disease_name, .6)
+      
+      plot_data <- data %>% 
+        select(forecasting_date, tarspot_risk, Risk_Class) %>% 
+        rename(Risk = tarspot_risk)
+      
+    } else if (input$disease_name == 'gls') {
+      data$Risk_Class <- risk_class_function(data$gls_risk, input$disease_name, .6)
+      
+      plot_data <- data %>% 
+        select(forecasting_date, gls_risk, Risk_Class) %>% 
+        rename(Risk = gls_risk)
+      
+    } else if (input$disease_name == 'frogeye_leaf_spot') {
+      data$Risk_Class <- risk_class_function(data$frogeye_risk, input$disease_name, .6)
+      
+      plot_data <- data %>% 
+        select(forecasting_date, frogeye_risk, Risk_Class) %>% 
+        rename(Risk = frogeye_risk)
+    }
+    return(plot_data)
+  }
+}
+
 plot_trend_7days <- function(df){
-  ggplot(df, aes(x = forecasting_date, y = Risk)) +
+  df$date <- as.Date(df$forecasting_date, format='%Y-%m-%d')
+  ggplot(df, aes(x = date, y = Risk)) +
     geom_line(color = "#0C7BDC") +
     geom_point(aes(color = Risk_Class), size = 4) +  # Map color to Risk_Class
     geom_text(aes(label = Risk_Class),
@@ -67,7 +100,7 @@ plot_trend_7days <- function(df){
     scale_color_manual(values = c("High" = "black", "Medium" = "#FFC20A", "Low" = "darkgreen")) +
     
     # Control x-axis date formatting and frequency
-    #scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
+    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
     
     theme_minimal() +
     theme(
@@ -199,7 +232,7 @@ ui <- navbarPage(
             "Risk Threshold (Gray Leaf Spot):",
             min = 10,
             max = 40,
-            value = 25,
+            value = 45,
             step = 1
           )
         ),
@@ -210,7 +243,7 @@ ui <- navbarPage(
             "Risk Threshold (Frogeye Leaf Spot):",
             min = 5,
             max = 30,
-            value = 15,
+            value = 35,
             step = 1
           )
         ),
@@ -278,14 +311,19 @@ ui <- navbarPage(
     title = "Downloads",
     fluidPage(
       h3("Downloads"),
+      hr(),
       textOutput("download_reported"),
-      p("This section will provide downloadable content as a summary of the risk trend for the specified disease, wisconet station and forecasting date."),
+      p("Downloadable content as a summary of the risk trend for the specified disease, wisconet station and forecasting date."),
       div(
         downloadButton("download_report", "Download Report", 
                        class = "btn-primary", 
-                       style = "margin: 1px;"),
-        style = "text-align: center; margin-bottom: 10px;"
-      )
+                  style = "text-align: center; margin-top: 10px;")
+      ),
+      hr(),
+      p("All stations risk forecasting for the specified date."),
+      downloadButton("download_stations", "Download Stations Csv", 
+                     class = "btn-primary", 
+                     style = "text-align: center; margin-top: 10px;")
     )
   ),
   
@@ -358,8 +396,8 @@ server <- function(input, output, session) {
       map <- map %>%
         addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
         addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
-        addProviderTiles("USGS.USTopo", group = "Topographic") %>%  # USGS Topographic
-        addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%  # Esri Imagery
+        addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
+        addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
         setView(
           lng = -89.75, lat = 44.76, zoom = 7.2
         ) %>%
@@ -381,13 +419,12 @@ server <- function(input, output, session) {
           layerId = ~station_id
         ) %>%
         addLegend(
-          "bottomright",                # Position of the legend
-          pal = color_palette,          # The color palette function
-          values = data$risk,           # The range of risk values
-          title = paste0("Predicted Risk (%) of \n", 
-                         custom_disease_name(input$disease_name)),           # Legend title
-          labFormat = labelFormat(suffix = "%"),  # Add % suffix to labels
-          opacity = 1                   # Opacity of the legend
+          "bottomright",
+          pal = color_palette,
+          values = data$risk,
+          title = paste0("Predicted Risk (%)"),
+          labFormat = labelFormat(suffix = "%"),
+          opacity = 1
         )%>%
         addPolygons(
           data = county_boundaries,
@@ -405,7 +442,6 @@ server <- function(input, output, session) {
           overlayGroups = c("County Boundaries"),
           options = layersControlOptions(collapsed = TRUE)
         )%>%
-        # Hide "County Boundaries" by default
         hideGroup("County Boundaries")
     }
     return(map)
@@ -443,15 +479,15 @@ server <- function(input, output, session) {
     # Calculate mean risk, excluding NA values
     if (input$disease_name=='tarspot'){
       avg_risk <- mean(data$tarspot_risk, na.rm = TRUE)
-      data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, .35)
+      data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
     }
     if (input$disease_name=='gls'){
       avg_risk <- mean(data$gls_risk, na.rm = TRUE)
-      data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, .5)
+      data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
     }
     if (input$disease_name=='frogeye_leaf_spot'){
       avg_risk <- mean(data$frogeye_risk, na.rm = TRUE)
-      data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, .6)
+      data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
     }
     
     risk_counts <- table(data$risk_class)
@@ -520,89 +556,97 @@ server <- function(input, output, session) {
   })
   
   # Render the data table in the UI
-  # Render Data Table
   output$weather_charts <- renderDT({
-    data <- disease_risk_data() # Reactive data from the API
-    
-    # Check the selected disease name and process data accordingly
-    if (input$disease_name == 'tarspot') {
-      data$risk <- data$tarspot_risk
-      data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, .35)
-      data_f <- data %>%
-        select(station_name, forecasting_date, risk, risk_class)%>% 
-        rename(
-          Station = station_name,
-          `Forecasting Date` =forecasting_date,
-          Risk = risk,
-          `Risk Class`=risk_class)
-    } else if (input$disease_name == 'gls') {
-      data$risk <- data$gls_risk
-      data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, .5)
-      data_f <- data %>%
-        select(station_name, forecasting_date, risk, risk_class)%>% 
-        rename(
-          Station = station_name,
-          `Forecasting Date` =forecasting_date,
-          Risk = risk,
-          `Risk Class`=risk_class)
-    } else if (input$disease_name == 'frogeye_leaf_spot') {
-      data$risk <- data$frogeye_risk
-      data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, .6)
-      data_f <- data %>%
-        select(station_name, forecasting_date, risk, risk_class)%>% 
-        rename(
-          Station = station_name,
-          `Forecasting Date` =forecasting_date,
-          Risk = risk,
-          `Risk Class`=risk_class)
-    }
-    
-    # Render the data table
-    if (!is.null(data)) {
-      datatable(data_f, options = list(pageLength = 10))
+    if (!is.null(shared_data$w_station_id)){
+      data <- disease_risk_data() # Reactive data from the API
+      # Check the selected disease name and process data accordingly
+      if (input$disease_name == 'tarspot') {
+        data$risk <- data$tarspot_risk*100
+        data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
+        data_f <- data %>%
+          select(station_name, forecasting_date, risk, risk_class) %>% 
+          rename(
+            Station = station_name,
+            `Forecasting Date` = forecasting_date,
+            Risk = risk,
+            `Risk Class`=risk_class)
+      } else if (input$disease_name == 'gls') {
+        data$risk <- data$gls_risk*100
+        data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
+        data_f <- data %>%
+          select(station_name, forecasting_date, risk, risk_class) %>% 
+          rename(
+            Station = station_name,
+            `Forecasting Date` = forecasting_date,
+            Risk = risk,
+            `Risk Class`=risk_class)
+      } else if (input$disease_name == 'frogeye_leaf_spot') {
+        data$risk <- data$frogeye_risk*100
+        data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
+        data_f <- data %>%
+          select(station_name, forecasting_date, risk, risk_class) %>% 
+          rename(
+            Station = station_name,
+            `Forecasting Date` = forecasting_date,
+            Risk = risk,
+            `Risk Class`=risk_class)
+      }
+      datatable(data_f)
     } else {
       datatable(data.frame(Message = "No data available"), options = list(pageLength = 1))
     }
   })
   
+  
   # Render Plot
   output$risk_trend <- renderPlot({
     data <- disease_risk_data() # Reactive data from the API
-    
-    if (!is.null(data)) {
-      # Select the appropriate risk column based on the disease
-      if (input$disease_name == 'tarspot') {
-        data$Risk_Class <- risk_class_function(data$tarspot_risk, input$disease_name, .6)
-        
-        plot_data <- data %>% 
-          select(forecasting_date, tarspot_risk, Risk_Class) %>% 
-          rename(Risk = tarspot_risk)
-      
-      } else if (input$disease_name == 'gls') {
-        data$Risk_Class <- risk_class_function(data$gls_risk, input$disease_name, .6)
-        
-        plot_data <- data %>% 
-          select(forecasting_date, gls_risk, Risk_Class) %>% 
-          rename(Risk = gls_risk)
-      
-      } else if (input$disease_name == 'frogeye_leaf_spot') {
-        data$Risk_Class <- risk_class_function(data$frogeye_risk, input$disease_name, .6)
-        
-        plot_data <- data %>% 
-          select(forecasting_date, frogeye_risk, Risk_Class) %>% 
-          rename(Risk = frogeye_risk)
-      }
-      
+    if (is.null(data)){
+      data_prepared <- plot_data(data, input)
+      print(data_prepared)
       # Plot risk trend
-      plot_trend_7days(plot_data)
+      plot_trend_7days(data_prepared)
     } else {
       # Display an empty plot with a message
       plot.new()
-      text(0.5, 0.5, "No data available", cex = 1.5, col = "red")
+      text(0.5, 0.5, "We are in progress", cex = 1.5, col = "blue")
     }
   })
   
   ################################################################## This is the section 3 Download
+  output$download_stations <- downloadHandler(
+    filename = function() {
+      paste0("Wisconet_stations_",input$disease_name,"_forecasting_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      data <- stations_data()
+      if (input$disease_name=='tarspot'){
+        data$tarspot_risk <- data$tarspot_risk*100
+        data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
+        data_f <- data %>% select(forecasting_date, station_id,station_name,region,state,earliest_api_date,
+                                  tarspot_risk, risk_class)
+      }
+      if (input$disease_name=='gls'){
+        data$gls_risk <- data$gls_risk*100
+        data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
+        data_f <- data %>% select(forecasting_date, station_id,station_name,region,state,earliest_api_date,
+                                  gls_risk, risk_class)
+      }
+      if (input$disease_name=='frogeye_leaf_spot'){
+        data$frogeye_risk <- data$frogeye_risk*100
+        data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
+        data_f <- data %>% select(forecasting_date, station_id,station_name,region,state,earliest_api_date,
+                                  frogeye_risk, risk_class)
+      }
+      
+      if (!is.null(data) && nrow(data) > 0) {
+        write.csv(data_f, file, row.names = FALSE)
+      } else {
+        stop("No data available for download.")
+      }
+    }
+  )
+  
   output$download_report <- downloadHandler(
     filename = function() {
       paste0("UWMadison_", input$disease_name, "_Forecast_Report_", 
@@ -614,6 +658,8 @@ server <- function(input, output, session) {
       
       # Create temporary directory
       temp_dir <- tempdir()
+      logos_dir <- file.path(temp_dir, "logos")
+      dir.create(logos_dir, showWarnings = FALSE)
       
       # Write the LaTeX header file to temp_dir
       header_path <- file.path(temp_dir, "header.tex")
@@ -645,8 +691,18 @@ server <- function(input, output, session) {
       report_template <- file.path(temp_dir, "report_template.Rmd")
       file.copy(original_template, report_template, overwrite = TRUE)
       
-      # Copy images to temp_dir
+      # List of images
+      images <- c("OPENSOURDA_color-flush.png", "PLANPATHCO_color-flush.png", "DATASCIE_color-flush.png")
       
+      # Copy images to logos_dir within temp_dir
+      for (img in images) {
+        img_path <- file.path(getwd(), "logos", img) # Assume images are in the 'logos' directory within the working directory
+        if (!file.exists(img_path)) {
+          showNotification(paste("Image not found:", img), type = "error")
+          stop(paste("Image not found:", img))
+        }
+        file.copy(img_path, file.path(logos_dir, img), overwrite = TRUE)
+      }
       
       # Fetch and process disease data
       data <- disease_risk_data()
@@ -659,7 +715,7 @@ server <- function(input, output, session) {
       # Prepare data based on the selected disease
       if (input$disease_name == 'tarspot') {
         data$risk <- data$tarspot_risk
-        data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, .35)
+        data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
         data_f <- data %>%
           select(station_name, forecasting_date, risk, risk_class) %>%
           rename(
@@ -670,7 +726,7 @@ server <- function(input, output, session) {
           )
       } else if (input$disease_name == 'gls') {
         data$risk <- data$gls_risk
-        data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, .5)
+        data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
         data_f <- data %>%
           select(station_name, forecasting_date, risk, risk_class) %>%
           rename(
@@ -681,7 +737,7 @@ server <- function(input, output, session) {
           )
       } else if (input$disease_name == 'frogeye_leaf_spot') {
         data$risk <- data$frogeye_risk
-        data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, .6)
+        data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
         data_f <- data %>%
           select(station_name, forecasting_date, risk, risk_class) %>%
           rename(

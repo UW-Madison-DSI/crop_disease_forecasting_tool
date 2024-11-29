@@ -184,9 +184,15 @@ about_page<-fluidPage(
   tags$ul(
     tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: ospo@datascienceinstitute.wisc.edu")),
     tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: damon.smith@wisc.edu")),
-    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: maria.oros@wisc.edu")),
-    tags$li(tags$a(href = "https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git", "Github Repo: https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git"))
+    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: maria.oros@wisc.edu"))
   ),
   h4("Acknowledgments:"),
-  p("This project is supported by OSPO and relies on contributions from multiple research groups.")
+  p("This project is supported by The Open Source Program Office and relies on contributions from multiple research groups."),
+  
+  h4("For Developers:"),
+  p("Visit our job in github and our API here"),
+  tags$ul(
+    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Github: ospo@datascienceinstitute.wisc.edu")),
+    tags$li(tags$a(href = "https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git", "Github Repo: https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git"))
+  ),
 )
