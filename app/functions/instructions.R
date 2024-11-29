@@ -134,37 +134,18 @@ crop_growth_stage_buttom<-tags$div(
 )
 
 
-run_model_buttom<-tags$div(
-  actionButton(
-    inputId = "run_model",
-    label = "Run Forecast",
-    style = "
-              background-color: #FFD700; /* Yellow color */
-              color: black; 
-              font-type: bolt;
-              font-size: 16px; 
-              margin-top: 30px; 
-              padding: 10px; 
-              border-radius: 5px; 
-              border: none; 
-              cursor: pointer; 
-              text-align: center;
-              margin-left: auto; 
-              margin-right: auto;"
-  )
-)
-
-
 #---------------------------------------------------
 about_page<-fluidPage(
   h3("About the Agricultural Forecasting and Advisory System"),
   p("This application provides weather-based forecasting and risk assessments for various crop diseases, helping farmers and agricultural researchers make data-driven decisions."),
+  hr(),
   h4("Features:"),
   tags$ul(
     tags$li("Interactive weather map with disease risk visualization"),
     tags$li("Dynamic data for different forecasting dates and diseases"),
     tags$li("Downloadable Report")
   ),
+  hr(),
   h4("How It Works:"),
   p("The application uses data from trusted weather and agricultural sources to forecast the risk of crop diseases."),
   tags$ul(
@@ -172,6 +153,7 @@ about_page<-fluidPage(
     tags$li("The map highlights disease risk levels across different weather stations."),
     tags$li("Users can click on stations to get more details and center the map on specific locations.")
   ),
+  hr(),
   h4("Credits:"),
   p("This application was developed by a multidisciplinary team of data scientists and agricultural researchers."),
   tags$ul(
@@ -179,20 +161,98 @@ about_page<-fluidPage(
     tags$li("Crop disease data provided by: Plant Pathology at UW Madison"),
     tags$li("This is an innitiative from: the Open Source Program Office at UW Madison")
   ),
+  hr(),
   h4("Contact Us:"),
   p("For inquiries or feedback, please reach out to us:"),
-  tags$ul(
-    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: ospo@datascienceinstitute.wisc.edu")),
-    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: damon.smith@wisc.edu")),
-    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: maria.oros@wisc.edu"))
+  tags$div(
+    style = "margin-bottom: 16px;",  # Add spacing between items
+    tags$div(
+      tags$span(
+        tags$img(
+          src = "https://cdn-icons-png.flaticon.com/512/561/561127.png", 
+          alt = "Mail Icon", 
+          style = "width: 16px; height: 16px; margin-right: 8px;"
+        ),
+        tags$span(style = "font-weight: bold; color: black;", "Open Source Program Office: "),
+        tags$a(
+          href = "mailto:ospo@datascienceinstitute.wisc.edu", 
+          style = "text-decoration: none; color: #007BFF;",
+          "ospo@datascienceinstitute.wisc.edu"
+        )
+      )
+    ),
+    tags$div(
+      tags$span(
+        tags$img(
+          src = "https://cdn-icons-png.flaticon.com/512/561/561127.png", 
+          alt = "Mail Icon", 
+          style = "width: 16px; height: 16px; margin-right: 8px;"
+        ),
+        tags$span(style = "font-weight: bold; color: black;", "Dr. Damon Smith: "),
+        tags$a(
+          href = "mailto:damon.smith@wisc.edu", 
+          style = "text-decoration: none; color: #007BFF;",
+          "damon.smith@wisc.edu"
+        )
+      )
+    ),
+    tags$div(
+      tags$span(
+        tags$img(
+          src = "https://cdn-icons-png.flaticon.com/512/561/561127.png", 
+          alt = "Mail Icon", 
+          style = "width: 16px; height: 16px; margin-right: 8px;"
+        ),
+        tags$span(style = "font-weight: bold; color: black;", "Maria Oros (Software Maintainer): "),
+        tags$a(
+          href = "mailto:maria.oros@wisc.edu", 
+          style = "text-decoration: none; color: #007BFF;",
+          "maria.oros@wisc.edu"
+        )
+      )
+    )
   ),
+  hr(),
   h4("Acknowledgments:"),
   p("This project is supported by The Open Source Program Office and relies on contributions from multiple research groups."),
-  
+  hr(),
   h4("For Developers:"),
-  p("Visit our job in github and our API here"),
-  tags$ul(
-    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Github: ospo@datascienceinstitute.wisc.edu")),
-    tags$li(tags$a(href = "https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git", "Github Repo: https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git"))
+  tags$div(
+    style = "margin-bottom: 16px;",  # Add spacing between items
+    tags$div(
+      tags$span(
+        tags$img(
+          src = "https://cdn-icons-png.flaticon.com/512/25/25231.png", 
+          alt = "GitHub Icon", 
+          style = "width: 16px; height: 16px; margin-right: 8px;"
+        ),
+        "Visit our GitHub repository: ",
+        tags$a(
+          href = "https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git",
+          target = "_blank",  # Open link in a new tab
+          style = "text-decoration: none; color: #007BFF;",  # Link styling
+          "UW-Madison DSI GitHub Repository"
+        )
+      )
+    )
   ),
+  tags$div(
+    style = "margin-bottom: 16px;",  # Add spacing between items
+    tags$div(
+      tags$span(
+        tags$img(
+          src = "https://cdn-icons-png.flaticon.com/512/103/103093.png", 
+          alt = "API Icon", 
+          style = "width: 24px; height: 24px; margin-right: 8px;"
+        ),
+        "Use our API: ",
+        tags$a(
+          href = "https://connect.doit.wisc.edu/forecasting_crop_disease/",
+          target = "_blank",  # Open link in a new tab
+          style = "text-decoration: none; color: #007BFF;",  # Link styling
+          "Forecasting Disease API"
+        )
+      )
+    )
+  )
 )

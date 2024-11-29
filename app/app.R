@@ -22,101 +22,6 @@ county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
 
 tool_title <- "Agricultural Forecasting and Advisory System"
 
-risk_class_function <- function(risk, disease_name, threshold) {
-  if (disease_name == "tarspot") {
-    return(ifelse(risk <= threshold/100, "Low",
-                  ifelse(risk <= .5, "Moderate", "High")))
-  } else if (disease_name == "gls") {
-    return(ifelse(risk <= threshold/100, "Low",
-                  ifelse(risk <= .6, "Moderate", "High")))
-  } else if (disease_name == "frogeye_leaf_spot") {
-    return(ifelse(risk <= threshold/100, "Low",
-                  ifelse(risk <= threshold, "Moderate", "High")))
-  } else {
-    return("No Class") # Default case for unsupported diseases
-  }
-}
-
-custom_disease_name <- function(disease){
-  if (disease=='tarspot'){
-    return(
-      "Tar Spot"
-    )
-  }else if (disease=='gls'){
-    return(
-      "Gray Leaf Spot"
-    )
-  }else if (disease=='frogeye_leaf_spot'){
-    return(
-      "Frogeye Leaf Spot"
-    )
-  }
-}
-
-plot_data<-function(data, input){
-  if (!is.null(data)) {
-    # Select the appropriate risk column based on the disease
-    if (input$disease_name == 'tarspot') {
-      data$Risk_Class <- risk_class_function(data$tarspot_risk, input$disease_name, .6)
-      
-      plot_data <- data %>% 
-        select(station_name,earliest_api_date,location,
-               forecasting_date, tarspot_risk, Risk_Class) %>% 
-        rename(Risk = tarspot_risk)
-      
-    } else if (input$disease_name == 'gls') {
-      data$Risk_Class <- risk_class_function(data$gls_risk, input$disease_name, .6)
-      
-      plot_data <- data %>% 
-        select(station_name,earliest_api_date,location,
-               forecasting_date, gls_risk, Risk_Class) %>% 
-        rename(Risk = gls_risk)
-      
-    } else if (input$disease_name == 'frogeye_leaf_spot') {
-      data$Risk_Class <- risk_class_function(data$frogeye_risk, input$disease_name, .6)
-      
-      plot_data <- data %>% 
-        select(station_name,earliest_api_date,location,
-               forecasting_date, frogeye_risk, Risk_Class) %>% 
-        rename(Risk = frogeye_risk)
-    }
-    return(plot_data)
-  }
-}
-
-plot_trend_7days <- function(df, disease){
-  df$date <- as.Date(df$forecasting_date, format = '%Y-%m-%d')
-  station <- df$station_name[[1]]
-  print(station)
-  
-  ggplot(df, aes(x = date, y = Risk)) +
-    geom_line(color = "#0C7BDC") +
-    geom_point(aes(color = Risk_Class), size = 4) +  # Map color to Risk_Class
-    geom_text(aes(label = Risk_Class),
-              vjust = -0.5,
-              color = "black",
-              size = 5) +
-    labs(
-      title = paste(disease, "Risk trend for ", station, " Station"),
-      x = "Date",
-      y = "Risk (%)"
-    ) +
-    scale_y_continuous(
-      labels = percent_format(scale = 100),  # Display as percentages
-      breaks = seq(0, 1, by = .20),       # Tick marks every 20%
-      limits = c(0, 1)                   # Limit y-axis range to 0–100
-    ) +
-    # Set colors for Risk_Class categories
-    scale_color_manual(values = c("High" = "black", "Medium" = "#FFC20A", "Low" = "darkgreen")) +
-    # Control x-axis date formatting and frequency
-    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
-    theme_minimal() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
-    ) +
-    guides(color = "none")  # Remove the color legend
-}
-
 
 # UI 
 ui <- navbarPage(
@@ -310,7 +215,7 @@ ui <- navbarPage(
       mainPanel(
         textOutput('station_specifications'),
         hr(),
-        DTOutput("station_trend"), # Output for the data table
+        #DTOutput("station_trend"), # Output for the data table
         plotOutput("risk_trend")    # Output for the plot
       )
     )
@@ -331,7 +236,7 @@ ui <- navbarPage(
       ),
       hr(),
       p("All stations risk forecasting for the specified date."),
-      downloadButton("download_stations", "Download Stations Csv", 
+      downloadButton("download_stations", "Download csvStations", 
                      class = "btn-primary", 
                      style = "text-align: center; margin-top: 10px;")
     )
@@ -631,16 +536,16 @@ server <- function(input, output, session) {
         }
         
         if (all(data$Risk_Class == "High")) {
-          high_days_text <- paste("\n Reported high probability of ", custom_disease_name(input$disease_name), ".")
+          high_days_text <- paste("\n Reported high probability of ", custom_disease_name(input$disease_name))
         } else {
-          high_days_text <- paste(sum(data$Risk_Class == "High"), "days have high probability of ", custom_disease_name(input$disease_name), ".")
+          high_days_text <- paste(sum(data$Risk_Class == "High"), "days have high probability of ", custom_disease_name(input$disease_name))
         }
         paste(
           station, "Station,", location," is active since: ", earliest_api_date, ".",
           
           low_days_text,
           high_days_text,
-          '\n '
+          ' on the last 8 days from the selected forecasting date.'
         )
       } else {
         "Please select a station by clicking on it in the map from the Disease Forecasting section."
@@ -653,14 +558,14 @@ server <- function(input, output, session) {
   output$risk_trend <- renderPlot({
     data <- disease_risk_data() # Reactive data from the API
     if (!is.null(shared_data$w_station_id)){
-      data_prepared <- plot_data(data, input)
+      data_prepared <- data_table_for_station_7d(data, input)
       print(data_prepared)
       # Plot risk trend
-      plot_trend_7days(data_prepared, custom_disease_name(input$disease_name))
+      plot_trend_7days(data_prepared, custom_disease_name(input$disease_name), input$risk_threshold)
     } else {
       # Display an empty plot with a message
       plot.new()
-      text(0.5, 0.5, "We are in progress", cex = 1.5, col = "blue")
+      text(0.5, 0.5, "", cex = 1.5, col = "blue")
     }
   })
   
@@ -827,7 +732,6 @@ server <- function(input, output, session) {
       })
     }
   )
-  
 }
 
 
