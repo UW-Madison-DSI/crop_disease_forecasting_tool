@@ -143,6 +143,47 @@ plot_weather_data <- function(data, station) {
 }
 
 #################################################################### Preparation of risk trend
+#################### 7 days
+call_forecasting_for_range_of_days <- function(date_range, station_id, disease_name){
+  # Initialize an empty list to store results
+  datalist = vector("list", length = 7)
+  i<-0
+  # Loop through each date and call the API
+  for (date in date_range) {
+    
+    input_date <- format(date, "%Y-%m-%d")
+    # Construct the API URL
+    api_url <- paste0(
+      "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_wisconet_stations_risk?",
+      "forecasting_date=", input_date,
+      "&station_id=", station_id,
+      "&disease_name=", disease_name
+    )
+    print(api_url) # Debugging
+    
+    # Make the API call
+    response <- POST(
+      url = api_url,
+      add_headers("Content-Type" = "application/json")
+    )
+    
+    if (status_code(response) == 200) {
+      i<-i+1
+      response_content <- content(response, as = "parsed", type = "application/json")
+      stations_data <- fromJSON(response_content$stations_risk[[1]])
+      stations_df <- bind_rows(lapply(stations_data, bind_rows))
+      datalist[[i]] <- stations_df
+      print(stations_df)
+    } else {
+      warning(paste("API call failed for date:", date))
+    }
+  }
+  print(bind_rows(datalist))
+  # Combine all results into a single data frame and return
+  return(bind_rows(datalist))
+  
+}
+
 #################### Table risk trend
 data_table_for_station_7d<-function(data, input){
   if (!is.null(data)) {
