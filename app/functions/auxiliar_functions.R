@@ -16,7 +16,7 @@ lng_min <- -92.88811
 lng_max <- -86.80541
 
 
-################################################################ My functions
+################################################################ Functions for transformations
 # Function to convert Fahrenheit to Celsius
 fahrenheit_to_celsius <- function(temp_f) {
   (temp_f - 32) * 5/9
@@ -37,47 +37,39 @@ from_ct_to_gmt <- function(current_time, mo){
   ))
 }
 
-################################################################ Call Tarspot 
-## Using the logic of the model
-logistic <- function(logit) {
-  exp(logit) / (1 + exp(logit))
-}
-
-# Function to classify risk based on probability and thresholds
-classify_risk <- function(probability, medium_threshold, high_threshold) {
-  cat("\n Risk Class: ",medium_threshold,high_threshold, probability) 
-  if (probability<=0.0){
-    return ("NoRisk")
-  }else if (high_threshold >= 1 & 1<=medium_threshold) {
-    return("NoRiskClass")
-  }else if (probability > 0 & probability<medium_threshold) {
-    return("Low")
-  } else if (probability >= medium_threshold & probability<=high_threshold) {
-    return("Medium")
-  } else if (probability > high_threshold){
-    return("High")
+################################################################ Risk labels
+risk_class_function <- function(risk, disease_name, threshold) {
+  if (disease_name == "tarspot") {
+    return(ifelse(risk <= threshold/100, "Low",
+                  ifelse(risk <= .5, "Moderate", "High")))
+  } else if (disease_name == "gls") {
+    return(ifelse(risk <= threshold/100, "Low",
+                  ifelse(risk <= .6, "Moderate", "High")))
+  } else if (disease_name == "frogeye_leaf_spot") {
+    return(ifelse(risk <= threshold/100, "Low",
+                  ifelse(risk <= threshold, "Moderate", "High")))
+  } else {
+    return("No Class") # Default case for unsupported diseases
   }
 }
 
-calculate_tarspot_risk <- function(meanAT, maxRH, rh90_night_tot) {
-  # Logistic regression formulas for the two models, no irrigation total needed
-  logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH) #paper page5
-  logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot) #paper page5
-  probabilities <- sapply(c(logit_LR4, logit_LR6), logistic)
-  ensemble_prob <- mean(probabilities)
-  
-  # Calculate risk using the general disease risk function
-  return(ensemble_prob)
+custom_disease_name <- function(disease){
+  if (disease=='tarspot'){
+    return(
+      "Tar Spot"
+    )
+  }else if (disease=='gls'){
+    return(
+      "Gray Leaf Spot"
+    )
+  }else if (disease=='frogeye_leaf_spot'){
+    return(
+      "Frogeye Leaf Spot"
+    )
+  }
 }
 
-
-roll_mean <- function(vec, width) {
-  zoo::rollapply(vec, width, \(x) mean(x, na.rm = T), fill = NA, partial = T)
-}
-
-
-
-################################################################ Function to plot the data
+################################################################ Function to plot the weather data
 api_call_wisconet_plot <- function(df) {
   ggplot(df, aes(x = collection_time)) +
     geom_line(aes(y = air_temp_avg_c, color = "Daily Average")) +
@@ -150,58 +142,106 @@ plot_weather_data <- function(data, station) {
   return(weather_plot)
 }
 
-#################### Risk trend
-plot_trend1 <- function(df, station){
-  ggplot(df, aes(x = Date, y = Risk)) +
-    geom_line(color = "#0C7BDC") +
-    geom_point(color = "#FFC20A", size = 4) +
-    geom_text(aes(label = Risk_Class),
-              vjust = -0.5,
-              color = "black",
-              size = 5) +
-    labs(title = paste(station$name, "Station,", station$region, "Region,", station$state),
-         x = "Date",
-         y = "Probability of Tar Spot (%)") +
-    scale_y_continuous(labels = percent_format(scale = 1),
-                       breaks = seq(0, 100, by = 25)) +
-    
-    # Control x-axis date formatting and frequency
-    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
-    
-    theme_minimal() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
-    )
+#################################################################### Preparation of risk trend
+#################### Table risk trend
+data_table_for_station_7d<-function(data, input){
+  if (!is.null(data)) {
+    # Select the appropriate risk column based on the disease
+    if (input$disease_name == 'tarspot') {
+      data$Risk_Class <- risk_class_function(data$tarspot_risk, input$disease_name, .6)
+      
+      plot_data <- data %>% 
+        select(station_name,earliest_api_date,location,
+               forecasting_date, tarspot_risk, Risk_Class) %>% 
+        rename(Risk = tarspot_risk)
+      
+    } else if (input$disease_name == 'gls') {
+      data$Risk_Class <- risk_class_function(data$gls_risk, input$disease_name, .6)
+      
+      plot_data <- data %>% 
+        select(station_name,earliest_api_date,location,
+               forecasting_date, gls_risk, Risk_Class) %>% 
+        rename(Risk = gls_risk)
+      
+    } else if (input$disease_name == 'frogeye_leaf_spot') {
+      data$Risk_Class <- risk_class_function(data$frogeye_risk, input$disease_name, .6)
+      
+      plot_data <- data %>% 
+        select(station_name,earliest_api_date,location,
+               forecasting_date, frogeye_risk, Risk_Class) %>% 
+        rename(Risk = frogeye_risk)
+    }
+    return(plot_data)
+  }
+}
+
+#################### Risk trend plot
+plot_trend_7days <- function(df, disease, threshold){
+  df$date <- as.Date(df$forecasting_date, format = '%Y-%m-%d')
+  station <- df$station_name[[1]]
+  print(station)
+  if(threshold>0){
+    ggplot(df, aes(x = date, y = Risk)) +
+      geom_line(color = "#0C7BDC") +
+      geom_point(aes(color = Risk_Class), size = 4) +  # Map color to Risk_Class
+      geom_text(aes(label = Risk_Class),
+                vjust = -0.5,
+                color = "black",
+                size = 5) +
+      geom_hline(yintercept = 0.2, linetype = "dashed", color = "gray") +
+      geom_hline(yintercept = threshold/100, linetype = "dashed", color = "black") +
+      
+      labs(
+        title = paste(disease, "Risk trend for ", station, " Station"),
+        x = "Date",
+        y = "Risk (%)"
+      ) +
+      scale_y_continuous(
+        labels = percent_format(scale = 100),  # Display as percentages
+        breaks = seq(0, 1, by = .20),       # Tick marks every 20%
+        limits = c(0, 1)                   # Limit y-axis range to 0–100
+      ) +
+      # Set colors for Risk_Class categories
+      scale_color_manual(values = c("High" = "black", "Medium" = "#FFC20A", "Low" = "darkgreen")) +
+      # Control x-axis date formatting and frequency
+      scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
+      theme_minimal() +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
+      ) +
+      guides(color = "none")  # Remove the color legend
+  }else{
+    ggplot(df, aes(x = date, y = Risk)) +
+      geom_line(color = "#0C7BDC") +
+      geom_point(aes(color = Risk_Class), size = 4) +  # Map color to Risk_Class
+      geom_text(aes(label = Risk_Class),
+                vjust = -0.5,
+                color = "black",
+                size = 5) +
+      labs(
+        title = paste(disease, "Risk trend for ", station, " Station"),
+        x = "Date",
+        y = "Risk (%)"
+      ) +
+      scale_y_continuous(
+        labels = percent_format(scale = 100),  # Display as percentages
+        breaks = seq(0, 1, by = .20),       # Tick marks every 20%
+        limits = c(0, 1)                   # Limit y-axis range to 0–100
+      ) +
+      # Set colors for Risk_Class categories
+      scale_color_manual(values = c("High" = "black", "Medium" = "#FFC20A", "Low" = "darkgreen")) +
+      # Control x-axis date formatting and frequency
+      scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
+      theme_minimal() +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
+      ) +
+      guides(color = "none")
+  }
 }
 
 
-plot_trend <- function(df, station){
-  ggplot(df, aes(x = Date, y = Risk)) +
-    geom_line(color = "#0C7BDC") +
-    geom_point(aes(color = Risk_Class), size = 4) +  # Map color to Risk_Class
-    geom_text(aes(label = Risk_Class),
-              vjust = -0.5,
-              color = "black",
-              size = 5) +
-    labs(title = paste(station$name, "Station,", station$region, "Region,", station$state),
-         x = "Date",
-         y = "Probability of Tar Spot (%)") +
-    scale_y_continuous(labels = percent_format(scale = 1),
-                       breaks = seq(0, 100, by = 20)) +
-    
-    # Set colors for Risk_Class categories
-    scale_color_manual(values = c("High" = "black", "Medium" = "#FFC20A", "Low" = "darkgreen")) +
-    
-    # Control x-axis date formatting and frequency
-    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
-    
-    theme_minimal() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
-    )+guides(color = "none")  # Remove the color legend
-}
-
-############################################################ Functions for thhe PDF
+############################################################ Functions for the PDF
 # Function to ensure location is within bounds
 ensure_within_bounds <- function(lat, lon, bounds) {
   lat <- max(min(lat, bounds$max_lat), bounds$min_lat)

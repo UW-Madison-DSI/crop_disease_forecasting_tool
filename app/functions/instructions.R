@@ -164,10 +164,53 @@ about_page<-fluidPage(
   hr(),
   h4("Contact Us:"),
   p("For inquiries or feedback, please reach out to us:"),
-  tags$ul(
-    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: ospo@datascienceinstitute.wisc.edu")),
-    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: damon.smith@wisc.edu")),
-    tags$li(tags$a(href = "mailto:contact@forecasting-system.com", "Email: maria.oros@wisc.edu"))
+  tags$div(
+    style = "margin-bottom: 16px;",  # Add spacing between items
+    tags$div(
+      tags$span(
+        tags$img(
+          src = "https://cdn-icons-png.flaticon.com/512/561/561127.png", 
+          alt = "Mail Icon", 
+          style = "width: 16px; height: 16px; margin-right: 8px;"
+        ),
+        tags$span(style = "font-weight: bold; color: black;", "Open Source Program Office: "),
+        tags$a(
+          href = "mailto:ospo@datascienceinstitute.wisc.edu", 
+          style = "text-decoration: none; color: #007BFF;",
+          "ospo@datascienceinstitute.wisc.edu"
+        )
+      )
+    ),
+    tags$div(
+      tags$span(
+        tags$img(
+          src = "https://cdn-icons-png.flaticon.com/512/561/561127.png", 
+          alt = "Mail Icon", 
+          style = "width: 16px; height: 16px; margin-right: 8px;"
+        ),
+        tags$span(style = "font-weight: bold; color: black;", "Dr. Damon Smith: "),
+        tags$a(
+          href = "mailto:damon.smith@wisc.edu", 
+          style = "text-decoration: none; color: #007BFF;",
+          "damon.smith@wisc.edu"
+        )
+      )
+    ),
+    tags$div(
+      tags$span(
+        tags$img(
+          src = "https://cdn-icons-png.flaticon.com/512/561/561127.png", 
+          alt = "Mail Icon", 
+          style = "width: 16px; height: 16px; margin-right: 8px;"
+        ),
+        tags$span(style = "font-weight: bold; color: black;", "Maria Oros (Software Maintainer): "),
+        tags$a(
+          href = "mailto:maria.oros@wisc.edu", 
+          style = "text-decoration: none; color: #007BFF;",
+          "maria.oros@wisc.edu"
+        )
+      )
+    )
   ),
   hr(),
   h4("Acknowledgments:"),
