@@ -131,61 +131,53 @@ server <- function(input, output, session) {
   # Observe click event to center the map on the selected station
   observeEvent(input$risk_map_marker_click, {
     click <- input$risk_map_marker_click
-    print(click)
-    if (!is.null(click$id)) {
-      #station_id <- click$id  # Extract the station ID from the click event
-      shared_data$w_station_id <- click$id 
-      date<- as.Date(input$forecast_date)
-      url_single_station <- paste0(
-        "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_wisconet_stations_risk?",
-        "forecasting_date=", input$forecast_date,
-        "&station_id=", click$id,
-        "&disease_name=", input$disease_name
-      )
-      response <- POST(url_single_station, add_headers(Accept = "application/json"))
-      if (status_code(response) == 200) {
-        # Parse the main JSON content
-        content_data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
-        
-        
-        # Parse the nested JSON in `stations_risk`
-        stations_risk_data <- fromJSON(content_data$stations_risk)
-        print("content data2")
-        print(stations_risk_data)
-        # Extract the risk based on the disease name
-        if (input$disease_name == 'tarspot') {
-          risk <- stations_risk_data$`1`$tarspot_risk
-          rclass <- ifelse(risk>.35, "High", ifelse(risk > .2, "Moderate", "Low"))
-        } else if (input$disease_name == 'gls') {
-          risk <- stations_risk_data$`1`$gls_risk
-          rclass <- ifelse(risk>.35, "High", ifelse(risk > .2, "Moderate", "Low"))
-        } else if (input$disease_name == 'frogeye_leaf_spot') {
-          risk <- stations_risk_data$`1`$frogeye_risk
-          rclass <- ifelse(risk>.35, "High", ifelse(risk > .2, "Moderate", "Low"))
-        }
-        
-        #risk_class_function(risk, input$disease_name, input$threshold_risk)
-        rclass_msg <- ifelse(rclass == "High", "error", ifelse(rclass == "Low", "success", "info"))
-        
-        # Show a notification with the risk class and message type
-        showNotification(paste("Risk Class: ", rclass), type = rclass_msg)
-      } else {
-        # Handle the error
-        warning("Failed to fetch data. HTTP Status: ", status_code(response))
-      }
-    }
+    
     if (!is.null(click)) {
+      print(click)  # Debugging information
+      
+      # Update shared data with the clicked station ID
+      if (!is.null(click$id)) {
+        shared_data$w_station_id <- click$id
+        
+        # Fetch risk class for the clicked station
+        rclass <- api_call_this_station_specifications(input, click$id)
+        
+        if (!is.null(rclass)) {
+          # Determine notification type based on risk class
+          rclass_msg <- switch(rclass,
+                               "High" = "error",
+                               "Low" = "message",
+                               "high" = "error",
+                               "low" = "message",
+                               "default")
+          
+          # Display notification
+          showNotification(
+            paste("Risk Class: ", rclass), 
+            type = rclass_msg
+          )
+        } else {
+          warning("Risk class is NULL for station ID: ", click$id)
+        }
+      } else {
+        warning("Click event does not contain an ID.")
+      }
+      
+      # Update the map view to the clicked location
       leafletProxy("risk_map") %>%
-        setView(lng = click$lng, lat = click$lat, zoom = 16)%>%
+        setView(lng = click$lng, lat = click$lat, zoom = 16) %>%
         addProviderTiles("USGS.USTopo", group = "CartoDB Positron")
+    } else {
+      warning("No click event detected.")
     }
   })
+  
   
   observeEvent({
     input$crop_growth_stage  # Include inputs to trigger observation
     input$no_fungicide
   }, {
-    if (!input$crop_growth_stage) {
+    if (!input$no_fungicide) {
       showNotification(
         paste(
           custom_disease_name(input$disease_name),
@@ -193,7 +185,7 @@ server <- function(input, output, session) {
         ),
         type = "error"
       )
-    } else if(!input$no_fungicide){
+    } else if(!input$crop_growth_stage){
       showNotification(
         paste(
           custom_disease_name(input$disease_name),
@@ -206,8 +198,7 @@ server <- function(input, output, session) {
   
   output$station_count <- renderText({
     data <- stations_data()
-    print(input$disease_name)
-    print(input$risk_threshold)
+
     if (is.null(data) || nrow(data) == 0) {
       return("No stations available.")
     }
@@ -257,35 +248,39 @@ server <- function(input, output, session) {
       datatable(data.frame(Message = "No data available"))
     } else {
       data <- disease_risk_data() # Reactive data from the API
-      if (input$disease_name == 'tarspot') {
-        data$risk <- data$tarspot_risk*100
-        data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
-        data_f <- data %>%
-          select(forecasting_date, risk, risk_class) %>% 
-          rename(
-            `Forecasting Date` = forecasting_date,
-            Risk = risk,
-            `Risk Class`=risk_class)
-      } else if (input$disease_name == 'gls') {
-        data$risk <- data$gls_risk*100
-        data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
-        data_f <- data %>%
-          select(forecasting_date, risk, risk_class) %>% 
-          rename(
-            `Forecasting Date` = forecasting_date,
-            Risk = risk,
-            `Risk Class`=risk_class)
-      } else if (input$disease_name == 'frogeye_leaf_spot') {
-        data$risk <- data$frogeye_risk*100
-        data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
-        data_f <- data %>%
-          select(forecasting_date, risk, risk_class) %>% 
-          rename(
-            `Forecasting Date` = forecasting_date,
-            Risk = risk,
-            `Risk Class`=risk_class)
+      if(nrows(data)==0){
+        if (input$disease_name == 'tarspot') {
+          data$risk <- data$tarspot_risk*100
+          data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
+          data_f <- data %>%
+            select(forecasting_date, risk, risk_class) %>% 
+            rename(
+              `Forecasting Date` = forecasting_date,
+              Risk = risk,
+              `Risk Class`=risk_class)
+        } else if (input$disease_name == 'gls') {
+          data$risk <- data$gls_risk*100
+          data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
+          data_f <- data %>%
+            select(forecasting_date, risk, risk_class) %>% 
+            rename(
+              `Forecasting Date` = forecasting_date,
+              Risk = risk,
+              `Risk Class`=risk_class)
+        } else if (input$disease_name == 'frogeye_leaf_spot') {
+          data$risk <- data$frogeye_risk*100
+          data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
+          data_f <- data %>%
+            select(forecasting_date, risk, risk_class) %>% 
+            rename(
+              `Forecasting Date` = forecasting_date,
+              Risk = risk,
+              `Risk Class`=risk_class)
+        }
+        datatable(data_f)
+      }else{
+        paste("no data")
       }
-      datatable(data_f)
     }
   })
   
@@ -295,37 +290,52 @@ server <- function(input, output, session) {
       Please select an station from the map by doing click on it."
     } else {
       data <- disease_risk_data()
-      
+      print(data)
       # Check if data is not empty
       if (nrow(data) > 0) {
         station <- data$station_name[1]
         earliest_api_date <- data$earliest_api_date[1]
+        print(station)
+        
+        
         location <- if_else(
           data$location[1] == "Not set", 
           "", 
-          paste(" located at", data$location[1], ",")
+          paste(" located at", data$location[1], ", ",data$region[1], " Region, ")
         )
-        
+        print(location)
+        print(earliest_api_date)
         # Analyze Risk_Class
-        risk_summary <- table(data$Risk_Class)
+        if(input$disease_name=='tarspot'){
+          data$Risk_Class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
+        }else if(input$disease_name=='gls'){
+          data$Risk_Class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
+        }else{
+          data$Risk_Class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
+        }
+
+        high_days_text <- sum(data$Risk_Class == "High") 
+        low_days_text <- sum(data$Risk_Class == "Low")        #moderate_days_text <- paste(sum(data$Risk_Class == "Moderate"), "days have moderate probability of ", custom_disease_name(input$disease_name))
+
         
-        if ("Low" %in% names(risk_summary)) {
-          low_days <- data$forecasting_date[data$Risk_Class == "Low"]
-          low_days_text <- paste("Days with low risk:", paste(low_days, collapse = ", "))
-        } else {
-          low_days_text <- ""
+        if (all(data$Risk_Class =="High"))  {
+          all_days_text <- paste("\n Reported high probability of ", custom_disease_name(input$disease_name))
+        } else if (all(data$Risk_Class =="Moderate"))  {
+          all_days_text <- paste("\n Reported moderate probability of ", custom_disease_name(input$disease_name))
+        } else if (all(data$Risk_Class =="Low"))  {
+          all_days_text <- paste("\n Reported low probability of ", custom_disease_name(input$disease_name))
+        } else if(low_days_text>0){
+          all_days_text <- paste(low_days_text, "days have low probability of ", custom_disease_name(input$disease_name))
+        } else if(high_days_text>0){
+          all_days_text <- paste(high_days_text, "days have high probability of ", custom_disease_name(input$disease_name))
         }
         
-        if (all(data$Risk_Class == "High")) {
-          high_days_text <- paste("\n Reported high probability of ", custom_disease_name(input$disease_name))
-        } else {
-          high_days_text <- paste(sum(data$Risk_Class == "High"), "days have high probability of ", custom_disease_name(input$disease_name))
-        }
+        #date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
+        # Format for user-friendly reading
+        #user_friendly_date <- format(date_obj, "%B %d, %Y")
         paste(
-          station, "Station,", location," is active since: ", earliest_api_date, ".",
-          low_days_text,
-          high_days_text,
-          ' on the last 8 days from the selected forecasting date.'
+          station, "Station,", location," is active since: ", earliest_api_date, "."
+          #all_days_text, ' on the last 8 days from the selected forecasting date.'
         )
       } else {
         "Please select a station by clicking on it in the map from the Disease Forecasting section."
@@ -339,7 +349,6 @@ server <- function(input, output, session) {
     data <- disease_risk_data() # Reactive data from the API
     if (!is.null(shared_data$w_station_id)){
       data_prepared <- data_table_for_station_7d(data, input)
-      print(data_prepared)
       # Plot risk trend
       plot_trend_7days(data_prepared, custom_disease_name(input$disease_name), input$risk_threshold)
     } else {
