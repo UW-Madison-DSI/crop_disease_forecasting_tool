@@ -3,7 +3,6 @@ library(leaflet)
 library(httr)
 library(jsonlite)
 library(dplyr)
-#install.packages("leaflet.extras")
 library(leaflet.extras)
 library(httr)
 library(tigris)  # For geographic boundary data
@@ -14,11 +13,13 @@ library(DT)
 source("functions/auxiliar_functions.R")
 source("functions/api_calls_logic.R")
 source("functions/instructions.R")
-source("functions/logic.R")
+
 
 
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
-county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf")
+county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf") %>%
+  st_transform(crs = 4326)
+
 
 tool_title <- "Agricultural Forecasting and Advisory System"
 
@@ -27,18 +28,9 @@ tool_title <- "Agricultural Forecasting and Advisory System"
 ui <- navbarPage(
   title = tool_title,
   theme = shinythemes::shinytheme("flatly"),  # Add a theme for better aesthetics
-  id = "navbar", 
-  
-  tags$head(
-    tags$style(HTML("
-    .logo-container img {
-      max-height: 80px;
-      max-width: 100%;
-      margin: 10px auto;
-      display: block;
-    }
-  "))
-  ),
+  #title = "Disease Forecasting",
+  #header = div(class = "header-logo", tags$img(src = "logo.png", height = "50px")),
+  footer = div(class = "footer-text", "© 2024 UW-Madison"),
   # Add custom CSS for UW-Madison branding
   #tags$head(
   #  tags$style(HTML("
@@ -92,7 +84,7 @@ ui <- navbarPage(
   #),
   # Tab 1: Weather Map
   tabPanel(
-    title = "Disease Forecasting",
+    "Disease Forecasting",
     sidebarLayout(
       sidebarPanel(
         div(
@@ -119,79 +111,55 @@ ui <- navbarPage(
           min = '2024-01-01',
           max = Sys.Date()
         ),
-        #actionButton(
-        #  "update",
-        #  "Update Map",
-        #  icon = icon("refresh"),
-        #  class = "btn-primary"
-        #),
-        hr(),  # Horizontal line for visual separation
+        hr(), 
         h4("Crop Management"),
         checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
-        checkboxInput("crop_growth_stage", "Growth stage in the recommended range?", value = TRUE),
+        
+        # Conditional panel for Tar Spot
         conditionalPanel(
           condition = "input.disease_name == 'tarspot'",
+          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
           sliderInput(
             "risk_threshold",
-            "Risk Threshold (Tar Spot):",
-            min = 20,
+            "Risk Threshold:",
+            min = 5,
             max = 50,
             value = 35,
             step = 1
           )
         ),
-        conditionalPanel(
-          condition = "input.disease_name == 'gls'",
-          sliderInput(
-            "risk_threshold",
-            "Risk Threshold (Gray Leaf Spot):",
-            min = 10,
-            max = 40,
-            value = 45,
-            step = 1
-          )
-        ),
+        
+        # Conditional panel for Frogeye Leaf Spot
         conditionalPanel(
           condition = "input.disease_name == 'frogeye_leaf_spot'",
+          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
           sliderInput(
             "risk_threshold",
-            "Risk Threshold (Frogeye Leaf Spot):",
+            "Risk Threshold:",
             min = 5,
-            max = 30,
+            max = 50,
             value = 35,
             step = 1
           )
         ),
         
-        hr(),  # Horizontal line for visual separation
+        # Conditional panel for GLS
+        conditionalPanel(
+          condition = "input.disease_name == 'gls'",
+          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
+          sliderInput(
+            "risk_threshold",
+            "Risk Threshold:",
+            min = 5,
+            max = 50,
+            value = 35,
+            step = 1
+          )
+        ),
+        
+        hr(), 
         h4("Map Layers"),
-        checkboxInput("show_heatmap", "Show Heat Map", value = FALSE),
-        #hr(),
-        #h4("Visualization Settings"),
-        #sliderInput(
-        #  "radius", 
-        #  "Heat Map Radius:", 
-        #  min = 5, 
-        #  max = 50, 
-        #  value = 15,
-        #  step = 1
-        #),
-        #sliderInput(
-        #  "blur", 
-        #  "Heat Map Blur:", 
-        #  min = 1, 
-        #  max = 30, 
-        #  value = 20,
-        #  step = 1
-        #),
-        #sliderInput(
-        #  "opacity", 
-        #  "Heat Map Opacity:", 
-        #  min = 0, 
-        #  max = 1, 
-        #  value = 0.8,
-        #  step = 0.1
-        #)
+        checkboxInput("show_heatmap", "Show Heat Map", value = FALSE)
       ),
       mainPanel(
         leafletOutput("risk_map", height = 700),
@@ -235,8 +203,8 @@ ui <- navbarPage(
                   style = "text-align: center; margin-top: 10px;")
       ),
       hr(),
-      p("All stations risk forecasting for the specified date."),
-      downloadButton("download_stations", "Download csvStations", 
+      p("All stations risk forecasting for the specified date as csv file."),
+      downloadButton("download_stations", "Download csv", 
                      class = "btn-primary", 
                      style = "text-align: center; margin-top: 10px;")
     )
@@ -272,6 +240,8 @@ server <- function(input, output, session) {
   
   ################################################################## This is the section 1 risk_map
   output$risk_map <- renderLeaflet({
+    county_boundaries <- st_transform(county_boundaries, crs = 4326)
+    
     data <- stations_data()
     
     risk_max <- min(max(data$risk)+1,100)
@@ -371,16 +341,77 @@ server <- function(input, output, session) {
     if (!is.null(click$id)) {
       #station_id <- click$id  # Extract the station ID from the click event
       shared_data$w_station_id <- click$id 
-      showNotification(paste(custom_disease_name(input$disease_name), "Risk is -1"), type = "message")
-      # Use station_id for further processing
-      print(paste("Station ID:", click$id))
+      date<- as.Date(input$forecast_date)
+      url_single_station <- paste0(
+        "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_wisconet_stations_risk?",
+        "forecasting_date=", input$forecast_date,
+        "&station_id=", click$id,
+        "&disease_name=", input$disease_name
+      )
+      response <- POST(url_single_station, add_headers(Accept = "application/json"))
+      print(response)
+      
+      if (status_code(response) == 200) {
+        # Parse the main JSON content
+        content_data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
+        
+        print("content data")
+        print(content_data)
+        
+        # Parse the nested JSON in `stations_risk`
+        stations_risk_data <- fromJSON(content_data$stations_risk)
+        print("content data2")
+        print(stations_risk_data)
+        # Extract the risk based on the disease name
+        if (input$disease_name == 'tarspot') {
+          risk <- stations_risk_data$`1`$tarspot_risk
+          rclass <- ifelse(risk>.35, "High", ifelse(risk > .2, "Moderate", "Low"))
+        } else if (input$disease_name == 'gls') {
+          risk <- stations_risk_data$`1`$gls_risk
+          rclass <- ifelse(risk>.35, "High", ifelse(risk > .2, "Moderate", "Low"))
+        } else if (input$disease_name == 'frogeye_leaf_spot') {
+          risk <- stations_risk_data$`1`$frogeye_risk
+          rclass <- ifelse(risk>.35, "High", ifelse(risk > .2, "Moderate", "Low"))
+        }
+  
+        #risk_class_function(risk, input$disease_name, input$threshold_risk)
+        rclass_msg <- ifelse(rclass == "High", "error", ifelse(rclass == "Low", "success", "info"))
+        
+        # Show a notification with the risk class and message type
+        showNotification(paste("Risk Class: ", rclass), type = rclass_msg)
+      } else {
+        # Handle the error
+        warning("Failed to fetch data. HTTP Status: ", status_code(response))
+      }
     }
     if (!is.null(click)) {
       leafletProxy("risk_map") %>%
-        setView(lng = click$lng, lat = click$lat, zoom = 15)  # Adjust zoom level as needed
+        setView(lng = click$lng, lat = click$lat, zoom = 16)  # Adjust zoom level as needed
     }
   })
   
+  observeEvent({
+    input$crop_growth_stage  # Include inputs to trigger observation
+    input$no_fungicide
+  }, {
+    if (!input$crop_growth_stage) {
+      showNotification(
+        paste(
+          custom_disease_name(input$disease_name),
+          "risk can only be computed if no fungicide was applied in the last 14 days."
+        ),
+        type = "error"
+      )
+    } else if(!input$no_fungicide){
+      showNotification(
+        paste(
+          custom_disease_name(input$disease_name),
+          "risk can only be computed if the growth stage is as recommended."
+        ),
+        type = "error"
+      )
+    }
+  })
 
   output$station_count <- renderText({
     data <- stations_data()
@@ -415,54 +446,15 @@ server <- function(input, output, session) {
     )
   })
   
-  ################################################################## This is the section 2 or tab panel Weather Charts
+  ################################################################## This is the section 2 or tab panel Station summary
   disease_risk_data <- reactive({
     if (!is.null(shared_data$w_station_id)) {
-      # Define the station ID and disease name
-      station_id <- shared_data$w_station_id
-      disease_name <- input$disease_name
-      
       # Define the date range
       given_date <- as.Date(input$forecast_date)
       date_range <- as.list(seq(given_date - 7, given_date, by = "day"))
       print(date_range)
-      
-      # Initialize an empty list to store results
-      datalist = vector("list", length = 7)
-      i<-0
-      # Loop through each date and call the API
-      for (date in date_range) {
-        
-        input_date <- format(date, "%Y-%m-%d")
-        # Construct the API URL
-        api_url <- paste0(
-          "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_wisconet_stations_risk?",
-          "forecasting_date=", input_date,
-          "&station_id=", station_id,
-          "&disease_name=", disease_name
-        )
-        print(api_url) # Debugging
-        
-        # Make the API call
-        response <- POST(
-          url = api_url,
-          add_headers("Content-Type" = "application/json")
-        )
-        
-        if (status_code(response) == 200) {
-          i<-i+1
-          response_content <- content(response, as = "parsed", type = "application/json")
-          stations_data <- fromJSON(response_content$stations_risk[[1]])
-          stations_df <- bind_rows(lapply(stations_data, bind_rows))
-          datalist[[i]] <- stations_df
-          print(stations_df)
-        } else {
-          warning(paste("API call failed for date:", date))
-        }
-      }
-      print(bind_rows(datalist))
-      # Combine all results into a single data frame and return
-      return(bind_rows(datalist))
+      brows<-call_forecasting_for_range_of_days(date_range, shared_data$w_station_id, input$disease_name)
+      return(brows)
     } else {
       return(NULL)
     }
