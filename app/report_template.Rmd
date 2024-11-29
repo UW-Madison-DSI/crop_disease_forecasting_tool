@@ -15,6 +15,10 @@ params:
   risk_table: NULL
 ---
 
+![OSPO](logos/OPENSOURDA_color-flush.png){ width=40% }
+![PlantPath](logos/PLANPATHCO_color-flush.png){ width=40% }
+![DataScience](logos/DATASCIE_color-flush.png){ width=40% }
+
 ## Specifications
 - **Disease Name: **: `r params$disease`
 - **Forecast Date: **: `r params$forecast_date`
@@ -30,10 +34,12 @@ library(knitr)
 if (!is.null(params$risk_table) && nrow(params$risk_table) > 0) {
   # Select specific columns to display
   tarspot_table <- params$risk_table
+  tarspot_table$Risk <- paste0(round(tarspot_table$Risk*100, 2), "%")
+
   # Render the table
   kable(
     tarspot_table,
-    caption = "Risk Trend in the last week",
+    caption = "Risk Trend",
     format = "markdown"
   )
 } else {
