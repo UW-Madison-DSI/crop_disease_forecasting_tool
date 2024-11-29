@@ -60,29 +60,35 @@ plot_data<-function(data, input){
       data$Risk_Class <- risk_class_function(data$tarspot_risk, input$disease_name, .6)
       
       plot_data <- data %>% 
-        select(forecasting_date, tarspot_risk, Risk_Class) %>% 
+        select(station_name,earliest_api_date,location,
+               forecasting_date, tarspot_risk, Risk_Class) %>% 
         rename(Risk = tarspot_risk)
       
     } else if (input$disease_name == 'gls') {
       data$Risk_Class <- risk_class_function(data$gls_risk, input$disease_name, .6)
       
       plot_data <- data %>% 
-        select(forecasting_date, gls_risk, Risk_Class) %>% 
+        select(station_name,earliest_api_date,location,
+               forecasting_date, gls_risk, Risk_Class) %>% 
         rename(Risk = gls_risk)
       
     } else if (input$disease_name == 'frogeye_leaf_spot') {
       data$Risk_Class <- risk_class_function(data$frogeye_risk, input$disease_name, .6)
       
       plot_data <- data %>% 
-        select(forecasting_date, frogeye_risk, Risk_Class) %>% 
+        select(station_name,earliest_api_date,location,
+               forecasting_date, frogeye_risk, Risk_Class) %>% 
         rename(Risk = frogeye_risk)
     }
     return(plot_data)
   }
 }
 
-plot_trend_7days <- function(df){
-  df$date <- as.Date(df$forecasting_date, format='%Y-%m-%d')
+plot_trend_7days <- function(df, disease){
+  df$date <- as.Date(df$forecasting_date, format = '%Y-%m-%d')
+  station <- df$station_name[[1]]
+  print(station)
+  
   ggplot(df, aes(x = date, y = Risk)) +
     geom_line(color = "#0C7BDC") +
     geom_point(aes(color = Risk_Class), size = 4) +  # Map color to Risk_Class
@@ -90,23 +96,27 @@ plot_trend_7days <- function(df){
               vjust = -0.5,
               color = "black",
               size = 5) +
-    labs(#title = paste(station$name, "Station,", station$region, "Region,", station$state),
-         x = "Date",
-         y = "Risk (%)") +
-    scale_y_continuous(labels = percent_format(scale = 1),
-                       breaks = seq(0, 100, by = 20)) +
-    
+    labs(
+      title = paste(disease, "Risk trend for ", station, " Station"),
+      x = "Date",
+      y = "Risk (%)"
+    ) +
+    scale_y_continuous(
+      labels = percent_format(scale = 100),  # Display as percentages
+      breaks = seq(0, 1, by = .20),       # Tick marks every 20%
+      limits = c(0, 1)                   # Limit y-axis range to 0–100
+    ) +
     # Set colors for Risk_Class categories
     scale_color_manual(values = c("High" = "black", "Medium" = "#FFC20A", "Low" = "darkgreen")) +
-    
     # Control x-axis date formatting and frequency
     scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
-    
     theme_minimal() +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
-    )+guides(color = "none")  # Remove the color legend
+    ) +
+    guides(color = "none")  # Remove the color legend
 }
+
 
 # UI 
 ui <- navbarPage(
@@ -188,13 +198,6 @@ ui <- navbarPage(
           )
         ),
         hr(),  # Horizontal line for visual separation
-        dateInput(
-          "forecast_date",
-          "Select Forecasting Date:",
-          value = Sys.Date(),
-          min = '2024-01-01',
-          max = Sys.Date()
-        ),
         selectInput(
           "disease_name",
           "Select Disease:",
@@ -203,6 +206,13 @@ ui <- navbarPage(
             "Gray Leaf Spot" = 'gls',
             "Frogeye Leaf Spot" = 'frogeye_leaf_spot'
           )
+        ),
+        dateInput(
+          "forecast_date",
+          "Select Forecasting Date:",
+          value = Sys.Date(),
+          min = '2024-01-01',
+          max = Sys.Date()
         ),
         #actionButton(
         #  "update",
@@ -250,8 +260,7 @@ ui <- navbarPage(
         
         hr(),  # Horizontal line for visual separation
         h4("Map Layers"),
-        checkboxInput("show_stations", "Show Stations", value = TRUE),
-        checkboxInput("show_heatmap", "Show Heat Map", value = TRUE),
+        checkboxInput("show_heatmap", "Show Heat Map", value = FALSE),
         #hr(),
         #h4("Visualization Settings"),
         #sliderInput(
@@ -295,12 +304,13 @@ ui <- navbarPage(
   
   # Tab 4: Weather Charts
   tabPanel(
-    title = "Weather Charts",
+    title = "Station summary",
     fluidPage(
-      h3("Weather Charts"),
+      h3("Station summary"),
       mainPanel(
-        p("This section will display weather-related charts for the chosen Wisconet Station."),
-        DTOutput("weather_charts"), # Output for the data table
+        textOutput('station_specifications'),
+        hr(),
+        DTOutput("station_trend"), # Output for the data table
         plotOutput("risk_trend")    # Output for the plot
       )
     )
@@ -392,27 +402,25 @@ server <- function(input, output, session) {
         )
     }
     
-    if (input$show_stations) {
-      map <- map %>%
-        addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
-        addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
-        addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
-        addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
-        setView(
-          lng = -89.75, lat = 44.76, zoom = 7.2
-        ) %>%
-        addCircleMarkers(
-          lng = ~longitude,
-          lat = ~latitude,
-          popup = ~popup_content,
-          radius = 6,
-          color = "black",
-          fillColor = ~color_palette(risk),
-          fillOpacity = 0.8,
-          weight = 1.5,
-          label = ~station_name,
-          labelOptions = labelOptions(
-            style = list("font-weight" = "normal", padding = "3px 8px"),
+    #if (input$show_stations) {
+    map <- map %>%
+      addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
+      addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+      addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
+      addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
+      setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+      addCircleMarkers(
+        lng = ~longitude,
+        lat = ~latitude,
+        popup = ~popup_content,
+        radius = 6,
+        color = "black",
+        fillColor = ~color_palette(risk),
+        fillOpacity = 0.8,
+        weight = 1.5,
+        label = ~station_name,
+        labelOptions = labelOptions(
+          style = list("font-weight" = "normal", padding = "3px 8px"),
             textsize = "12px",
             direction = "auto"
           ),
@@ -443,7 +451,7 @@ server <- function(input, output, session) {
           options = layersControlOptions(collapsed = TRUE)
         )%>%
         hideGroup("County Boundaries")
-    }
+    
     return(map)
   })
   
@@ -456,15 +464,15 @@ server <- function(input, output, session) {
     click <- input$risk_map_marker_click
     print(click)
     if (!is.null(click$id)) {
-      station_id <- click$id  # Extract the station ID from the click event
+      #station_id <- click$id  # Extract the station ID from the click event
       shared_data$w_station_id <- click$id 
-      showNotification(paste("Selected Station ID:", station_id), type = "message")
+      showNotification(paste(custom_disease_name(input$disease_name), "Risk is -1"), type = "message")
       # Use station_id for further processing
-      print(paste("Station ID:", station_id))
+      print(paste("Station ID:", click$id))
     }
     if (!is.null(click)) {
       leafletProxy("risk_map") %>%
-        setView(lng = click$lng, lat = click$lat, zoom = 11)  # Adjust zoom level as needed
+        setView(lng = click$lng, lat = click$lat, zoom = 15)  # Adjust zoom level as needed
     }
   })
   
@@ -556,17 +564,19 @@ server <- function(input, output, session) {
   })
   
   # Render the data table in the UI
-  output$weather_charts <- renderDT({
-    if (!is.null(shared_data$w_station_id)){
+  output$station_trend <- renderDT({
+    if (is.null(shared_data$w_station_id)){
+      datatable(data.frame(Message = "No data available"))
+    } else {
       data <- disease_risk_data() # Reactive data from the API
+      paste0(cat("The Station ", data$station_name[1]))
       # Check the selected disease name and process data accordingly
       if (input$disease_name == 'tarspot') {
         data$risk <- data$tarspot_risk*100
         data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
         data_f <- data %>%
-          select(station_name, forecasting_date, risk, risk_class) %>% 
+          select(forecasting_date, risk, risk_class) %>% 
           rename(
-            Station = station_name,
             `Forecasting Date` = forecasting_date,
             Risk = risk,
             `Risk Class`=risk_class)
@@ -574,9 +584,8 @@ server <- function(input, output, session) {
         data$risk <- data$gls_risk*100
         data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
         data_f <- data %>%
-          select(station_name, forecasting_date, risk, risk_class) %>% 
+          select(forecasting_date, risk, risk_class) %>% 
           rename(
-            Station = station_name,
             `Forecasting Date` = forecasting_date,
             Risk = risk,
             `Risk Class`=risk_class)
@@ -584,16 +593,58 @@ server <- function(input, output, session) {
         data$risk <- data$frogeye_risk*100
         data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
         data_f <- data %>%
-          select(station_name, forecasting_date, risk, risk_class) %>% 
+          select(forecasting_date, risk, risk_class) %>% 
           rename(
-            Station = station_name,
             `Forecasting Date` = forecasting_date,
             Risk = risk,
             `Risk Class`=risk_class)
       }
       datatable(data_f)
+    }
+  })
+  
+  output$station_specifications <- renderText({
+    if (is.null(shared_data$w_station_id)) {
+      "This section will display weather-related charts for the chosen Wisconet Station. 
+      Please select an station from the map by doing click on it."
     } else {
-      datatable(data.frame(Message = "No data available"), options = list(pageLength = 1))
+      data <- disease_risk_data()
+      
+      # Check if data is not empty
+      if (nrow(data) > 0) {
+        station <- data$station_name[1]
+        earliest_api_date <- data$earliest_api_date[1]
+        location <- if_else(
+          data$location[1] == "Not set", 
+          "", 
+          paste(" located at", data$location[1], ",")
+        )
+        
+        # Analyze Risk_Class
+        risk_summary <- table(data$Risk_Class)
+        
+        if ("Low" %in% names(risk_summary)) {
+          low_days <- data$forecasting_date[data$Risk_Class == "Low"]
+          low_days_text <- paste("Days with low risk:", paste(low_days, collapse = ", "))
+        } else {
+          low_days_text <- ""
+        }
+        
+        if (all(data$Risk_Class == "High")) {
+          high_days_text <- paste("\n Reported high probability of ", custom_disease_name(input$disease_name), ".")
+        } else {
+          high_days_text <- paste(sum(data$Risk_Class == "High"), "days have high probability of ", custom_disease_name(input$disease_name), ".")
+        }
+        paste(
+          station, "Station,", location," is active since: ", earliest_api_date, ".",
+          
+          low_days_text,
+          high_days_text,
+          '\n '
+        )
+      } else {
+        "Please select a station by clicking on it in the map from the Disease Forecasting section."
+      }
     }
   })
   
@@ -601,11 +652,11 @@ server <- function(input, output, session) {
   # Render Plot
   output$risk_trend <- renderPlot({
     data <- disease_risk_data() # Reactive data from the API
-    if (is.null(data)){
+    if (!is.null(shared_data$w_station_id)){
       data_prepared <- plot_data(data, input)
       print(data_prepared)
       # Plot risk trend
-      plot_trend_7days(data_prepared)
+      plot_trend_7days(data_prepared, custom_disease_name(input$disease_name))
     } else {
       # Display an empty plot with a message
       plot.new()

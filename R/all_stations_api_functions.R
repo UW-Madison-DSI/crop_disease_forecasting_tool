@@ -161,7 +161,6 @@ api_call_wisconet_data_daily <- function(station, end) {
     #print(result_df)
     
     # Return the closest row
-    current_time <- Sys.time()
     result_df <- result_df %>%
       arrange(desc(collection_time)) %>%
       slice_head(n = 1) %>%
@@ -271,7 +270,7 @@ convert_to_api_output <- function(dataframe, disease_name) {
   if (disease_name=="tarspot") {
     dataframe <- dataframe %>%
       select(
-        station_id,
+        station_id,location,
         latitude, longitude, region, state,
         earliest_api_date,
         forecasting_date,
@@ -285,7 +284,7 @@ convert_to_api_output <- function(dataframe, disease_name) {
   } else if (disease_name=="gls") {
     dataframe <- dataframe %>%
       select(
-        station_id,
+        station_id,location,
         latitude, longitude, region, state,
         earliest_api_date,
         forecasting_date,
@@ -298,7 +297,7 @@ convert_to_api_output <- function(dataframe, disease_name) {
   } else if (disease_name=="sporecaster-irr"){
     dataframe <- dataframe %>%
       select(
-        station_id,
+        station_id,location,
         latitude, longitude, region, state,
         earliest_api_date,
         forecasting_date,
@@ -310,7 +309,7 @@ convert_to_api_output <- function(dataframe, disease_name) {
       )
   } else if (disease_name=='frogeye_leaf_spot'){
     dataframe <- dataframe %>%
-      select(station_id,
+      select(station_id,location,
              latitude, longitude, region, state,
              earliest_api_date,
              forecasting_date,
@@ -320,7 +319,7 @@ convert_to_api_output <- function(dataframe, disease_name) {
              frogeye_risk, 
              frogeye_risk_class)
   }else {
-    stop("Error: Columns for either 'tarspot' or 'gls' risks are missing.")
+    stop("Error: Missing disease name input.")
   }
   
   # Convert to JSON
