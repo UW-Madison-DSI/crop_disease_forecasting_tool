@@ -106,8 +106,9 @@ process_stations_data <- function(stations_data, risk_col) {
           is.na(station_name) | is.na(risk),
           "Incomplete info",
           sprintf(
-            "<strong>Station:</strong> %s <br><strong>Region:</strong> %s <br><strong>Risk:</strong> %.1f%%",
+            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
             station_name,
+            location,
             region,
             risk
           )
@@ -137,8 +138,9 @@ adecuate_output <- function(disease_name, stations_df) {
           across(c(latitude, longitude, tarspot_risk), as.numeric),
           risk = 100 * tarspot_risk,  # Scale risk
           popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
             station_name,
+            location,
             region,
             risk,
             date
@@ -153,8 +155,9 @@ adecuate_output <- function(disease_name, stations_df) {
           across(c(latitude, longitude, gls_risk), as.numeric),
           risk = 100 * gls_risk,  # Scale risk
           popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Gray Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
             station_name,
+            location,
             region,
             risk,
             date
@@ -169,8 +172,9 @@ adecuate_output <- function(disease_name, stations_df) {
           across(c(latitude, longitude, frogeye_risk), as.numeric),
           risk = 100 * frogeye_risk,  # Scale risk
           popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Frogeye Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
             station_name,
+            location,
             region,
             risk,
             date
@@ -215,8 +219,9 @@ fetch_forecasting_data <- function(date, disease_name) {
           across(c(latitude, longitude, tarspot_risk), as.numeric),
           risk = 100 * tarspot_risk,  # Scale risk
           popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
             station_name,
+            location,
             region,
             risk,
             date
@@ -231,8 +236,9 @@ fetch_forecasting_data <- function(date, disease_name) {
           across(c(latitude, longitude, gls_risk), as.numeric),
           risk = 100 * gls_risk,  # Scale risk
           popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Gray Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
             station_name,
+            location,
             region,
             risk,
             date
@@ -247,8 +253,9 @@ fetch_forecasting_data <- function(date, disease_name) {
           across(c(latitude, longitude, frogeye_risk), as.numeric),
           risk = 100 * frogeye_risk,  # Scale risk
           popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Region:</strong> %s<br><strong>Frogeye Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
             station_name,
+            location,
             region,
             risk,
             date

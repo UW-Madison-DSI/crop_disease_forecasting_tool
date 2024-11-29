@@ -152,7 +152,7 @@ function(max_air_temp_30d_ma,
 #* Predict the previous disease Risk on the active Wisconet Stations
 #* @param forecasting_date Character: Forecasting date, format YYYY-MM-dd
 #* @param station_id Character: Station id eg ALTN
-#* @param disease_name Character: tarspot, gls, sporecaster-irr, frogeye_leaf_spot // sporecaster-noirr
+#* @param disease_name Character: tarspot, gls, sporecaster-irr, frogeye_leaf_spot 
 #* @post /predict_wisconet_stations_risk
 function(forecasting_date, 
          station_id = NULL,
