@@ -9,7 +9,7 @@ library(tidyr)
 library(ggplot2)
 
 ########################################################################################
-# Define the API endpoint and station ID
+# This is the endpoint to the pywisconet, a wrapper of Wisconet data https://github.com/UW-Madison-DSI/pywisconet.git
 base_url <- "https://connect.doit.wisc.edu/pywisconet_wrapper/bulk_measures/"
 
 
@@ -77,6 +77,7 @@ api_call_weather_data <- function(station_id,
           air_temp_min_value_30d_ma = rollmean(air_temp_min_c, k = moving_average_days, fill = NA, align = "right")
         )
     }else if(measurement %in% c("RELATIVE_HUMIDITY")){
+      # Step 1: Add time_period column
       data <- data %>%
         mutate(
           time_period = case_when(
@@ -85,15 +86,19 @@ api_call_weather_data <- function(station_id,
             TRUE ~ "Other"
           )
         )
+      
+      # Step 2: Aggregate daily counts of `value >= 90` for relevant periods
       daily_aggregations <- data %>%
-        filter(time_period %in% c("8PM-6AM", "12PM-6PM")) %>%  # Filter for relevant periods
-        group_by(collection_time_ct) %>%
+        group_by(collection_time_ct) %>% # Group by date
         summarize(
-          count_90_8PM_6AM = sum(value >= 90 & time_period %in% c("8PM-6AM", "12PM-6PM"), na.rm = TRUE)
+          count_90_8PM_6AM = sum(value >= 90 & time_period %in% c("8PM-6AM", "12PM-6PM"), na.rm = TRUE),
+          max_rh = max(value, na.rm = TRUE)
         )
+      
+      # Step 3: Compute 30-day moving average
       daily_aggregations <- daily_aggregations %>%
         mutate(
-          count_90_8PM_6AM_30d_ma = rollmean(count_90_8PM_6AM, k = moving_average_days, fill = NA, align = "right")
+          count_90_8PM_6AM_14d_ma = rollmean(count_90_8PM_6AM, k = 14, fill = NA, align = "right")
         )
     }
     
@@ -109,6 +114,7 @@ api_call_weather_data <- function(station_id,
   return(daily_aggregations)
 }
 
+########################################################################################
 
 plot_air_temp <- function(data) {
   # Pivot air temperature variables to long format
@@ -136,41 +142,23 @@ plot_air_temp <- function(data) {
 }
 
 
-########################################################################################
 plot_rh_dp <- function(data) {
-  # Pivot relative humidity and dew point variables to long format
+  # Select and prepare data for plotting
   rh_dp_data <- data %>%
-    select(collection_time, rh_max, dp_min_30d_c_ma) %>%
-    pivot_longer(cols = c(rh_max, dp_min_30d_c_ma), names_to = "Variable", values_to = "Value")
+    select(collection_time_ct, max_rh) %>% # Select necessary columns
+    rename(Date = collection_time_ct) %>% # Rename for clarity
+    pivot_longer(cols = c(max_rh), names_to = "Variable", values_to = "Value") # Pivot to long format
   
   # Create the ggplot
-  ggplot(rh_dp_data, aes(x = collection_time, y = Value, color = Variable)) +
-    geom_line() +
+  ggplot(rh_dp_data, aes(x = Date, y = Value, color = Variable)) +
+    geom_line(size = 1) +
     labs(
-      title = "Relative Humidity and Dew Point Trends",
+      title = "Maximum Relative Humidity (%) during the day",
       x = "Date",
-      y = "Value",
+      y = "Maximum Relative Humidity (%)",
       color = "Variable"
     ) +
-    theme_minimal()
-}
-
-plot_dew_point <- function(data) {
-  # Ensure the required columns are present
-  if (!all(c("collection_time", "min_dp_c", "dp_min_30d_c_ma") %in% colnames(data))) {
-    stop("The data does not contain required columns: 'collection_time', 'min_dp_c', or 'dp_min_30d_c_ma'")
-  }
-  
-  # Create the ggplot
-  ggplot(data, aes(x = collection_time)) +
-    geom_line(aes(y = min_dp_c, color = "Dew Point (°C)")) + 
-    geom_line(aes(y = dp_min_30d_c_ma, color = "30-Day Moving Avg (°C)"), linetype = "dashed") +
-    labs(
-      title = "Dew Point Trends",
-      x = "Date",
-      y = "Dew Point (°C)",
-      color = "Legend"
-    ) +
-    theme_minimal() +
+    theme_minimal()+
     theme(legend.position = "bottom")
 }
+
