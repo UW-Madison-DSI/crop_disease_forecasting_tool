@@ -330,11 +330,11 @@ server <- function(input, output, session) {
           all_days_text <- paste(high_days_text, "days have high probability of ", custom_disease_name(input$disease_name))
         }
         
-        #date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
+        date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
         # Format for user-friendly reading
-        #user_friendly_date <- format(date_obj, "%B %d, %Y")
+        user_friendly_date <- format(date_obj, "%B %d, %Y")
         paste(
-          station, "Station,", location," is active since: ", earliest_api_date, "."
+          station, "Station,", location," is active since: ", user_friendly_date, "."
           #all_days_text, ' on the last 8 days from the selected forecasting date.'
         )
       } else {

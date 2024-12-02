@@ -92,7 +92,8 @@ api_call_weather_data <- function(station_id,
         group_by(collection_time_ct) %>% # Group by date
         summarize(
           count_90_8PM_6AM = sum(value >= 90 & time_period %in% c("8PM-6AM", "12PM-6PM"), na.rm = TRUE),
-          max_rh = max(value, na.rm = TRUE)
+          max_rh = max(value, na.rm = TRUE),
+          max_rh_8PM_6AM = max(value[time_period %in% c("8PM-6AM", "12PM-6PM")], na.rm = TRUE)
         )
       
       # Step 3: Compute 30-day moving average
@@ -145,9 +146,9 @@ plot_air_temp <- function(data) {
 plot_rh_dp <- function(data) {
   # Select and prepare data for plotting
   rh_dp_data <- data %>%
-    select(collection_time_ct, max_rh) %>% # Select necessary columns
+    select(collection_time_ct, max_rh, max_rh_8PM_6AM) %>% # Select necessary columns
     rename(Date = collection_time_ct) %>% # Rename for clarity
-    pivot_longer(cols = c(max_rh), names_to = "Variable", values_to = "Value") # Pivot to long format
+    pivot_longer(cols = c(max_rh, max_rh_8PM_6AM), names_to = "Variable", values_to = "Value") # Pivot to long format
   
   # Create the ggplot
   ggplot(rh_dp_data, aes(x = Date, y = Value, color = Variable)) +
