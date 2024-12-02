@@ -26,12 +26,8 @@ api_call_weather_data <- function(station_id,
   
   # Define start and end dates in UTC
   start_date <- as.POSIXct(start_date, tz = "UTC")
-  date_utc_minus_31 <- start_date - days(31)
-  
-  # Print debug information
-  print(paste("End Date (UTC):", start_date))
-  print(paste("Start Date (UTC):", date_utc_minus_31))
-  print(paste("Station ID:", station_id))
+  date_utc_minus_31 <- start_date - days(38)
+
   
   # Construct the full URL
   url <- paste0(base_url, station_id)
@@ -48,11 +44,6 @@ api_call_weather_data <- function(station_id,
     "accept" = "application/json"
   )
   
-  # Print full URL and parameters for debugging
-  print(paste("Full URL:", url))
-  print("Query Parameters:")
-  print(query_params)
-  
   # Make the GET request
   response <- GET(url, query = query_params, add_headers(.headers = headers))
   
@@ -60,6 +51,7 @@ api_call_weather_data <- function(station_id,
   if (status_code(response) == 200){
     # Parse JSON response
     data = fromJSON(rawToChar(response$content))
+    data$hour <- hour(ymd_hms(data$collection_time))
     data$collection_time_ct <- with_tz(data$collection_time, tzone = "America/Chicago")
     if(measurement %in% c("AIRTEMP", "DEW_POINT")){
       data$value <- fahrenheit_to_celsius(data$value)
@@ -78,41 +70,54 @@ api_call_weather_data <- function(station_id,
         )
     }else if(measurement %in% c("RELATIVE_HUMIDITY")){
       # Step 1: Add time_period column
+      
       data <- data %>%
         mutate(
           time_period = case_when(
-            hour(collection_time_ct) >= 20 | hour(collection_time_ct) < 6 ~ "8PM-6AM",
-            hour(collection_time_ct) >= 12 & hour(collection_time_ct) < 18 ~ "12PM-6PM",
-            TRUE ~ "Other"
+            hour >= 20 | hour <= 6 ~ "nigth_hours",
+            TRUE ~ "day_hours"
           )
         )
+      
+      print("====== ----------- Data RH ----------- =======")
+      print(data %>% select(collection_time, collection_time_ct, hour,
+                            value,final_units,
+                            time_period, measure_type))
       
       # Step 2: Aggregate daily counts of `value >= 90` for relevant periods
       daily_aggregations <- data %>%
         group_by(collection_time_ct) %>% # Group by date
         summarize(
-          count_90_8PM_6AM = sum(value >= 90 & time_period %in% c("8PM-6AM", "12PM-6PM"), na.rm = TRUE),
+          count_90_8PM_6AM = sum(value >= 90 & time_period %in% c("nigth_hours"), na.rm = TRUE),
+          count_90_day = sum(value >= 90 & time_period %in% c("day_hours"), na.rm = TRUE),
           max_rh = max(value, na.rm = TRUE),
-          max_rh_8PM_6AM = max(value[time_period %in% c("8PM-6AM", "12PM-6PM")], na.rm = TRUE)
+          max_rh_8PM_6AM = max(value[time_period %in% c("nigth_hours")], na.rm = TRUE),
+          max_rh_day = max(value[time_period %in% c("day_hours")], na.rm = TRUE)
         )
+      
+      print(daily_aggregations)
       
       # Step 3: Compute 30-day moving average
       daily_aggregations <- daily_aggregations %>%
         mutate(
-          count_90_8PM_6AM_14d_ma = rollmean(count_90_8PM_6AM, k = 14, fill = NA, align = "right")
+          count_90_8PM_6AM_14d_ma = rollmean(count_90_8PM_6AM, 
+                                             k = 14, fill = NA, 
+                                             align = "right")
         )
     }
     
     print("-------------------Response Data:-----------------------")
-    print(daily_aggregations, n=32)
+    print(daily_aggregations, n=50)
     
   } else {
     # Handle errors
     print(paste("Error:", status_code(response)))
     #print(content(response, as = "text"))
     daily_aggregations=NULL
+    data=NULL
   }
-  return(daily_aggregations)
+  return(list(daily_aggregations=daily_aggregations,
+         data=data))
 }
 
 ########################################################################################
@@ -120,8 +125,11 @@ api_call_weather_data <- function(station_id,
 plot_air_temp <- function(data) {
   # Pivot air temperature variables to long format
   air_temp_data <- data %>%
-    select(collection_time_ct, air_temp_max_c, air_temp_min_c, air_temp_avg_c,
-           air_temp_avg_value_30d_ma, air_temp_max_value_30d_ma, air_temp_min_value_30d_ma) %>%
+    select(
+      collection_time_ct,
+      air_temp_max_c, air_temp_min_c, air_temp_avg_c,
+      air_temp_avg_value_30d_ma, air_temp_max_value_30d_ma, air_temp_min_value_30d_ma
+    ) %>%
     rename(Date = collection_time_ct) %>%
     pivot_longer(
       cols = starts_with("air_temp"),
@@ -138,7 +146,7 @@ plot_air_temp <- function(data) {
       y = "Temperature (°C)",
       color = "Variable"
     ) +
-    theme_minimal()+
+    theme_minimal() +
     theme(legend.position = "bottom")
 }
 
@@ -146,20 +154,24 @@ plot_air_temp <- function(data) {
 plot_rh_dp <- function(data) {
   # Select and prepare data for plotting
   rh_dp_data <- data %>%
-    select(collection_time_ct, max_rh, max_rh_8PM_6AM) %>% # Select necessary columns
+    select(collection_time_ct, max_rh_8PM_6AM, max_rh, max_rh_day) %>%
     rename(Date = collection_time_ct) %>% # Rename for clarity
-    pivot_longer(cols = c(max_rh, max_rh_8PM_6AM), names_to = "Variable", values_to = "Value") # Pivot to long format
+    pivot_longer(cols = c(max_rh_8PM_6AM, max_rh_day, max_rh), names_to = "Variable", values_to = "Value") # Pivot to long format
+  
+  print("+++++++++++++++++++++++++++++++++++")
+  print(rh_dp_data)
   
   # Create the ggplot
   ggplot(rh_dp_data, aes(x = Date, y = Value, color = Variable)) +
-    geom_line(size = 1) +
+    geom_line() +
     labs(
-      title = "Maximum Relative Humidity (%) during the day",
+      title = "Relative Humidity (%)",
       x = "Date",
-      y = "Maximum Relative Humidity (%)",
+      y = "Relative Humidity (%)",
       color = "Variable"
     ) +
-    theme_minimal()+
+    theme_minimal() +
     theme(legend.position = "bottom")
 }
+
 

@@ -362,14 +362,18 @@ server <- function(input, output, session) {
     # Call the API functions to get the data
     data_airtemp <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "AIRTEMP", "MIN60", 30)
     data_rh <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "RELATIVE_HUMIDITY", "MIN60", 14)
-    print(data_rh)
-    if (!is.null(data_airtemp) && !is.null(data_rh)) {
+    
+    print("--------------------------  ++++++++++++++++++++++++++++")
+    print(data_rh$daily_aggregations)
+    print("--------------------------  ++++++++++++++++++++++++++++")
+    
+    if (!is.null(data_airtemp$daily_aggregations) && !is.null(data_rh$daily_aggregations)) {
       # Create the individual plots
-      p1 <- plot_air_temp(data_airtemp)
-      p2 <- plot_rh_dp(data_rh)
+      p1 <- plot_air_temp(data_airtemp$daily_aggregations)
+      p2 <- plot_rh_dp(data_rh$daily_aggregations)
       
       # Arrange the plots vertically or side by side
-      grid.arrange(p1, p2, ncol = 2) # `ncol = 1` for vertical layout, `ncol = 2` for side by side
+      grid.arrange(p1, p2, ncol = 1) # `ncol = 1` for vertical layout, `ncol = 2` for side by side
     } else {
       # Display an empty plot with a message
       plot.new()

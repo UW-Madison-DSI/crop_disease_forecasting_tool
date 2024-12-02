@@ -61,7 +61,7 @@ ui <- navbarPage(
           sliderInput(
             "risk_threshold",
             "Risk Threshold:",
-            min = 5,
+            min = 20,
             max = 50,
             value = 35,
             step = 1
