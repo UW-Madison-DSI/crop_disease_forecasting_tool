@@ -358,6 +358,18 @@ server <- function(input, output, session) {
     }
   })
   
+  output$air_temperature_plot <- renderPlot({
+    data<-api_call_weather_data(shared_data$w_station_id, input$forecast_date, "AIRTEMP", "MIN60", 30)
+    if (!is.null(data)){
+      # Plot risk trend
+      plot_air_temp(data)
+    } else {
+      # Display an empty plot with a message
+      plot.new()
+      text(0.5, 0.5, "", cex = 1.5, col = "blue")
+    }
+  })
+  
   ################################################################## This is the section 3 Download
   output$download_stations <- downloadHandler(
     filename = function() {
