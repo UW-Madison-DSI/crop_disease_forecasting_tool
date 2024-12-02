@@ -66,10 +66,12 @@ api_call_wisconet_data_daily <- function(station, end) {
   
   # Make API request
   response <- GET(url = paste0(base_url, endpoint), query = params)
+  data1 <- data = fromJSON(rawToChar(response$content))
   print(response)
   
   if (response$status_code == 200) {
-    data1 <- fromJSON(content(response, as = "text"), flatten = TRUE)
+    data1 <- data = fromJSON(rawToChar(response$content))
+    #fromJSON(content(response, as = "text"), flatten = TRUE)
     data <- data1$data
     if (nrow(data) == 0) return(NULL)  # Handle no data
     

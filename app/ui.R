@@ -61,7 +61,7 @@ ui <- navbarPage(
           sliderInput(
             "risk_threshold",
             "Risk Threshold:",
-            min = 5,
+            min = 20,
             max = 50,
             value = 35,
             step = 1
@@ -123,7 +123,8 @@ ui <- navbarPage(
         textOutput('station_specifications'),
         hr(),
         #DTOutput("station_trend"), # Output for the data table
-        plotOutput("risk_trend")    # Output for the plot
+        plotOutput("risk_trend"),    # Output for the plot
+        plotOutput('air_temperature_plot')
       )
     )
   ),

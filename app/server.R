@@ -9,15 +9,15 @@ library(tigris)
 library(sf)
 options(tigris_use_cache = TRUE)
 library(DT)
+library(gridExtra)
 
 source("functions/auxiliar_functions.R")
 source("functions/api_calls_logic.R")
-
+source("functions/weather_plots.R")
 
 
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf") %>%
   st_transform(crs = 4326)
-
 
 
 server <- function(input, output, session) {
@@ -330,11 +330,11 @@ server <- function(input, output, session) {
           all_days_text <- paste(high_days_text, "days have high probability of ", custom_disease_name(input$disease_name))
         }
         
-        #date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
+        date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
         # Format for user-friendly reading
-        #user_friendly_date <- format(date_obj, "%B %d, %Y")
+        user_friendly_date <- format(date_obj, "%B %d, %Y")
         paste(
-          station, "Station,", location," is active since: ", earliest_api_date, "."
+          station, "Station,", location," is active since: ", user_friendly_date, "."
           #all_days_text, ' on the last 8 days from the selected forecasting date.'
         )
       } else {
@@ -355,6 +355,29 @@ server <- function(input, output, session) {
       # Display an empty plot with a message
       plot.new()
       text(0.5, 0.5, "", cex = 1.5, col = "blue")
+    }
+  })
+  
+  output$air_temperature_plot <- renderPlot({
+    # Call the API functions to get the data
+    data_airtemp <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "AIRTEMP", "MIN60", 30)
+    data_rh <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "RELATIVE_HUMIDITY", "MIN60", 14)
+    
+    print("--------------------------  ++++++++++++++++++++++++++++")
+    print(data_rh$daily_aggregations)
+    print("--------------------------  ++++++++++++++++++++++++++++")
+    
+    if (!is.null(data_airtemp$daily_aggregations) && !is.null(data_rh$daily_aggregations)) {
+      # Create the individual plots
+      p1 <- plot_air_temp(data_airtemp$daily_aggregations)
+      p2 <- plot_rh_dp(data_rh$daily_aggregations)
+      
+      # Arrange the plots vertically or side by side
+      grid.arrange(p1, p2, ncol = 1) # `ncol = 1` for vertical layout, `ncol = 2` for side by side
+    } else {
+      # Display an empty plot with a message
+      plot.new()
+      text(0.5, 0.5, "No Data Available", cex = 1.5, col = "blue")
     }
   })
   
