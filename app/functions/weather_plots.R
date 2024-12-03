@@ -140,9 +140,9 @@ plot_air_temp <- function(data) {
   ggplot(air_temp_data, aes(x = Date, y = Value, color = Variable)) +
     geom_line() +
     labs(
-      title = "Air Temperature Trends in the last 30 days",
+      title = "Air Temperature (°C) Trends in the last 30 days",
       x = "Date",
-      y = "Temperature (°C)",
+      y = "Ait Temperature (°C)",
       color = "Variable"
     ) +
     theme_minimal() +
@@ -155,10 +155,9 @@ plot_rh_dp <- function(data) {
   rh_dp_data <- data %>%
     select(collection_time_ct, max_rh_8PM_6AM, max_rh, max_rh_day) %>%
     rename(Date = collection_time_ct) %>% # Rename for clarity
-    pivot_longer(cols = c(max_rh_8PM_6AM, max_rh_day, max_rh), names_to = "Variable", values_to = "Value") # Pivot to long format
-  
-  print("+++++++++++++++++++++++++++++++++++")
-  print(rh_dp_data)
+    pivot_longer(cols = c(max_rh_8PM_6AM, max_rh_day, max_rh), 
+                 names_to = "Variable", 
+                 values_to = "Value") # Pivot to long format
   
   # Create the ggplot
   ggplot(rh_dp_data, aes(x = Date, y = Value, color = Variable)) +
