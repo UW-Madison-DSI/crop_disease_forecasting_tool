@@ -166,7 +166,7 @@ server <- function(input, output, session) {
       # Update the map view to the clicked location
       leafletProxy("risk_map") %>%
         setView(lng = click$lng, lat = click$lat, zoom = 16) %>%
-        addProviderTiles("USGS.USTopo", group = "CartoDB Positron")
+        addProviderTiles("Esri.WorldImagery", group = "Esri Imagery")
     } else {
       warning("No click event detected.")
     }
@@ -360,20 +360,24 @@ server <- function(input, output, session) {
   
   output$air_temperature_plot <- renderPlot({
     # Call the API functions to get the data
+    print("-------------------------------------------------------------------")
     data_airtemp <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "AIRTEMP", "MIN60", 30)
-    data_rh <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "RELATIVE_HUMIDITY", "MIN60", 14)
+    print(data_airtemp)
     
+    data_rh <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "RELATIVE_HUMIDITY", "MIN60", 14)
+    print(data_rh)
+    print("-------------------------------------------------------------------")
     if (!is.null(data_airtemp$daily_aggregations) && !is.null(data_rh$daily_aggregations)) {
       # Create the individual plots
       p1 <- plot_air_temp(data_airtemp$daily_aggregations)
       p2 <- plot_rh_dp(data_rh$daily_aggregations)
-      
+      p3 <- plot_rh_nh_dp(data_rh$daily_aggregations)
       # Arrange the plots vertically or side by side
-      grid.arrange(p1, p2, ncol = 1) # `ncol = 1` for vertical layout, `ncol = 2` for side by side
+      grid.arrange(p1, p2,p3, ncol = 1) # `ncol = 1` for vertical layout, `ncol = 2` for side by side
     } else {
       # Display an empty plot with a message
       plot.new()
-      text(0.5, 0.5, "No Data Available", cex = 1.5, col = "blue")
+      text(0.5, 0.5, " ", cex = 1.5, col = "gray")
     }
   })
   

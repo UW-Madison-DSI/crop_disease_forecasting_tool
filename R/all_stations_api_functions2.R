@@ -9,42 +9,10 @@ library(dplyr)
 library(jsonlite)
 
 
-# Load the necessary package
-library(httr)
-
-current_wisconet_stations <- function(input_date) {
-  if (is.null(input_date)) {
-    input_date <- Sys.Date()
-  } else {
-    input_date <- as.Date(input_date)
-  }
-  
-  # This is the endpoint from pywisconet: https://github.com/UW-Madison-DSI/pywisconet.git
-  url <- paste0("https://connect.doit.wisc.edu/pywisconet_wrapper/all_stations/31?start_date=",input_date)
-  
-  # Perform the GET request
-  response <- GET(url)
-  
-  # Check the status of the response
-  if (status_code(response) == 200) {
-    # Parse the content if the request is successful
-    #content_data <- content(response, as = "text", encoding = "UTF-8")
-    data = fromJSON(rawToChar(content(response)))
-    print("Request successful! Here is the data:")
-    return(data %>% select(
-      station_id, station_name, latitude, longitude, 
-      city, county, location, region, state,
-      station_timezone, earliest_api_date, days_active))
-  } else {
-    print(paste("Request failed with status code:", status_code(response)))
-    return(NULL)
-  }
-}
-
 source("R/logit_functions.R")
 
 ############################################################# wisconet stations
-current_wisconet_stations1 <- function(input_date) {
+current_wisconet_stations <- function(input_date) {
   # Validate the input_date
   base_url <- 'https://wisconet.wisc.edu'
   if (is.null(input_date)) {
@@ -146,7 +114,7 @@ api_call_wisconet_data_daily <- function(station, end) {
         rh_max_30d_ma = rollmean(rh_max, k = 30, fill = NA, align = "right"),
         dp_min_30d_c_ma = rollmean(min_dp_c, k = 30, fill = NA, align = "right")
       )
-
+    
     
     # Return the closest row
     result_df <- result_df %>%
@@ -404,7 +372,7 @@ retrieve_tarspot_all_stations <- function(input_date,
             frogeye_risk_class = map_chr(frogeye_leaf_spot_results, "fe_risk_class")
           ) %>%
           select(-frogeye_leaf_spot_results)
-        }
+      }
     }
     
     if (disease_name == 'gls') {

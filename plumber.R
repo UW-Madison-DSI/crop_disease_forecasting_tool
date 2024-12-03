@@ -3,7 +3,7 @@ library(plumber)
 
 
 source("R/crop_mangm_validations.R")
-source("R/all_stations_api_functions.R")
+source("R/all_stations_api_functions2.R")
 
 #* @apiTitle Crop Disease Risk Prediction API
 #* @apiDescription This API predicts the risk of crop diseases (Spore, Tarspoter, Gray Leaf Spot and Frog Eye Leaf Spot) based on environmental data and user inputs.

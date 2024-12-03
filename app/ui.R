@@ -114,18 +114,18 @@ ui <- navbarPage(
     )
   ),
   
-  # Tab 2: Station Summary
+  # Tab 2: Station Forecasting Risk and Weather Trends
   tabPanel(
-    title = "Station Summary",
+    title = "Station Forecasting Risk and Weather Trends",
     fluidPage(
-      h3("Station Summary"),
+      h3("Station Forecasting Risk and Weather Trends"),
       mainPanel(
         textOutput('station_specifications'),
         hr(),
         #DTOutput("station_trend"),
-        plotOutput("risk_trend"),   
+        plotOutput("risk_trend", height = "400px", width = "100%"),   
         hr(),
-        plotOutput('air_temperature_plot')
+        plotOutput('air_temperature_plot', height = "1200px", width = "100%")
       )
     )
   ),
