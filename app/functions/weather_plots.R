@@ -126,9 +126,8 @@ plot_air_temp <- function(data) {
   # Pivot air temperature variables to long format
   air_temp_data <- data %>%
     select(
-      collection_time_ct,
-      air_temp_max_c, air_temp_min_c, air_temp_avg_c,
-      air_temp_avg_value_30d_ma, air_temp_max_value_30d_ma, air_temp_min_value_30d_ma
+      collection_time_ct, air_temp_max_c, air_temp_min_c, air_temp_avg_c,
+      air_temp_max_value_30d_ma, air_temp_min_value_30d_ma,air_temp_avg_value_30d_ma
     ) %>%
     rename(Date = collection_time_ct) %>%
     pivot_longer(

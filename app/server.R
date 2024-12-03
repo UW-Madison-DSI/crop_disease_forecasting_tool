@@ -153,7 +153,7 @@ server <- function(input, output, session) {
           
           # Display notification
           showNotification(
-            paste("Risk Class: ", rclass), 
+            paste("Risk of ",custom_disease_name(input$disease_name)," is ", rclass), 
             type = rclass_msg
           )
         } else {
@@ -334,7 +334,7 @@ server <- function(input, output, session) {
         # Format for user-friendly reading
         user_friendly_date <- format(date_obj, "%B %d, %Y")
         paste(
-          station, "Station,", location," is active since: ", user_friendly_date, "."
+          station, "Station,", location," is active since:", user_friendly_date, "."
           #all_days_text, ' on the last 8 days from the selected forecasting date.'
         )
       } else {

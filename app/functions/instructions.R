@@ -141,25 +141,25 @@ about_page<-fluidPage(
   hr(),
   h4("Features:"),
   tags$ul(
-    tags$li("Interactive weather map with disease risk visualization"),
-    tags$li("Dynamic data for different forecasting dates and diseases"),
-    tags$li("Downloadable Report")
+    tags$li("Interactive weather map with disease risk visualization."),
+    tags$li("Dynamic data for different forecasting dates and diseases."),
+    tags$li("Downloadable Report.")
   ),
   hr(),
   h4("How It Works:"),
   p("The application uses data from trusted weather and agricultural sources to forecast the risk of crop diseases."),
   tags$ul(
     tags$li("Select a disease and forecasting date to view the risk map."),
-    tags$li("The map highlights disease risk levels across different weather stations."),
-    tags$li("Users can click on stations to get more details and center the map on specific locations.")
+    tags$li("Users can click on stations to get more details and center the map on specific locations: this action will trigger the weather charts, and downloads of the next sections."),
+    tags$li("The section Downloads allos the user to download reports of the choosed station and a summary of all stations forecast.")
   ),
   hr(),
   h4("Credits:"),
   p("This project is supported by The Open Source Program Office and relies on contributions from multiple research groups."),
   tags$ul(
-    tags$li("This is an innitiative from: the Open Source Program Office at UW Madison"),
-    tags$li("Weather data provided by: Wisconet Stations"),
-    tags$li("Crop disease models provided by: Plant Pathologist at UW Madison")
+    tags$li("Weather data sourced from Wisconet"),
+    tags$li("Crop disease models came from Plant Pathologist at UW Madison research."),
+    tags$li("Development support was made by the Data Science Institute."),
   ),
   hr(),
   h4("Contact Us:"),
