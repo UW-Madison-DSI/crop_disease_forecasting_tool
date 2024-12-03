@@ -5,7 +5,6 @@ library(dplyr)
 library(zoo)
 library(lubridate)
 library(tidyr)
-library(tidyr)
 library(ggplot2)
 
 ########################################################################################
@@ -51,8 +50,19 @@ api_call_weather_data <- function(station_id,
   if (status_code(response) == 200){
     # Parse JSON response
     data = fromJSON(rawToChar(response$content))
-    data$hour <- hour(ymd_hms(data$collection_time))
-    data$collection_time_ct <- with_tz(data$collection_time, tzone = "America/Chicago")
+    data$collection_time_ct <- format(with_tz(data$collection_time, tzone = "US/Central"), "%Y-%m-%d")
+    data$hour <- hour(with_tz(ymd_hms(data$collection_time), tzone = "US/Central"))
+    data <- data %>%
+      mutate(
+        time_period = case_when(
+          hour >= 20 | hour <= 6 ~ "nigth_hours",
+          TRUE ~ "day_hours"
+        )
+      )
+    
+    print("here ----------------------------------------------------------")
+    print(data %>% select(collection_time, collection_time_ct, hour, value))
+    
     if(measurement %in% c("AIRTEMP", "DEW_POINT")){
       data$value <- fahrenheit_to_celsius(data$value)
       daily_aggregations <- data %>%
@@ -62,6 +72,7 @@ api_call_weather_data <- function(station_id,
           air_temp_max_c = max(value, na.rm = TRUE),
           air_temp_min_c = min(value, na.rm = TRUE)
         )
+      
       daily_aggregations <- daily_aggregations %>%
         mutate(
           air_temp_avg_value_30d_ma = rollmean(air_temp_avg_c, k = moving_average_days, fill = NA, align = "right"),
@@ -70,15 +81,6 @@ api_call_weather_data <- function(station_id,
         )
     }else if(measurement %in% c("RELATIVE_HUMIDITY")){
       # Step 1: Add time_period column
-      
-      data <- data %>%
-        mutate(
-          time_period = case_when(
-            hour >= 20 | hour <= 6 ~ "nigth_hours",
-            TRUE ~ "day_hours"
-          )
-        )
-      
       print("====== ----------- Data RH ----------- =======")
       print(data %>% select(collection_time, collection_time_ct, hour,
                             value,final_units,
@@ -94,15 +96,12 @@ api_call_weather_data <- function(station_id,
           max_rh_8PM_6AM = max(value[time_period %in% c("nigth_hours")], na.rm = TRUE),
           max_rh_day = max(value[time_period %in% c("day_hours")], na.rm = TRUE)
         )
-      
+      print("Data RH aggregations --------------")
       print(daily_aggregations)
-      
       # Step 3: Compute 30-day moving average
       daily_aggregations <- daily_aggregations %>%
         mutate(
-          count_90_8PM_6AM_14d_ma = rollmean(count_90_8PM_6AM, 
-                                             k = 14, fill = NA, 
-                                             align = "right")
+          count_90_8PM_6AM_14d_ma = rollmean(count_90_8PM_6AM, k = 14, fill = NA, align = "right")
         )
     }
     
@@ -120,20 +119,25 @@ api_call_weather_data <- function(station_id,
          data=data))
 }
 
+
 ########################################################################################
 
 plot_air_temp <- function(data) {
   # Pivot air temperature variables to long format
   air_temp_data <- data %>%
     select(
-      collection_time_ct, air_temp_max_c, air_temp_min_c, air_temp_avg_c,
-      air_temp_max_value_30d_ma, air_temp_min_value_30d_ma,air_temp_avg_value_30d_ma
+      collection_time_ct, 
+      air_temp_max_c, air_temp_min_c, air_temp_avg_c,
+      air_temp_max_value_30d_ma, air_temp_min_value_30d_ma, air_temp_avg_value_30d_ma
     ) %>%
-    rename(Date = collection_time_ct) %>%
+    mutate(
+      Date = as.Date(collection_time_ct, format="%Y-%m-%d")  # Convert to Date
+    ) %>%  # Ensure proper conversion to Date
+    select(-collection_time_ct) %>%  # Drop the original column after conversion
     pivot_longer(
-      cols = starts_with("air_temp"),
-      names_to = "Variable",
-      values_to = "Value"
+      cols = starts_with("air_temp"),  # Select all columns starting with 'air_temp'
+      names_to = "Variable",  # New column for variable names
+      values_to = "Value"  # New column for the values
     )
   
   # Create the ggplot
@@ -154,16 +158,23 @@ plot_rh_dp <- function(data) {
   # Select and prepare data for plotting
   rh_dp_data <- data %>%
     select(collection_time_ct, max_rh_8PM_6AM, max_rh, max_rh_day) %>%
-    rename(Date = collection_time_ct) %>% # Rename for clarity
-    pivot_longer(cols = c(max_rh_8PM_6AM, max_rh_day, max_rh), 
-                 names_to = "Variable", 
-                 values_to = "Value") # Pivot to long format
+    mutate(
+      Date = as.Date(collection_time_ct, format="%Y-%m-%d")  # Convert to Date
+    ) %>%
+    select(-collection_time_ct) %>%  # Drop original column
+    pivot_longer(
+      cols = c(max_rh_8PM_6AM, max_rh_day, max_rh),
+      names_to = "Variable",
+      values_to = "Value"
+    )
+  print("-------------------- RH")
+  print(rh_dp_data)
   
   # Create the ggplot
   ggplot(rh_dp_data, aes(x = Date, y = Value, color = Variable)) +
     geom_line() +
     labs(
-      title = "Relative Humidity (%)",
+      title = "Maximum Relative Humidity (%)",
       x = "Date",
       y = "Relative Humidity (%)",
       color = "Variable"
@@ -172,4 +183,32 @@ plot_rh_dp <- function(data) {
     theme(legend.position = "bottom")
 }
 
+plot_rh_nh_dp <- function(data) {
+  # Select and prepare data for plotting
+  rh_dp_data <- data %>%
+    select(collection_time_ct, count_90_8PM_6AM_14d_ma, count_90_8PM_6AM) %>%
+    mutate(
+      Date = as.Date(collection_time_ct, format="%Y-%m-%d")  # Convert to Date
+    ) %>%
+    select(-collection_time_ct) %>%  # Drop original column
+    pivot_longer(
+      cols = c(count_90_8PM_6AM_14d_ma, count_90_8PM_6AM),
+      names_to = "Variable",
+      values_to = "Value"
+    )
+  print("-------------------- RH")
+  print(rh_dp_data)
+  
+  # Create the ggplot
+  ggplot(rh_dp_data, aes(x = Date, y = Value, color = Variable)) +
+    geom_line() +
+    labs(
+      title = "Total Night hours the Relative Humidity (%) was above 90%",
+      x = "Date",
+      y = "Total Night hours",
+      color = "Variable"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+}
 
