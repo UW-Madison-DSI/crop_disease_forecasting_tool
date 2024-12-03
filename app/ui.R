@@ -122,8 +122,9 @@ ui <- navbarPage(
       mainPanel(
         textOutput('station_specifications'),
         hr(),
-        #DTOutput("station_trend"), # Output for the data table
-        plotOutput("risk_trend"),    # Output for the plot
+        #DTOutput("station_trend"),
+        plotOutput("risk_trend"),   
+        hr(),
         plotOutput('air_temperature_plot')
       )
     )
