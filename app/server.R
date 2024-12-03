@@ -360,13 +360,13 @@ server <- function(input, output, session) {
   
   output$air_temperature_plot <- renderPlot({
     # Call the API functions to get the data
-    print("-------------------------------------------------------------------")
+    print("----------------------------1---------------------------------------")
     data_airtemp <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "AIRTEMP", "MIN60", 30)
     print(data_airtemp)
-    
+    print("--------------------------------2-----------------------------------")
     data_rh <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "RELATIVE_HUMIDITY", "MIN60", 14)
     print(data_rh)
-    print("-------------------------------------------------------------------")
+    print("---------------------------3----------------------------------------")
     if (!is.null(data_airtemp$daily_aggregations) && !is.null(data_rh$daily_aggregations)) {
       # Create the individual plots
       p1 <- plot_air_temp(data_airtemp$daily_aggregations)
