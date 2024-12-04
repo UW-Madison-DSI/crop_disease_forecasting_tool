@@ -9,6 +9,7 @@ library(tigris)
 library(sf)
 options(tigris_use_cache = TRUE)
 library(DT)
+library(shinyWidgets)
 
 source("functions/instructions.R")
 
@@ -32,6 +33,14 @@ ui <- navbarPage(
             src = logo_src,
             style = "max-width: 100%; max-height: 80px; display: block; margin: 10px auto;" # Limit height
           )
+        ),
+        hr(),
+        switchInput(
+          inputId = "ibm_data", 
+          label = "Pin my location", 
+          onLabel = "ON", 
+          offLabel = "OFF", 
+          value = FALSE
         ),
         hr(),
         selectInput(
@@ -95,21 +104,36 @@ ui <- navbarPage(
             step = 1
           )
         ),
-        
         hr(), 
-        h4("Map Layers"),
-        checkboxInput("show_heatmap", "Show Heat Map", value = FALSE)
+        conditionalPanel(
+          condition = "input.ibm_data == false",  # Use lowercase `false` in JavaScript
+          h4("Map Layers"),
+          checkboxInput("show_heatmap", "Show Heat Map", value = FALSE)
+        )
       ),
       mainPanel(
-        leafletOutput("risk_map", height = 700),
-        div(
-          textOutput("map_info"),
-          style = "margin-top: 10px; color: #666;"
+        leafletOutput("risk_map", height = 750),
+        conditionalPanel(
+          condition = "input.ibm_data == false",
+          div(
+            textOutput("map_info"),
+            style = "margin-top: 10px; color: #666;"
+          )
         ),
-        div(
-          textOutput("station_count"),  # To display the number of stations
-          style = "margin-top: 10px; color: #666; font-size: 14px;"
+        conditionalPanel(
+          condition = "input.ibm_data != false",
+          div(
+            textOutput('click_coordinates'),
+            style = "margin-top: 10px; color: #666;"
+          )
+        ),
+        conditionalPanel(
+          condition = "input.ibm_data == false",
+          div(
+            textOutput("station_count"),
+            style = "margin-top: 10px; color: #666; font-size: 14px;"
         )
+      )
       )
     )
   ),
