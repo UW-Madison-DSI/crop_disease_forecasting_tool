@@ -24,7 +24,7 @@ api_call_weather_data <- function(station_id,
                                   moving_average_days) {
   
   # Define start and end dates in UTC
-  start_date <- as.POSIXct(start_date, tz = "UTC")
+  start_date <- as.POSIXct(start_date, tz = "US/Central")
   date_utc_minus_31 <- start_date - days(38)
 
   
@@ -42,28 +42,19 @@ api_call_weather_data <- function(station_id,
   headers <- c(
     "accept" = "application/json"
   )
-  
+  print("---------------+++++++++++++++-----------------")
   # Make the GET request
   response <- GET(url, query = query_params, add_headers(.headers = headers))
-  
+  print(response)
   # Check the response status
   if (status_code(response) == 200){
     # Parse JSON response
     data = fromJSON(rawToChar(response$content))
     data$collection_time_ct <- format(with_tz(data$collection_time, tzone = "US/Central"), "%Y-%m-%d")
-    data$hour <- hour(with_tz(ymd_hms(data$collection_time), tzone = "US/Central"))
-    data <- data %>%
-      mutate(
-        time_period = case_when(
-          hour >= 20 | hour <= 6 ~ "nigth_hours",
-          TRUE ~ "day_hours"
-        )
-      )
+    #changed by hour_ct
+    #data$hour <- hour(with_tz(ymd_hms(data$collection_time), tzone = "US/Central"))
     
-    print("here ----------------------------------------------------------")
-    print(data %>% select(collection_time, collection_time_ct, hour, value))
-    
-    if(measurement %in% c("AIRTEMP", "DEW_POINT")){
+    if(measurement %in% c("AIRTEMP")){
       data$value <- fahrenheit_to_celsius(data$value)
       daily_aggregations <- data %>%
         group_by(collection_time_ct) %>%
@@ -79,29 +70,45 @@ api_call_weather_data <- function(station_id,
           air_temp_max_value_30d_ma = rollmean(air_temp_max_c, k = moving_average_days, fill = NA, align = "right"),
           air_temp_min_value_30d_ma = rollmean(air_temp_min_c, k = moving_average_days, fill = NA, align = "right")
         )
+    }else if(measurement %in% c("DEW_POINT")){
+      data$value <- fahrenheit_to_celsius(data$value)
+      daily_aggregations <- data %>%
+        group_by(collection_time_ct) %>%
+        summarize(
+          dew_point_avg_c = mean(value, na.rm = TRUE),
+          dew_point_max_c = max(value, na.rm = TRUE),
+          dew_point_min_c = min(value, na.rm = TRUE)
+        )
+      
+      daily_aggregations <- daily_aggregations %>%
+        mutate(
+          dew_point_avg_value_30d_ma = rollmean(dew_point_avg_c, k = moving_average_days, fill = NA, align = "right"),
+          dew_point_max_value_30d_ma = rollmean(dew_point_max_c, k = moving_average_days, fill = NA, align = "right"),
+          dew_point_min_value_30d_ma = rollmean(dew_point_min_c, k = moving_average_days, fill = NA, align = "right")
+        )
     }else if(measurement %in% c("RELATIVE_HUMIDITY")){
-      # Step 1: Add time_period column
+      # Step 1: Add aggregations
       print("====== ----------- Data RH ----------- =======")
-      print(data %>% select(collection_time, collection_time_ct, hour,
-                            value,final_units,
-                            time_period, measure_type))
+      print(data %>% select(collection_time, collection_time_ct, hour_ct,
+                            value,final_units,measure_type))
       
       # Step 2: Aggregate daily counts of `value >= 90` for relevant periods
       daily_aggregations <- data %>%
         group_by(collection_time_ct) %>% # Group by date
         summarize(
-          count_90_8PM_6AM = sum(value >= 90 & time_period %in% c("nigth_hours"), na.rm = TRUE),
-          count_90_day = sum(value >= 90 & time_period %in% c("day_hours"), na.rm = TRUE),
+          count_90_8PM_6AM = sum(value >= 90 & hour_ct %in% c(0:6, 8:12), na.rm = TRUE),
+          count_90_day = sum(value >= 90 & hour_ct %in% c(6:8), na.rm = TRUE),
           max_rh = max(value, na.rm = TRUE),
-          max_rh_8PM_6AM = max(value[time_period %in% c("nigth_hours")], na.rm = TRUE),
-          max_rh_day = max(value[time_period %in% c("day_hours")], na.rm = TRUE)
+          max_rh_8PM_6AM = max(value[hour_ct %in% c(0:6, 8:12)], na.rm = TRUE),
+          max_rh_day = max(value[hour_ct %in% c(6:8)], na.rm = TRUE)
         )
       print("Data RH aggregations --------------")
       print(daily_aggregations)
       # Step 3: Compute 30-day moving average
       daily_aggregations <- daily_aggregations %>%
         mutate(
-          count_90_8PM_6AM_14d_ma = rollmean(count_90_8PM_6AM, k = 14, fill = NA, align = "right")
+          count_90_8PM_6AM_14d_ma = rollmean(count_90_8PM_6AM, k = 14, fill = NA, align = "right"),
+          max_rh_30d_ma = rollmean(max_rh, k = 30, fill = NA, align = "right")
         )
     }
     
@@ -157,13 +164,13 @@ plot_air_temp <- function(data) {
 plot_rh_dp <- function(data) {
   # Select and prepare data for plotting
   rh_dp_data <- data %>%
-    select(collection_time_ct, max_rh_8PM_6AM, max_rh, max_rh_day) %>%
+    select(collection_time_ct, max_rh_8PM_6AM, max_rh, max_rh_30d_ma) %>%
     mutate(
       Date = as.Date(collection_time_ct, format="%Y-%m-%d")  # Convert to Date
     ) %>%
     select(-collection_time_ct) %>%  # Drop original column
     pivot_longer(
-      cols = c(max_rh_8PM_6AM, max_rh_day, max_rh),
+      cols = c(max_rh_8PM_6AM, max_rh_30d_ma, max_rh),
       names_to = "Variable",
       values_to = "Value"
     )

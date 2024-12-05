@@ -148,7 +148,6 @@ function(max_air_temp_30d_ma,
   }
 }
 
-
 #* Predict the previous disease Risk on the active Wisconet Stations
 #* @param forecasting_date Character: Forecasting date, format YYYY-MM-dd
 #* @param station_id Character: Station id eg ALTN

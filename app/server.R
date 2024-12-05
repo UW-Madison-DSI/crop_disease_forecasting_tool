@@ -14,13 +14,20 @@ library(gridExtra)
 source("functions/auxiliar_functions.R")
 source("functions/api_calls_logic.R")
 source("functions/weather_plots.R")
-
+source("functions/punctual_estimates.R")
 
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf") %>%
   st_transform(crs = 4326)
 
+wi_boundary <- states(cb = TRUE) %>%
+  filter(NAME == "Wisconsin") %>%
+  st_transform(4326) # Ensure it's in WGS84 format (Lat/Lon)
+
 
 server <- function(input, output, session) {
+  # Store the clicked coordinates
+  coordinates <- reactiveValues(lat = NULL, lng = NULL)
+  
   # Fetch fresh data directly based on user inputs
   stations_data <- reactive({
     req(input$forecast_date)
@@ -31,96 +38,204 @@ server <- function(input, output, session) {
   output$slider_value <- renderText({
     paste("Selected Risk Threshold Value:", input$risk_threshold)
   }) 
+  ################################### IBM data, AOI: Wisconsin
+  wisconsin_bbox <- list(
+    lat_min = 42.4919,
+    lat_max = 47.3025,
+    lng_min = -92.8894,
+    lng_max = -86.2495
+  )
+  
+  observeEvent(input$run_model, {
+    # Check the value of input$ibm_data
+    if (input$ibm_data != FALSE) {
+      showNotification("Running the model...", type = "message")
+      
+      # Your model logic here
+      print("Model logic runs because ibm_data is TRUE")
+    } else {
+      showNotification("ibm_data is FALSE. Cannot run the model.", type = "error")
+    }
+  })
+  
+  # Add a marker on user click
+  observeEvent(input$risk_map_click, {
+    click <- input$risk_map_click
+    
+    if (!is.null(click) && (input$ibm_data == TRUE)) {
+      # Gather the coordinates
+      coordinates$lat <- click$lat
+      coordinates$lng <- click$lng
+      
+      # Check if the click is inside Wisconsin
+      inside_wisconsin <- click$lat >= wisconsin_bbox$lat_min &&
+        click$lat <= wisconsin_bbox$lat_max &&
+        click$lng >= wisconsin_bbox$lng_min &&
+        click$lng <= wisconsin_bbox$lng_max
+      
+      if (!inside_wisconsin) {
+        showNotification(
+          "You clicked outside Wisconsin. Please click within the state boundary.",
+          type = "warning"
+        )
+      } else {
+        # Add a marker at the clicked location
+        leafletProxy("risk_map") %>%
+          clearMarkers() %>%
+          clearShapes() %>% # Clear existing shapes to avoid overlaps
+          addMarkers(
+            lng = click$lng,
+            lat = click$lat,
+            popup = paste("Latitude:", round(click$lat, 4), "<br>Longitude:", round(click$lng, 4))
+          ) %>%
+          addPolygons(
+            data = wi_boundary,
+            color = "blue",
+            fillColor = "lightblue",
+            weight = 2,
+            fillOpacity = 0,
+            popup = ~NAME
+          ) %>%
+          setView(lng = click$lng, lat = click$lat, zoom = 12)
+      }
+    }
+  })
+  
+  observeEvent(input$run_model, {
+    # Ensure click has occurred and ibm_data is TRUE
+    req(!is.null(input$risk_map_click), input$ibm_data)
+    
+    click <- input$risk_map_click
+    punctual_estimate <- ibm_query(input$forecast_date, click$lat, click$lng, TRUE)
+    
+    # Risk calculation
+    risk <- NULL
+    risk_class <- NULL
+    
+    if (input$disease_name == 'gls') {
+      risk <- punctual_estimate$gls_risk
+      risk_class <- punctual_estimate$gls_risk_class
+    } else if (input$disease_name == 'tarspot') {
+      risk <- punctual_estimate$tarspot_risk
+      risk_class <- punctual_estimate$tarspot_risk_class
+    } else if (input$disease_name == 'frogeye_leaf_spot') {
+      risk <- punctual_estimate$fe_risk
+      risk_class <- punctual_estimate$fe_risk_class
+    }
+    
+    # Display the coordinates and risk information
+    output$click_coordinates <- renderText({
+      paste(
+        "Clicked Coordinates: Latitude =", round(click$lat, 4),
+        ", Longitude =", round(click$lng, 4), "|", risk_class,
+        " Risk of ", custom_disease_name(input$disease_name),':', round(risk * 100,2), "%"
+      )
+    })
+  })
+  
   
   ################################################################## This is the section 1 risk_map
   output$risk_map <- renderLeaflet({
-    county_boundaries <- st_transform(county_boundaries, crs = 4326)
-    
-    data <- stations_data()
-    
-    risk_max <- min(max(data$risk)+1,100)
-    color_palette <- colorNumeric(
-      palette = "viridis",
-      domain = c(0, risk_max)
-    )
-    if (is.null(data) || nrow(data) == 0) {
-      return(
-        leaflet() %>%
-          addProviderTiles(providers$CartoDB.Positron) %>%
-          setView(lng = -89.75, lat = 44.76, zoom = 7.2)
+    if(input$ibm_data==FALSE){
+      county_boundaries <- st_transform(county_boundaries, crs = 4326)
+      
+      data <- stations_data()
+      
+      risk_max <- min(max(data$risk)+1,100)
+      color_palette <- colorNumeric(
+        palette = "viridis",
+        domain = c(0, risk_max)
       )
-    }
-    
-    map <- leaflet(data) %>%
-      addProviderTiles(providers$CartoDB.Positron) %>%
-      setView(
-        lng = -89.75, lat = 44.76, zoom = 7.2
-      )
-    
-    # Conditional layers
-    if (input$show_heatmap) {
+      if (is.null(data) || nrow(data) == 0) {
+        return(
+          leaflet() %>%
+            addProviderTiles(providers$CartoDB.Positron) %>%
+            setView(lng = -89.75, lat = 44.76, zoom = 7.2)
+        )
+      }
+      
+      map <- leaflet(data) %>%
+        addProviderTiles(providers$CartoDB.Positron) %>%
+        setView(
+          lng = -89.75, lat = 44.76, zoom = 7.2
+        )
+      
+      # Conditional layers
+      if (input$show_heatmap) {
+        map <- map %>%
+          addHeatmap(
+            lng = ~longitude,
+            lat = ~latitude,
+            intensity = ~risk/10,
+            blur = 10,
+            max = 1,
+            radius = 10,
+            minOpacity = 0.8
+          )
+      }
+      
+      #if (input$show_stations) {
       map <- map %>%
-        addHeatmap(
+        addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
+        addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+        addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
+        addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
+        setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+        addCircleMarkers(
           lng = ~longitude,
           lat = ~latitude,
-          intensity = ~risk/10,
-          blur = 10,
-          max = 1,
-          radius = 10,
-          minOpacity = 0.8
+          popup = ~popup_content,
+          radius = 6,
+          color = "black",
+          fillColor = ~color_palette(risk),
+          fillOpacity = 0.8,
+          weight = 1.5,
+          label = ~station_name,
+          labelOptions = labelOptions(
+            style = list("font-weight" = "normal", padding = "3px 8px"),
+            textsize = "12px",
+            direction = "auto"
+          ),
+          layerId = ~station_id
+        ) %>%
+        addLegend(
+          "bottomright",
+          pal = color_palette,
+          values = data$risk,
+          title = paste0("Predicted Risk (%)"),
+          labFormat = labelFormat(suffix = "%"),
+          opacity = 1
+        )%>%
+        addPolygons(
+          data = county_boundaries,
+          color = "gray",
+          weight = 1,
+          opacity = 1,
+          fillOpacity = 0,
+          fillColor = "lightpink",
+          group = "County Boundaries",
+          popup = ~NAME
+        ) %>%
+        addLayersControl(
+          baseGroups = c("CartoDB Positron","OpenStreetMap", "Topographic",  #"Terrain",
+                         "Esri Imagery"),
+          overlayGroups = c("County Boundaries"),
+          options = layersControlOptions(collapsed = TRUE)
+        )%>%
+        hideGroup("County Boundaries")
+    }else{
+      map<-leaflet() %>%
+        addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
+        addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+        addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
+        addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
+        setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+        addLayersControl(
+          baseGroups = c("OpenStreetMap", "CartoDB Positron","Topographic",  #"Terrain",
+                         "Esri Imagery"),
+          options = layersControlOptions(collapsed = TRUE)
         )
     }
-    
-    #if (input$show_stations) {
-    map <- map %>%
-      addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
-      addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
-      addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
-      addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
-      setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
-      addCircleMarkers(
-        lng = ~longitude,
-        lat = ~latitude,
-        popup = ~popup_content,
-        radius = 6,
-        color = "black",
-        fillColor = ~color_palette(risk),
-        fillOpacity = 0.8,
-        weight = 1.5,
-        label = ~station_name,
-        labelOptions = labelOptions(
-          style = list("font-weight" = "normal", padding = "3px 8px"),
-          textsize = "12px",
-          direction = "auto"
-        ),
-        layerId = ~station_id
-      ) %>%
-      addLegend(
-        "bottomright",
-        pal = color_palette,
-        values = data$risk,
-        title = paste0("Predicted Risk (%)"),
-        labFormat = labelFormat(suffix = "%"),
-        opacity = 1
-      )%>%
-      addPolygons(
-        data = county_boundaries,
-        color = "gray",
-        weight = 1,
-        opacity = 1,
-        fillOpacity = 0,
-        fillColor = "lightpink",
-        group = "County Boundaries",
-        popup = ~NAME
-      ) %>%
-      addLayersControl(
-        baseGroups = c("CartoDB Positron","OpenStreetMap", "Topographic",  #"Terrain",
-                       "Esri Imagery"),
-        overlayGroups = c("County Boundaries"),
-        options = layersControlOptions(collapsed = TRUE)
-      )%>%
-      hideGroup("County Boundaries")
-    
     return(map)
   })
   
@@ -197,35 +312,39 @@ server <- function(input, output, session) {
   })
   
   output$station_count <- renderText({
-    data <- stations_data()
-
-    if (is.null(data) || nrow(data) == 0) {
-      return("No stations available.")
+    if(input$ibm_data==FALSE){
+      data <- stations_data()
+  
+      if (is.null(data) || nrow(data) == 0) {
+        return("No stations available.")
+      }
+      # Calculate mean risk, excluding NA values
+      if (input$disease_name=='tarspot'){
+        avg_risk <- mean(data$tarspot_risk, na.rm = TRUE)
+        data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
+      }
+      if (input$disease_name=='gls'){
+        avg_risk <- mean(data$gls_risk, na.rm = TRUE)
+        data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
+      }
+      if (input$disease_name=='frogeye_leaf_spot'){
+        avg_risk <- mean(data$frogeye_risk, na.rm = TRUE)
+        data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
+      }
+      
+      risk_counts <- table(data$risk_class)
+      
+      # Construct a descriptive text
+      risk_summary <- paste(names(risk_counts), risk_counts, sep = ": ", collapse = " | ")
+      
+      paste(
+        "Number of stations: ", nrow(data), "| ",
+        "Mean Risk for the selected forecasting date: ", sprintf("%.1f%%", 100 * avg_risk)#,
+        #"\n Stations per Risk Class: ", risk_summary
+      )
+    }else{
+      paste("Data from IBM")
     }
-    # Calculate mean risk, excluding NA values
-    if (input$disease_name=='tarspot'){
-      avg_risk <- mean(data$tarspot_risk, na.rm = TRUE)
-      data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
-    }
-    if (input$disease_name=='gls'){
-      avg_risk <- mean(data$gls_risk, na.rm = TRUE)
-      data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
-    }
-    if (input$disease_name=='frogeye_leaf_spot'){
-      avg_risk <- mean(data$frogeye_risk, na.rm = TRUE)
-      data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
-    }
-    
-    risk_counts <- table(data$risk_class)
-    
-    # Construct a descriptive text
-    risk_summary <- paste(names(risk_counts), risk_counts, sep = ": ", collapse = " | ")
-    
-    paste(
-      "Number of stations: ", nrow(data), "| ",
-      "Mean Risk for the selected forecasting date: ", sprintf("%.1f%%", 100 * avg_risk)#,
-      #"\n Stations per Risk Class: ", risk_summary
-    )
   })
   
   ################################################################## This is the section 2 or tab panel Station summary
@@ -295,54 +414,22 @@ server <- function(input, output, session) {
       if (nrow(data) > 0) {
         station <- data$station_name[1]
         earliest_api_date <- data$earliest_api_date[1]
-        print(station)
-        
         
         location <- if_else(
           data$location[1] == "Not set", 
-          "", 
-          paste(" located at", data$location[1], ", ",data$region[1], " Region, ")
-        )
-        print(location)
-        print(earliest_api_date)
-        # Analyze Risk_Class
-        if(input$disease_name=='tarspot'){
-          data$Risk_Class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
-        }else if(input$disease_name=='gls'){
-          data$Risk_Class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
-        }else{
-          data$Risk_Class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
-        }
-
-        high_days_text <- sum(data$Risk_Class == "High") 
-        low_days_text <- sum(data$Risk_Class == "Low")        #moderate_days_text <- paste(sum(data$Risk_Class == "Moderate"), "days have moderate probability of ", custom_disease_name(input$disease_name))
-
-        
-        if (all(data$Risk_Class =="High"))  {
-          all_days_text <- paste("\n Reported high probability of ", custom_disease_name(input$disease_name))
-        } else if (all(data$Risk_Class =="Moderate"))  {
-          all_days_text <- paste("\n Reported moderate probability of ", custom_disease_name(input$disease_name))
-        } else if (all(data$Risk_Class =="Low"))  {
-          all_days_text <- paste("\n Reported low probability of ", custom_disease_name(input$disease_name))
-        } else if(low_days_text>0){
-          all_days_text <- paste(low_days_text, "days have low probability of ", custom_disease_name(input$disease_name))
-        } else if(high_days_text>0){
-          all_days_text <- paste(high_days_text, "days have high probability of ", custom_disease_name(input$disease_name))
-        }
+          "", paste(" located at", data$location[1], ", ",data$region[1], " Region, "))
         
         date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
         # Format for user-friendly reading
         user_friendly_date <- format(date_obj, "%B %d, %Y")
         paste(
           station, "Station,", location," is active since:", user_friendly_date, "."
-          #all_days_text, ' on the last 8 days from the selected forecasting date.'
         )
       } else {
         "Please select a station by clicking on it in the map from the Disease Forecasting section."
       }
     }
   })
-  
   
   # Render Plot
   output$risk_trend <- renderPlot({
@@ -360,13 +447,13 @@ server <- function(input, output, session) {
   
   output$air_temperature_plot <- renderPlot({
     # Call the API functions to get the data
-    print("-------------------------------------------------------------------")
+    print("----------------------------1---------------------------------------")
     data_airtemp <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "AIRTEMP", "MIN60", 30)
     print(data_airtemp)
-    
+    print("--------------------------------2-----------------------------------")
     data_rh <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "RELATIVE_HUMIDITY", "MIN60", 14)
     print(data_rh)
-    print("-------------------------------------------------------------------")
+    print("---------------------------3----------------------------------------")
     if (!is.null(data_airtemp$daily_aggregations) && !is.null(data_rh$daily_aggregations)) {
       # Create the individual plots
       p1 <- plot_air_temp(data_airtemp$daily_aggregations)
