@@ -14,10 +14,14 @@ library(gridExtra)
 source("functions/auxiliar_functions.R")
 source("functions/api_calls_logic.R")
 source("functions/weather_plots.R")
-
+source("functions/punctual_estimates.R")
 
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf") %>%
   st_transform(crs = 4326)
+
+wi_boundary <- states(cb = TRUE) %>%
+  filter(NAME == "Wisconsin") %>%
+  st_transform(4326) # Ensure it's in WGS84 format (Lat/Lon)
 
 
 server <- function(input, output, session) {
@@ -42,10 +46,23 @@ server <- function(input, output, session) {
     lng_max = -86.2495
   )
   
+  observeEvent(input$run_model, {
+    # Check the value of input$ibm_data
+    if (input$ibm_data != FALSE) {
+      showNotification("Running the model...", type = "message")
+      
+      # Your model logic here
+      print("Model logic runs because ibm_data is TRUE")
+    } else {
+      showNotification("ibm_data is FALSE. Cannot run the model.", type = "error")
+    }
+  })
+  
   # Add a marker on user click
   observeEvent(input$risk_map_click, {
     click <- input$risk_map_click
-    if (!is.null(click) && (input$ibm_data==TRUE)) {
+    
+    if (!is.null(click) && (input$ibm_data == TRUE)) {
       # Gather the coordinates
       coordinates$lat <- click$lat
       coordinates$lng <- click$lng
@@ -56,30 +73,67 @@ server <- function(input, output, session) {
         click$lng >= wisconsin_bbox$lng_min &&
         click$lng <= wisconsin_bbox$lng_max
       
-      if (!inside_wisconsin){
+      if (!inside_wisconsin) {
         showNotification(
           "You clicked outside Wisconsin. Please click within the state boundary.",
           type = "warning"
         )
+      } else {
+        # Add a marker at the clicked location
+        leafletProxy("risk_map") %>%
+          clearMarkers() %>%
+          clearShapes() %>% # Clear existing shapes to avoid overlaps
+          addMarkers(
+            lng = click$lng,
+            lat = click$lat,
+            popup = paste("Latitude:", round(click$lat, 4), "<br>Longitude:", round(click$lng, 4))
+          ) %>%
+          addPolygons(
+            data = wi_boundary,
+            color = "blue",
+            fillColor = "lightblue",
+            weight = 2,
+            fillOpacity = 0,
+            popup = ~NAME
+          ) %>%
+          setView(lng = click$lng, lat = click$lat, zoom = 12)
       }
-      # Add a marker at the clicked location
-      leafletProxy("risk_map") %>%
-        clearMarkers() %>%
-        addMarkers(
-          lng = click$lng,
-          lat = click$lat,
-          popup = paste("Latitude:", round(click$lat, 4), "<br>Longitude:", round(click$lng, 4))
-        ) %>% setView(lng = click$lng, lat = click$lat, zoom = 12) 
-      
-      # Display the coordinates and address in a text output
-      output$click_coordinates <- renderText({
-        paste(
-          "Clicked Coordinates: Latitude =", round(click$lat, 4), 
-          ", Longitude =", round(click$lng, 4)
-        )
-      })
     }
   })
+  
+  observeEvent(input$run_model, {
+    # Ensure click has occurred and ibm_data is TRUE
+    req(!is.null(input$risk_map_click), input$ibm_data)
+    
+    click <- input$risk_map_click
+    punctual_estimate <- ibm_query(input$forecast_date, click$lat, click$lng, TRUE)
+    
+    # Risk calculation
+    risk <- NULL
+    risk_class <- NULL
+    
+    if (input$disease_name == 'gls') {
+      risk <- punctual_estimate$gls_risk
+      risk_class <- punctual_estimate$gls_risk_class
+    } else if (input$disease_name == 'tarspot') {
+      risk <- punctual_estimate$tarspot_risk
+      risk_class <- punctual_estimate$tarspot_risk_class
+    } else if (input$disease_name == 'frogeye_leaf_spot') {
+      risk <- punctual_estimate$fe_risk
+      risk_class <- punctual_estimate$fe_risk_class
+    }
+    
+    # Display the coordinates and risk information
+    output$click_coordinates <- renderText({
+      paste(
+        "Clicked Coordinates: Latitude =", round(click$lat, 4),
+        ", Longitude =", round(click$lng, 4), "|", risk_class,
+        " Risk of ", custom_disease_name(input$disease_name),':', round(risk * 100,2), "%"
+      )
+    })
+  })
+  
+  
   ################################################################## This is the section 1 risk_map
   output$risk_map <- renderLeaflet({
     if(input$ibm_data==FALSE){
@@ -360,54 +414,22 @@ server <- function(input, output, session) {
       if (nrow(data) > 0) {
         station <- data$station_name[1]
         earliest_api_date <- data$earliest_api_date[1]
-        print(station)
-        
         
         location <- if_else(
           data$location[1] == "Not set", 
-          "", 
-          paste(" located at", data$location[1], ", ",data$region[1], " Region, ")
-        )
-        print(location)
-        print(earliest_api_date)
-        # Analyze Risk_Class
-        if(input$disease_name=='tarspot'){
-          data$Risk_Class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
-        }else if(input$disease_name=='gls'){
-          data$Risk_Class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
-        }else{
-          data$Risk_Class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
-        }
-
-        high_days_text <- sum(data$Risk_Class == "High") 
-        low_days_text <- sum(data$Risk_Class == "Low")        #moderate_days_text <- paste(sum(data$Risk_Class == "Moderate"), "days have moderate probability of ", custom_disease_name(input$disease_name))
-
-        
-        if (all(data$Risk_Class =="High"))  {
-          all_days_text <- paste("\n Reported high probability of ", custom_disease_name(input$disease_name))
-        } else if (all(data$Risk_Class =="Moderate"))  {
-          all_days_text <- paste("\n Reported moderate probability of ", custom_disease_name(input$disease_name))
-        } else if (all(data$Risk_Class =="Low"))  {
-          all_days_text <- paste("\n Reported low probability of ", custom_disease_name(input$disease_name))
-        } else if(low_days_text>0){
-          all_days_text <- paste(low_days_text, "days have low probability of ", custom_disease_name(input$disease_name))
-        } else if(high_days_text>0){
-          all_days_text <- paste(high_days_text, "days have high probability of ", custom_disease_name(input$disease_name))
-        }
+          "", paste(" located at", data$location[1], ", ",data$region[1], " Region, "))
         
         date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
         # Format for user-friendly reading
         user_friendly_date <- format(date_obj, "%B %d, %Y")
         paste(
           station, "Station,", location," is active since:", user_friendly_date, "."
-          #all_days_text, ' on the last 8 days from the selected forecasting date.'
         )
       } else {
         "Please select a station by clicking on it in the map from the Disease Forecasting section."
       }
     }
   })
-  
   
   # Render Plot
   output$risk_trend <- renderPlot({

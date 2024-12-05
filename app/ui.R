@@ -109,6 +109,10 @@ ui <- navbarPage(
           condition = "input.ibm_data == false",  # Use lowercase `false` in JavaScript
           h4("Map Layers"),
           checkboxInput("show_heatmap", "Show Heat Map", value = FALSE)
+        ),
+        conditionalPanel(
+          condition = "input.ibm_data != false",
+          actionButton("run_model", "Run Model")
         )
       ),
       mainPanel(
