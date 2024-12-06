@@ -144,9 +144,9 @@ ui <- navbarPage(
   
   # Tab 2: Station Forecasting Risk and Weather Trends
   tabPanel(
-    title = "Station Forecasting Risk and Weather Trends",
+    title = "Trends",
     fluidPage(
-      h3("Station Forecasting Risk and Weather Trends"),
+      h3("Trends of Risk and Weather for the specified location"),
       mainPanel(
         textOutput('station_specifications'),
         hr(),

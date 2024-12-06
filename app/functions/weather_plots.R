@@ -128,6 +128,35 @@ api_call_weather_data <- function(station_id,
 
 
 ########################################################################################
+color_mapping <- c(
+  "Max Temp (°C)" = "#E69F00",  # Orange
+  "Min Temp (°C)" = "#56B4E9",  # Sky Blue
+  "Avg Temp (°C)" = "#009E73",  # Green
+  'count_90_8PM_6AM'="#E69F00",
+  'max_rh_8PM_6AM' = "#E69F00",
+  'max_rh' = "#56B4E9",
+  'max_rh_30d_ma' = "#E69F00",
+  "Max Temp (°C) 30D MA" = "#E69F00",  # Orange
+  "Min Temp (°C) 30D MA" = "#56B4E9",  # Sky Blue
+  "Avg Temp (°C) 30D MA" = "#009E73",   # Green
+  'count_90_8PM_6AM_14d_ma'= "#E69F00" 
+)
+
+# Define linetypes
+linetype_mapping <- c(
+  "Max Temp (°C)" = "solid",
+  "Min Temp (°C)" = "solid",
+  "Avg Temp (°C)" = "solid",
+  'count_90_8PM_6AM' = "solid",
+  'max_rh_8PM_6AM' = "solid",
+  'max_rh' = "solid",
+  'max_rh_30d_ma' = "dotted",
+  'count_90_8PM_6AM_14d_ma' = "dotted", 
+  "Max Temp (°C) 30D MA" = "dotted",
+  "Min Temp (°C) 30D MA" = "dotted",
+  "Avg Temp (°C) 30D MA" = "dotted",
+  'count_90_8PM_6AM_14d_ma'= "dotted"
+)
 
 plot_air_temp <- function(data) {
   # Pivot air temperature variables to long format
@@ -138,26 +167,45 @@ plot_air_temp <- function(data) {
       air_temp_max_value_30d_ma, air_temp_min_value_30d_ma, air_temp_avg_value_30d_ma
     ) %>%
     mutate(
-      Date = as.Date(collection_time_ct, format="%Y-%m-%d")  # Convert to Date
+      Date = as.Date(collection_time_ct, format="%Y-%m-%d")
+    ) %>%
+    rename(
+      "Max Temp (°C)" = air_temp_max_c,
+      "Min Temp (°C)" = air_temp_min_c,
+      "Avg Temp (°C)" = air_temp_avg_c,
+      "Max Temp (°C) 30D MA" = air_temp_max_value_30d_ma,
+      "Min Temp (°C) 30D MA" = air_temp_min_value_30d_ma,
+      "Avg Temp (°C) 30D MA" = air_temp_avg_value_30d_ma
     ) %>%  # Ensure proper conversion to Date
-    select(-collection_time_ct) %>%  # Drop the original column after conversion
+    select(-collection_time_ct) %>%
     pivot_longer(
-      cols = starts_with("air_temp"),  # Select all columns starting with 'air_temp'
-      names_to = "Variable",  # New column for variable names
-      values_to = "Value"  # New column for the values
+      cols = c(
+        "Max Temp (°C)", "Min Temp (°C)", "Avg Temp (°C)",
+        "Max Temp (°C) 30D MA", "Min Temp (°C) 30D MA", "Avg Temp (°C) 30D MA"
+      ),
+      names_to = "Variable",
+      values_to = "Value"
     )
   
   # Create the ggplot
-  ggplot(air_temp_data, aes(x = Date, y = Value, color = Variable)) +
-    geom_line() +
+  ggplot(air_temp_data, aes(x = Date, y = Value, color = Variable, linetype = Variable)) +
+    geom_line(size = 2) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
     labs(
-      title = "Air Temperature (°C) Trends in the last 30 days",
+      title = "Air Temperature (°C) Trends in the Last 30 Days",
       x = "Date",
-      y = "Ait Temperature (°C)",
-      color = "Variable"
+      y = "Air Temperature (°C)",
+      color = "Variable",
+      linetype = "Variable"
     ) +
+    scale_color_manual(values = color_mapping) +
+    scale_linetype_manual(values = linetype_mapping) +
+    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
     theme_minimal() +
-    theme(legend.position = "bottom")
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+    )
 }
 
 
@@ -174,20 +222,24 @@ plot_rh_dp <- function(data) {
       names_to = "Variable",
       values_to = "Value"
     )
-  print("-------------------- RH")
-  print(rh_dp_data)
   
   # Create the ggplot
   ggplot(rh_dp_data, aes(x = Date, y = Value, color = Variable)) +
-    geom_line() +
+    geom_line(size = 1.5) +
     labs(
       title = "Maximum Relative Humidity (%)",
       x = "Date",
       y = "Relative Humidity (%)",
       color = "Variable"
     ) +
+    scale_color_manual(values = color_mapping) +
+    scale_linetype_manual(values = linetype_mapping) +
+    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
     theme_minimal() +
-    theme(legend.position = "bottom")
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 14)  
+    )
 }
 
 plot_rh_nh_dp <- function(data) {
@@ -203,19 +255,23 @@ plot_rh_nh_dp <- function(data) {
       names_to = "Variable",
       values_to = "Value"
     )
-  print("-------------------- RH")
-  print(rh_dp_data)
   
   # Create the ggplot
   ggplot(rh_dp_data, aes(x = Date, y = Value, color = Variable)) +
-    geom_line() +
+    geom_line(size = 1.5) +
     labs(
       title = "Total Night hours the Relative Humidity (%) was above 90%",
       x = "Date",
       y = "Total Night hours",
       color = "Variable"
     ) +
+    scale_color_manual(values = color_mapping) +
+    scale_linetype_manual(values = linetype_mapping) +
+    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
     theme_minimal() +
-    theme(legend.position = "bottom")
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+    )
 }
 
