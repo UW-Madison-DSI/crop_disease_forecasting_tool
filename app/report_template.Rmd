@@ -7,6 +7,7 @@ output:
 fontsize: 12pt
 geometry: margin=1in
 params:
+  location: NULL
   disease: NULL
   forecast_date: NULL
   threshold: NULL
@@ -20,11 +21,12 @@ params:
 ![DataScience](logos/DATASCIE_color-flush.png){ width=40% }
 
 ## Specifications
-- **Disease Name: **: `r params$disease`
-- **Forecast Date: **: `r params$forecast_date`
-- **Risk Threshold: **: `r params$threshold`%
-- **No Fungicide Applied in the last 14 days?**: `r ifelse(params$fungicide, "Yes", "No")`
-- **Growth Stage Within V10-R3?**: `r ifelse(params$growth_stage, "Yes", "No")`
+- **Location: ** `r params$location`
+- **Disease Name: ** `r params$disease`
+- **Forecast Date: ** `r params$forecast_date`
+- **Risk Threshold: ** `r params$threshold`%
+- **No Fungicide Applied in the last 14 days?** `r ifelse(params$fungicide, "Yes", "No")`
+- **Growth Stage Within V10-R3?** `r ifelse(params$growth_stage, "Yes", "No")`
 
 ## Summary
 ```{r, echo=FALSE}

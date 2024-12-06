@@ -4,7 +4,6 @@ library(httr)
 library(jsonlite)
 library(dplyr)
 library(leaflet.extras)
-library(httr)
 library(tigris)
 library(sf)
 options(tigris_use_cache = TRUE)
@@ -15,14 +14,21 @@ source("functions/auxiliar_functions.R")
 source("functions/api_calls_logic.R")
 source("functions/weather_plots.R")
 source("functions/punctual_estimates.R")
+source("functions/pdf_template.R")
 
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf") %>%
   st_transform(crs = 4326)
 
 wi_boundary <- states(cb = TRUE) %>%
   filter(NAME == "Wisconsin") %>%
-  st_transform(4326) # Ensure it's in WGS84 format (Lat/Lon)
+  st_transform(4326)
 
+wisconsin_bbox <- list(
+  lat_min = 42.4919,
+  lat_max = 47.3025,
+  lng_min = -92.8894,
+  lng_max = -86.2495
+)
 
 server <- function(input, output, session) {
   # Store the clicked coordinates
@@ -39,24 +45,6 @@ server <- function(input, output, session) {
     paste("Selected Risk Threshold Value:", input$risk_threshold)
   }) 
   ################################### IBM data, AOI: Wisconsin
-  wisconsin_bbox <- list(
-    lat_min = 42.4919,
-    lat_max = 47.3025,
-    lng_min = -92.8894,
-    lng_max = -86.2495
-  )
-  
-  observeEvent(input$run_model, {
-    # Check the value of input$ibm_data
-    if (input$ibm_data != FALSE) {
-      showNotification("Running the model...", type = "message")
-      
-      # Your model logic here
-      print("Model logic runs because ibm_data is TRUE")
-    } else {
-      showNotification("ibm_data is FALSE. Cannot run the model.", type = "error")
-    }
-  })
   
   # Add a marker on user click
   observeEvent(input$risk_map_click, {
@@ -101,12 +89,24 @@ server <- function(input, output, session) {
     }
   })
   
+  shared_data <- reactiveValues(
+    w_station_id = NULL,
+    run_model = NULL,
+    lat_location = NULL,
+    lng_location = NULL,
+    ibm_data = NULL
+  )
+  
   observeEvent(input$run_model, {
     # Ensure click has occurred and ibm_data is TRUE
     req(!is.null(input$risk_map_click), input$ibm_data)
-    
+    shared_data$run_model<-TRUE
     click <- input$risk_map_click
-    punctual_estimate <- ibm_query(input$forecast_date, click$lat, click$lng, TRUE)
+    punctual_estimate <- ibm_query(input$forecast_date, click$lat, click$lng)
+    
+    shared_data$ibm_data <- punctual_estimate
+    punctual_estimate <- punctual_estimate %>% filter(forecasting_date == as.Date(input$forecast_date))
+    
     
     # Risk calculation
     risk <- NULL
@@ -122,7 +122,11 @@ server <- function(input, output, session) {
       risk <- punctual_estimate$fe_risk
       risk_class <- punctual_estimate$fe_risk_class
     }
+    shared_data$lng_location <- click$lng
+    shared_data$lat_location <- click$lat
     
+    showNotification(paste0(risk_class, "Risk of ", custom_disease_name(input$disease_name),':', round(risk * 100,2), "%"), 
+                     type = "message")
     # Display the coordinates and risk information
     output$click_coordinates <- renderText({
       paste(
@@ -132,7 +136,6 @@ server <- function(input, output, session) {
       )
     })
   })
-  
   
   ################################################################## This is the section 1 risk_map
   output$risk_map <- renderLeaflet({
@@ -239,9 +242,7 @@ server <- function(input, output, session) {
     return(map)
   })
   
-  shared_data <- reactiveValues(
-    w_station_id = NULL
-  )
+  
   
   # Observe click event to center the map on the selected station
   observeEvent(input$risk_map_marker_click, {
@@ -287,11 +288,7 @@ server <- function(input, output, session) {
     }
   })
   
-  
-  observeEvent({
-    input$crop_growth_stage  # Include inputs to trigger observation
-    input$no_fungicide
-  }, {
+  observeEvent(input$crop_growth_stage,{  # Include inputs to trigger observation
     if (!input$no_fungicide) {
       showNotification(
         paste(
@@ -314,33 +311,17 @@ server <- function(input, output, session) {
   output$station_count <- renderText({
     if(input$ibm_data==FALSE){
       data <- stations_data()
-  
-      if (is.null(data) || nrow(data) == 0) {
-        return("No stations available.")
-      }
-      # Calculate mean risk, excluding NA values
       if (input$disease_name=='tarspot'){
         avg_risk <- mean(data$tarspot_risk, na.rm = TRUE)
-        data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
       }
       if (input$disease_name=='gls'){
         avg_risk <- mean(data$gls_risk, na.rm = TRUE)
-        data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
       }
       if (input$disease_name=='frogeye_leaf_spot'){
         avg_risk <- mean(data$frogeye_risk, na.rm = TRUE)
-        data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
       }
-      
-      risk_counts <- table(data$risk_class)
-      
-      # Construct a descriptive text
-      risk_summary <- paste(names(risk_counts), risk_counts, sep = ": ", collapse = " | ")
-      
       paste(
-        "Number of stations: ", nrow(data), "| ",
-        "Mean Risk for the selected forecasting date: ", sprintf("%.1f%%", 100 * avg_risk)#,
-        #"\n Stations per Risk Class: ", risk_summary
+        "The Mean Risk for the selected forecasting date and the ", nrow(data), " stations is: ", sprintf("%.1f%%", 100 * avg_risk)
       )
     }else{
       paste("Data from IBM")
@@ -361,6 +342,33 @@ server <- function(input, output, session) {
     }
   })
   
+  disease_risk_data_ibm <- reactive({
+    tryCatch({
+      # Ensure lat_location and lon_location are not NULL
+      if (!is.null(shared_data$lat_location) && !is.null(shared_data$lon_location)) {
+        # Query IBM data
+        ibm_data <- ibm_query(input$forecast_date, shared_data$lat_location, shared_data$lon_location)
+        
+        # Check if the result is NULL and return accordingly
+        if (is.null(ibm_data)) {
+          print("================= NO IBM data nrows")
+          return(NULL)
+          
+        } else {
+          paste0("================= IBM data nrows, ", nrow(ibm_data))
+          return(ibm_data)
+        }
+      } else {
+        return(NULL) # Return NULL if locations are missing
+      }
+    }, error = function(e) {
+      # Handle errors and log the error message
+      paste0("================= NO IBM data nrows ", e$message)
+      message("Error occurred while querying IBM data: ", e$message)
+      return(NULL) # Return NULL on error
+    })
+  })
+    
   # Render the data table in the UI
   output$station_trend <- renderDT({
     if (is.null(shared_data$w_station_id)){
@@ -405,8 +413,8 @@ server <- function(input, output, session) {
   
   output$station_specifications <- renderText({
     if (is.null(shared_data$w_station_id)) {
-      "This section will display weather-related charts for the chosen Wisconet Station. 
-      Please select an station from the map by doing click on it."
+      "This section will display weather-related charts for the chosen Wisconet Station or location. 
+      Please select a location from the map by doing click on the station or punctual location."
     } else {
       data <- disease_risk_data()
       print(data)
@@ -447,13 +455,9 @@ server <- function(input, output, session) {
   
   output$air_temperature_plot <- renderPlot({
     # Call the API functions to get the data
-    print("----------------------------1---------------------------------------")
     data_airtemp <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "AIRTEMP", "MIN60", 30)
-    print(data_airtemp)
-    print("--------------------------------2-----------------------------------")
     data_rh <- api_call_weather_data(shared_data$w_station_id, input$forecast_date, "RELATIVE_HUMIDITY", "MIN60", 14)
-    print(data_rh)
-    print("---------------------------3----------------------------------------")
+
     if (!is.null(data_airtemp$daily_aggregations) && !is.null(data_rh$daily_aggregations)) {
       # Create the individual plots
       p1 <- plot_air_temp(data_airtemp$daily_aggregations)
@@ -470,31 +474,42 @@ server <- function(input, output, session) {
   
   ################################################################## This is the section 3 Download
   output$download_stations <- downloadHandler(
+    # Dynamically generate the filename
     filename = function() {
-      paste0("Wisconet_stations_",input$disease_name,"_forecasting_", Sys.Date(), ".csv")
+      paste0("Report_", input$disease_name, "_forecasting_", Sys.Date(), ".csv")
     },
+    
+    # Define the content of the downloaded file
     content = function(file) {
+      # Fetch the data from your reactive function
       data <- stations_data()
-      if (input$disease_name=='tarspot'){
-        data$tarspot_risk <- data$tarspot_risk*100
+      
+      # Initialize an empty dataframe
+      data_f <- NULL
+      
+      # Process data based on the selected disease
+      if (input$disease_name == 'tarspot') {
+        data$tarspot_risk <- data$tarspot_risk * 100
         data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
-        data_f <- data %>% select(forecasting_date, station_id,station_name,region,state,earliest_api_date,
-                                  tarspot_risk, risk_class)
-      }
-      if (input$disease_name=='gls'){
-        data$gls_risk <- data$gls_risk*100
+        data_f <- data %>% 
+          select(forecasting_date, station_id, station_name, region, state, earliest_api_date, 
+                 tarspot_risk, risk_class)
+      } else if (input$disease_name == 'gls') {
+        data$gls_risk <- data$gls_risk * 100
         data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
-        data_f <- data %>% select(forecasting_date, station_id,station_name,region,state,earliest_api_date,
-                                  gls_risk, risk_class)
-      }
-      if (input$disease_name=='frogeye_leaf_spot'){
-        data$frogeye_risk <- data$frogeye_risk*100
+        data_f <- data %>% 
+          select(forecasting_date, station_id, station_name, region, state, earliest_api_date, 
+                 gls_risk, risk_class)
+      } else if (input$disease_name == 'frogeye_leaf_spot') {
+        data$frogeye_risk <- data$frogeye_risk * 100
         data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
-        data_f <- data %>% select(forecasting_date, station_id,station_name,region,state,earliest_api_date,
-                                  frogeye_risk, risk_class)
+        data_f <- data %>% 
+          select(forecasting_date, station_id, station_name, region, state, earliest_api_date, 
+                 frogeye_risk, risk_class)
       }
       
-      if (!is.null(data) && nrow(data) > 0) {
+      # Validate if data is available for download
+      if (!is.null(data_f) && nrow(data_f) > 0) {
         write.csv(data_f, file, row.names = FALSE)
       } else {
         stop("No data available for download.")
@@ -504,107 +519,33 @@ server <- function(input, output, session) {
   
   output$download_report <- downloadHandler(
     filename = function() {
-      paste0("UWMadison_", input$disease_name, "_Forecast_Report_", 
-             shared_data$w_station_id %||% "NoStation", "_", Sys.Date(), ".pdf")
+      req(shared_data$w_station_id, cancelOutput = TRUE)
+      paste0("Report_risktrend_uwmadison_",shared_data$w_station_id,'_', input$disease_name, Sys.Date(), ".pdf")
     },
     content = function(file) {
-      # Check if a station is selected
-      req(shared_data$w_station_id, cancelOutput = TRUE)
-      
-      # Create temporary directory
-      temp_dir <- tempdir()
-      logos_dir <- file.path(temp_dir, "logos")
-      dir.create(logos_dir, showWarnings = FALSE)
-      
-      # Write the LaTeX header file to temp_dir
-      header_path <- file.path(temp_dir, "header.tex")
-      cat('\\usepackage{fancyhdr}
-    \\usepackage[margin=1in]{geometry}
-    \\usepackage{graphicx}
-    \\usepackage{color}
-    
-    \\fancypagestyle{watermark}{
-      \\fancyfootoffset{15pt}
-      \\renewcommand{\\headrulewidth}{0pt}
-      \\fancyhf{}
-      \\cfoot{\\textcolor{gray!30}{\\scalebox{4}{TarSpot Forecast}}}
-    }
-    \\pagestyle{watermark}
-    \\AtBeginDocument{\\thispagestyle{watermark}}
-    ', file = header_path)
-      
-      # Specify the path to your report template in the working directory
-      original_template <- "report_template.Rmd"  # Update with the correct location of your Rmd file
-      
-      # Copy the report template to the temporary directory
-      if (!file.exists(original_template)) {
-        showNotification("Original report template not found in working directory.", type = "error")
-        stop("Original report template not found in working directory.")
-      }
-      
-      # Copy the report template to temp_dir
-      report_template <- file.path(temp_dir, "report_template.Rmd")
-      file.copy(original_template, report_template, overwrite = TRUE)
-      
-      # List of images
-      images <- c("OPENSOURDA_color-flush.png", "PLANPATHCO_color-flush.png", "DATASCIE_color-flush.png")
-      
-      # Copy images to logos_dir within temp_dir
-      for (img in images) {
-        img_path <- file.path(getwd(), "logos", img) # Assume images are in the 'logos' directory within the working directory
-        if (!file.exists(img_path)) {
-          showNotification(paste("Image not found:", img), type = "error")
-          stop(paste("Image not found:", img))
-        }
-        file.copy(img_path, file.path(logos_dir, img), overwrite = TRUE)
-      }
-      
-      # Fetch and process disease data
       data <- disease_risk_data()
+      location_name <- paste0(data$station_name[1], " Station")
       
       if (is.null(data) || nrow(data) == 0) {
         showNotification("No data available to generate the report.", type = "warning")
         stop("No data available to generate the report.")
       }
       
-      # Prepare data based on the selected disease
-      if (input$disease_name == 'tarspot') {
-        data$risk <- data$tarspot_risk
-        data$risk_class <- risk_class_function(data$tarspot_risk, input$disease_name, input$risk_threshold)
-        data_f <- data %>%
-          select(station_name, forecasting_date, risk, risk_class) %>%
-          rename(
-            Station = station_name,
-            `Forecasting Date` = forecasting_date,
-            Risk = risk,
-            `Risk Class` = risk_class
-          )
-      } else if (input$disease_name == 'gls') {
-        data$risk <- data$gls_risk
-        data$risk_class <- risk_class_function(data$gls_risk, input$disease_name, input$risk_threshold)
-        data_f <- data %>%
-          select(station_name, forecasting_date, risk, risk_class) %>%
-          rename(
-            Station = station_name,
-            `Forecasting Date` = forecasting_date,
-            Risk = risk,
-            `Risk Class` = risk_class
-          )
-      } else if (input$disease_name == 'frogeye_leaf_spot') {
-        data$risk <- data$frogeye_risk
-        data$risk_class <- risk_class_function(data$frogeye_risk, input$disease_name, input$risk_threshold)
-        data_f <- data %>%
-          select(station_name, forecasting_date, risk, risk_class) %>%
-          rename(
-            Station = station_name,
-            `Forecasting Date` = forecasting_date,
-            Risk = risk,
-            `Risk Class` = risk_class
-          )
-      }
+      data <- data_transform(data, input)
+      data_f <- data %>%
+        select(forecasting_date, risk, risk_class) %>%
+        rename(
+          #Station = station_name,
+          `Forecasting Date` = forecasting_date,
+          Risk = risk,
+          `Risk Class` = risk_class
+        )
+      
+      report_template<-template_pdf(file)
       
       # Prepare report parameters
       report_params <- list(
+        location = location_name,
         disease = custom_disease_name(input$disease_name),
         forecast_date = input$forecast_date,
         threshold = input$risk_threshold,

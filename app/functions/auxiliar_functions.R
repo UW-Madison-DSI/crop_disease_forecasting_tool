@@ -7,15 +7,6 @@ library(dplyr)
 library(scales)
 
 
-
-##################################################### AOI: Wisconsin
-# Define bounds for Wisconsin
-lat_min <- 42.49192
-lat_max <- 47.08086
-lng_min <- -92.88811
-lng_max <- -86.80541
-
-
 ################################################################ Functions for transformations
 # Function to convert Fahrenheit to Celsius
 fahrenheit_to_celsius <- function(temp_f) {
@@ -71,79 +62,6 @@ custom_disease_name <- function(disease){
 }
 
 ################################################################ Function to plot the weather data
-api_call_wisconet_plot <- function(df) {
-  ggplot(df, aes(x = collection_time)) +
-    geom_line(aes(y = air_temp_avg_c, color = "Daily Average")) +
-    geom_line(aes(y = air_temp_avg_c_30d_ma, color = "30-day Moving Average")) +
-    labs(title = "Average Temperature (Celsius)",
-         x = "Date",
-         y = "Temperature (°C)",
-         color = "Legend") +
-    theme_minimal() +
-    theme(legend.position = "bottom")
-}
-
-# Define a function to create the weather plot
-plot_weather_data <- function(data, station) {
-  # Create the plot
-  weather_plot <- data %>%
-    ggplot(aes(x = collection_time)) +
-    
-    # Min temperature and its 30-day moving average
-    geom_line(aes(y = air_temp_min_c, color = "Min Temp (°C)")) +
-    geom_line(aes(y = air_temp_min_c_30d_ma, color = "Min Temp (°C) (30d MA)"), linetype = "dashed") +
-    
-    # Avg temperature and its 30-day moving average
-    geom_line(aes(y = air_temp_avg_c, color = "Avg Temp (°C)")) +
-    geom_line(aes(y = air_temp_avg_c_30d_ma, color = "Avg Temp (°C) (30d MA)"), linetype = "dashed") +
-    
-    # Max temperature and its 30-day moving average
-    geom_line(aes(y = air_temp_max_c, color = "Max Temp (°C)")) +
-    geom_line(aes(y = air_temp_max_c_30d_ma, color = "Max Temp (°C) (30d MA)"), linetype = "dashed") +
-    
-    # Add RH to the plot using the secondary y-axis
-    #geom_line(aes(y = rh_max, color = "Max RH (%)"), linetype = "solid") +
-    
-    # Primary y-axis for temperature
-    #scale_y_continuous(
-    #  name = "Temperature (C)",  # Label for the primary y-axis
-    #  sec.axis = sec_axis(~ ., name = "Relative Humidity (%)")  # Secondary y-axis for RH
-    #) +
-    
-    # Title, labels, and theme
-  labs(title = paste("Air Temperature (°C) for", station),
-       x = "Date",y='Air Temperature (°C)') +
-    
-    # Minimal theme
-    theme_minimal() +
-    
-    # Move the legend below the plot
-    theme(
-      legend.position = "bottom",         # Position the legend below the plot
-      legend.direction = "horizontal",    # Arrange the legend items horizontally
-      legend.title = element_blank(),     # Remove the legend title
-      legend.text = element_text(size = 10)  # Customize legend text size
-    ) +
-    
-    # Color manual assignment
-    scale_color_manual(values = c(
-      "Min Temp (°C)" = "#5DA5DA",            # Soft blue
-      "Min Temp (°C) (30d MA)" = "#ADD8E6",   # Light blue
-      "Avg Temp (°C)" = "#60BD68",            # Soft green
-      "Avg Temp (°C) (30d MA)" = "#B2E2B2",   # Light green
-      "Max Temp (°C)" = "#FAA43A",            # Light orange
-      "Max Temp (°C) (30d MA)" = "#FDDC9B",   # Light peach
-      "Max RH (%)" = "#B276B2",              # Soft purple
-      "RH (30d MA)" = "#CFCFCF",             # Light gray for subtler contrast
-      "Dew Point (°C)" = "#FFC107"            # Muted yellow
-    ))
-  
-  
-  # Return the plot
-  return(weather_plot)
-}
-
-
 #################################################################### This station
 
 api_call_this_station_specifications <-function(input, station_id){
@@ -158,11 +76,9 @@ api_call_this_station_specifications <-function(input, station_id){
     # Parse the main JSON content
     content_data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
     
-    
     # Parse the nested JSON in `stations_risk`
     stations_risk_data <- fromJSON(content_data$stations_risk)
-    print("content data2")
-    print(stations_risk_data)
+
     # Extract the risk based on the disease name
     if (input$disease_name == 'tarspot') {
       risk <- stations_risk_data$`1`$tarspot_risk
@@ -180,7 +96,7 @@ api_call_this_station_specifications <-function(input, station_id){
   }
 }
 
-#################################################################### Preparation of risk trend
+################################################################################ Preparation of risk trend
 #################### 7 days
 call_forecasting_for_range_of_days <- function(date_range, station_id, disease_name){
   # Initialize an empty list to store results
@@ -246,7 +162,7 @@ call_forecasting_for_range_of_days <- function(date_range, station_id, disease_n
   
 }
 
-#################### Table risk trend
+################################################################################ Table risk trend
 data_table_for_station_7d<-function(data, input){
   if (!is.null(data)) {
     # Select the appropriate risk column based on the disease
@@ -278,7 +194,7 @@ data_table_for_station_7d<-function(data, input){
   }
 }
 
-#################### Risk trend plot
+################################################################################ Risk trend plot
 plot_trend_7days <- function(df, disease, threshold){
   df$date <- as.Date(df$forecasting_date, format = '%Y-%m-%d')
 
@@ -292,7 +208,7 @@ plot_trend_7days <- function(df, disease, threshold){
   }
   if(threshold>0){
     ggplot(df, aes(x = date, y = Risk)) +
-      geom_line(color = "#0C7BDC") +
+      geom_line(color = "#0C7BDC", size = 1.5) +
       geom_point(aes(color = Risk_Class), size = 4) +  # Map color to Risk_Class
       geom_text(aes(label = Risk_Class),
                 vjust = -0.5,
@@ -316,12 +232,13 @@ plot_trend_7days <- function(df, disease, threshold){
       scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
       theme_minimal() +
       theme(
-        axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
       ) +
       guides(color = "none")  # Remove the color legend
   }else{
     ggplot(df, aes(x = date, y = Risk)) +
-      geom_line(color = "#0C7BDC") +
+      geom_line(color = "#0C7BDC", size = 1.5) +
       geom_point(aes(color = Risk_Class), size = 4) +  # Map color to Risk_Class
       geom_text(aes(label = Risk_Class),
                 vjust = -0.5,
@@ -343,63 +260,33 @@ plot_trend_7days <- function(df, disease, threshold){
       scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
       theme_minimal() +
       theme(
-        axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate date labels for readability
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
       ) +
       guides(color = "none")
   }
 }
 
 
-############################################################ Functions for the PDF
-# Function to ensure location is within bounds
-ensure_within_bounds <- function(lat, lon, bounds) {
-  lat <- max(min(lat, bounds$max_lat), bounds$min_lat)
-  lon <- max(min(lon, bounds$max_lon), bounds$min_lon)
-  return(c(lat, lon))
-}
-
-# Function to copy required files to a temporary directory
-copy_report_files <- function(temp_dir) {
-  files_to_copy <- list(
-    rmd = c(from = "report_template.Rmd", to = file.path(temp_dir, "report_template.Rmd")),
-    header = c(from = "header.tex", to = file.path(temp_dir, "header.tex")),
-    logo1 = c(from = "logos/OPENSOURDA_color-flush.png", to = file.path(temp_dir, "OPENSOURDA_color-flush.png")),
-    logo2 = c(from = "logos/PLANPATHCO_color-flush.png", to = file.path(temp_dir, "PLANPATHCO_color-flush.png")),
-    logo3 = c(from = "logos/DATASCIE_color-flush.png", to = file.path(temp_dir, "DATASCIE_color-flush.png") )
-  )
-  
-  for (item in files_to_copy) {
-    if (!file.copy(item["from"], item["to"], overwrite = TRUE)) {
-      stop(paste("Failed to copy file:", item["from"]))
-    }
+########################################
+data_transform <- function(data, input){
+  # Prepare data based on the selected disease
+  if (input$disease_name == 'tarspot') {
+    data$risk <- data$tarspot_risk
+    data$risk_class <- risk_class_function(data$tarspot_risk, 
+                                           input$disease_name, 
+                                           input$risk_threshold)
+    
+  } else if (input$disease_name == 'gls') {
+    data$risk <- data$gls_risk
+    data$risk_class <- risk_class_function(data$gls_risk, 
+                                           input$disease_name, 
+                                           input$risk_threshold)
+    
+  } else if (input$disease_name == 'frogeye_leaf_spot') {
+    data$risk <- data$frogeye_risk
+    data$risk_class <- risk_class_function(data$frogeye_risk, 
+                                           input$disease_name, 
+                                           input$risk_threshold)
   }
 }
-
-# Function to prepare Tar Spot data
-prepare_tarspot_data <- function(weather_data) {
-  if (!is.null(weather_data)) {
-    weather_data$tarspot %>%
-      mutate(
-        Risk = round(Risk, 2),
-        date_day = as.Date(date_day, format = "%Y-%m-%d") + 1
-      )
-  } else {
-    stop("Weather data is not available")
-  }
-}
-
-# Function to get station address
-get_station_address <- function(station_code, stations) {
-  if (!station_code %in% names(stations)) {
-    stop("Invalid station code")
-  }
-  
-  station_info <- stations[[station_code]]
-  paste(
-    station_info$location,
-    station_info$region,
-    station_info$state,
-    sep = ", "
-  )
-}
-
