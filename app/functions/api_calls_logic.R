@@ -1,20 +1,9 @@
-render_combined_plot <- function(tarspot_plot, weather_plot) {
-  if (!is.null(tarspot_plot) && !is.null(weather_plot)) {
-    grid.arrange(tarspot_plot, weather_plot, ncol = 2)
-  } else if (!is.null(tarspot_plot)) {
-    grid.arrange(tarspot_plot, ncol = 1)
-  } else if (!is.null(weather_plot)) {
-    grid.arrange(weather_plot, ncol = 1)
-  } else {
-    ggplot() + ggtitle("No Data Available") + theme_void()
-  }
-}
 
 ############ this is a mini test to include the heat map
 # api call, tarspot
 call_tarspot_for_station <- function(station_id, risk_threshold, current) {
   tryCatch({
-    today_ct <- with_tz(current, tzone = "America/Chicago")
+    today_ct <- with_tz(current, tzone = "US/Central")
     out <- from_ct_to_gmt(today_ct, 1.5)
     start_time <- out$start_time_gmt
     end_time <- out$end_time_gmt
@@ -106,9 +95,10 @@ process_stations_data <- function(stations_data, risk_col) {
           is.na(station_name) | is.na(risk),
           "Incomplete info",
           sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
+            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Disease:</strong> %s<br><strong>Region:</strong> %s<br><strong>Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
             station_name,
             location,
+            risk_col,
             region,
             risk
           )
@@ -129,142 +119,4 @@ process_stations_data <- function(stations_data, risk_col) {
   })
 }
 
-adecuate_output <- function(disease_name, stations_df) {
-  print(stations_df)
-  tryCatch({
-    if (disease_name == 'tarspot') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, tarspot_risk), as.numeric),
-          risk = 100 * tarspot_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-      return(stations_df)
-    }
-    
-    if (disease_name == 'gls') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, gls_risk), as.numeric),
-          risk = 100 * gls_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-      return(stations_df)
-    }
-    
-    if (disease_name == 'frogeye_leaf_spot') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, frogeye_risk), as.numeric),
-          risk = 100 * frogeye_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-      return(stations_df)
-    }
-  }, error = function(e) {
-    message(paste0("Error processing data: ", e$message))
-    return(NULL)
-  })
-}
 
-fetch_forecasting_data <- function(date, disease_name) {
-  tryCatch({
-    api_url <- sprintf(
-      "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_wisconet_stations_risk?forecasting_date=%s&disease_name=%s",
-      date, disease_name
-    )
-    response <- POST(
-      url = api_url,
-      add_headers("Content-Type" = "application/json")
-    )
-    
-    if (status_code(response) != 200) {
-      stop(paste("API Error:", status_code(response), "Message:", content(response, as = "text")))
-    }
-    
-    response_content <- content(response, as = "parsed", type = "application/json")
-    
-    if (is.null(response_content$stations_risk) || length(response_content$stations_risk) == 0) {
-      stop("No stations_risk data in API response")
-    }
-    
-    stations_data <- fromJSON(response_content$stations_risk[[1]])
-    stations_df <- bind_rows(lapply(stations_data, bind_rows))
-    
-    #dataframe_formatted <- adecuate_output(disease_name, stations_df)
-    if (disease_name == 'tarspot') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, tarspot_risk), as.numeric),
-          risk = 100 * tarspot_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-      return(stations_df)
-    }
-    
-    if (disease_name == 'gls') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, gls_risk), as.numeric),
-          risk = 100 * gls_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-      return(stations_df)
-    }
-    
-    if (disease_name == 'frogeye_leaf_spot') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, frogeye_risk), as.numeric),
-          risk = 100 * frogeye_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-      return(stations_df)
-    }
-  }, error = function(e) {
-    message(paste0("Error processing data: ", e$message))
-    return(NULL)
-  })
-}

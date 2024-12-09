@@ -63,20 +63,6 @@ ui <- navbarPage(
         h4("Crop Management"),
         checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
         
-        # Conditional panel for Tar Spot
-        conditionalPanel(
-          condition = "input.disease_name == 'tarspot'",
-          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
-          sliderInput(
-            "risk_threshold",
-            "Risk Threshold:",
-            min = 20,
-            max = 50,
-            value = 35,
-            step = 1
-          )
-        ),
-        
         # Conditional panel for Frogeye Leaf Spot
         conditionalPanel(
           condition = "input.disease_name == 'frogeye_leaf_spot'",
@@ -104,6 +90,21 @@ ui <- navbarPage(
             step = 1
           )
         ),
+        
+        # Conditional panel for Tar Spot
+        conditionalPanel(
+          condition = "input.disease_name == 'tarspot'",
+          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
+          sliderInput(
+            "risk_threshold",
+            "Risk Threshold:",
+            min = 20,
+            max = 50,
+            value = 35.0,
+            step = 1
+          )
+        ),
+        
         hr(), 
         conditionalPanel(
           condition = "input.ibm_data == false",  # Use lowercase `false` in JavaScript
@@ -150,7 +151,6 @@ ui <- navbarPage(
       mainPanel(
         textOutput('station_specifications'),
         hr(),
-        #DTOutput("station_trend"),
         plotOutput("risk_trend", height = "400px", width = "100%"),   
         hr(),
         plotOutput('air_temperature_plot', height = "1200px", width = "100%")
@@ -164,18 +164,18 @@ ui <- navbarPage(
     fluidPage(
       h3("Downloads"),
       hr(),
+      p("All stations risk forecasting for the specified date and disease as csv file."),
+      downloadButton("download_stations", "Download csv", 
+                     class = "btn-primary", 
+                     style = "text-align: center; margin-top: 10px;"),
+      hr(),
       textOutput("download_reported"),
       p("Downloadable content as a summary of the risk trend for the specified disease, wisconet station and forecasting date."),
       div(
         downloadButton("download_report", "Download Report", 
                        class = "btn-primary", 
                        style = "text-align: center; margin-top: 10px;")
-      ),
-      hr(),
-      p("All stations risk forecasting for the specified date as csv file."),
-      downloadButton("download_stations", "Download csv", 
-                     class = "btn-primary", 
-                     style = "text-align: center; margin-top: 10px;")
+      )
     )
   ),
   
