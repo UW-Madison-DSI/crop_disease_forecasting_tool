@@ -7,8 +7,9 @@ library(lubridate)
 library(tidyr)
 library(ggplot2)
 
-########################################################################################
 # This is the endpoint to the pywisconet, a wrapper of Wisconet data https://github.com/UW-Madison-DSI/pywisconet.git
+########################################################################################
+
 base_url <- "https://connect.doit.wisc.edu/pywisconet_wrapper/bulk_measures/"
 
 
