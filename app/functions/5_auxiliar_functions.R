@@ -238,3 +238,27 @@ plot_trend_7days <- function(df, disease, threshold){
 
 
 ########################################
+<<<<<<< HEAD:app/functions/5_auxiliar_functions.R
+=======
+data_transform <- function(data, input){
+  # Prepare data based on the selected disease
+  if (input$disease_name == 'tarspot') {
+    data$risk <- data$tarspot_risk
+    data$risk_class <- risk_class_function(data$tarspot_risk, 
+                                           input$disease_name, 
+                                           input$risk_threshold)
+    
+  } else if (input$disease_name == 'gls') {
+    data$risk <- data$gls_risk
+    data$risk_class <- risk_class_function(data$gls_risk, 
+                                           input$disease_name, 
+                                           input$risk_threshold)
+    
+  } else if (input$disease_name == 'frogeye_leaf_spot') {
+    data$risk <- data$frogeye_risk
+    data$risk_class <- risk_class_function(data$frogeye_risk, 
+                                           input$disease_name, 
+                                           input$risk_threshold)
+  }
+}
+>>>>>>> main:app/functions/auxiliar_functions.R
