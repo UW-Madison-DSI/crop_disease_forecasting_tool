@@ -28,38 +28,7 @@ from_ct_to_gmt <- function(current_time, mo){
   ))
 }
 
-################################################################ Risk labels
-risk_class_function <- function(risk, disease_name, threshold) {
-  #Risk class from Damon et al
-  if (disease_name == "tarspot") {
-    return(ifelse(risk < .2, "Low",
-                  ifelse(risk > .35, "High", "Moderate")))
-  } else if (disease_name == "gls") {
-    return(ifelse(risk < .4, "Low",
-                  ifelse(risk > .6, "High", "Moderate")))
-  } else if (disease_name == "frogeye_leaf_spot") {
-    return(ifelse(risk < .4, "Low",
-                  ifelse(risk > .5, "High", "Moderate")))
-  }
-}
 
-
-custom_disease_name <- function(disease){
-  #Function to map the acronim of disease to the custom name
-  if (disease=='tarspot'){
-    return(
-      "Tar Spot"
-    )
-  }else if (disease=='gls'){
-    return(
-      "Gray Leaf Spot"
-    )
-  }else if (disease=='frogeye_leaf_spot'){
-    return(
-      "Frogeye Leaf Spot"
-    )
-  }
-}
 
 ################################################################ Function to plot the weather data
 #################################################################### This station
@@ -218,7 +187,7 @@ plot_trend_7days <- function(df, disease, threshold){
       geom_hline(yintercept = up_line, linetype = "dashed", color = "black") +
       labs(
         title = paste(disease, "Risk trend for ", station, " Station"),
-        x = "Date",
+        x = "Forecasting Date",
         y = "Risk (%)"
       ) +
       scale_y_continuous(
@@ -269,6 +238,8 @@ plot_trend_7days <- function(df, disease, threshold){
 
 
 ########################################
+<<<<<<< HEAD:app/functions/5_auxiliar_functions.R
+=======
 data_transform <- function(data, input){
   # Prepare data based on the selected disease
   if (input$disease_name == 'tarspot') {
@@ -290,3 +261,4 @@ data_transform <- function(data, input){
                                            input$risk_threshold)
   }
 }
+>>>>>>> main:app/functions/auxiliar_functions.R

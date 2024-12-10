@@ -19,7 +19,9 @@ about_page<-fluidPage(
   ),
   hr(),
   h4("Credits:"),
-  p("This project is supported by the Open Source Program Office and relies on contributions from multiple research groups."),
+  p("This project is supported by the",
+    tags$a(href="https://ospo.wisc.edu","Open Source Program Office", target = "_blank"),
+    " and relies on contributions from multiple research groups at the University of Madison Wisconsin."),
   tags$ul(
     tags$li("Weather data sourced from Wisconet and the IBM Environmental Intelligence Suite."),
     tags$li(

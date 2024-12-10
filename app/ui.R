@@ -11,7 +11,7 @@ options(tigris_use_cache = TRUE)
 library(DT)
 library(shinyWidgets)
 
-source("functions/instructions.R")
+source("functions/5_instructions.R")
 
 logo_src = "logos/uw-logo-horizontal-color-web-digital.svg"
 tool_title <- "Agricultural Forecasting and Advisory System"
@@ -113,7 +113,9 @@ ui <- navbarPage(
         ),
         conditionalPanel(
           condition = "input.ibm_data != false",
-          actionButton("run_model", "Run Model")
+          actionButton("run_model", "Run Model", 
+                       class = "btn-success", 
+                       style = "background-color: yellow; color: black;")
         )
       ),
       mainPanel(
@@ -164,17 +166,20 @@ ui <- navbarPage(
     fluidPage(
       h3("Downloads"),
       hr(),
-      p("All stations risk forecasting for the specified date and disease as csv file."),
+      p("Tabular report on weather data ans risk estimate for the location that was chosed eg single station or by a location pined in the map."),
       downloadButton("download_stations", "Download csv", 
                      class = "btn-primary", 
                      style = "text-align: center; margin-top: 10px;"),
       hr(),
-      textOutput("download_reported"),
-      p("Downloadable content as a summary of the risk trend for the specified disease, wisconet station and forecasting date."),
-      div(
-        downloadButton("download_report", "Download Report", 
-                       class = "btn-primary", 
-                       style = "text-align: center; margin-top: 10px;")
+      conditionalPanel(
+        condition = "input.ibm_data == false",
+        textOutput("download_reported"),
+        p("Downloadable content as a summary of the risk trend for the specified Wisconet station, disease, and forecasting date."),
+        div(
+          downloadButton("download_report", "Download Report", 
+                         class = "btn-primary", 
+                         style = "text-align: center; margin-top: 10px;")
+        )
       )
     )
   ),
