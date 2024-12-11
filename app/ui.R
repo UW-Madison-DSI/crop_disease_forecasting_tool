@@ -27,11 +27,12 @@ ui <- navbarPage(
     "Disease Forecasting",
     sidebarLayout(
       sidebarPanel(
+        style = "height: 800px;",
         div(
           class = "logo-container",
           tags$img(
             src = logo_src,
-            style = "max-width: 100%; max-height: 80px; display: block; margin: 10px auto;" # Limit height
+            style = "max-width: 100%; max-height: 50px; display: block; margin: 10px auto;" # Limit height
           )
         ),
         hr(),
@@ -103,23 +104,23 @@ ui <- navbarPage(
             value = 35.0,
             step = 1
           )
-        ),
+        )#,
         
-        hr(), 
-        conditionalPanel(
-          condition = "input.ibm_data == false",  # Use lowercase `false` in JavaScript
-          h4("Map Layers"),
-          checkboxInput("show_heatmap", "Show Heat Map", value = FALSE)
-        ),
-        conditionalPanel(
-          condition = "input.ibm_data != false",
-          actionButton("run_model", "Run Model", 
-                       class = "btn-success", 
-                       style = "background-color: yellow; color: black;")
-        )
+        #hr(), 
+        #conditionalPanel(
+        #  condition = "input.ibm_data == false",  # Use lowercase `false` in JavaScript
+        #  h4("Map Layers"),
+        #  checkboxInput("show_heatmap", "Show Heat Map", value = FALSE)
+        #),
+        #conditionalPanel(
+        #  condition = "input.ibm_data != false",
+        #  actionButton("run_model", "Run Model", 
+        #               class = "btn-success", 
+        #               style = "background-color: yellow; color: black;")
+        #)
       ),
       mainPanel(
-        leafletOutput("risk_map", height = 750),
+        leafletOutput("risk_map", height = 800),
         conditionalPanel(
           condition = "input.ibm_data == false",
           div(
@@ -139,8 +140,8 @@ ui <- navbarPage(
           div(
             textOutput("station_count"),
             style = "margin-top: 10px; color: #666; font-size: 14px;"
+          )
         )
-      )
       )
     )
   ),

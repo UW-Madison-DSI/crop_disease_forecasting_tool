@@ -18,9 +18,7 @@ source("functions/4_pdf_template.R")
 
 source("functions/5_auxiliar_functions.R")
 source("functions/7_data_transformations.R")
-#source("functions/api_calls_logic.R")
-#source("functions/weather_plots.R")
-#source("functions/punctual_estimates.R")
+
 
 ########################################################## SETTINGS: WI boundary
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf") %>%
@@ -199,21 +197,7 @@ server <- function(input, output, session) {
         setView(
           lng = -89.75, lat = 44.76, zoom = 7.2
         )
-      
-      # Conditional layers
-      if (input$show_heatmap) {
-        map <- map %>%
-          addHeatmap(
-            lng = ~longitude,
-            lat = ~latitude,
-            intensity = ~Risk,
-            blur = ~Risk,
-            max = 1,
-            radius = 10,
-            minOpacity = 0.8,
-            gradient = unique(data$fill_color) # Use pre-computed colors
-          )
-      }
+
       
       #if (input$show_stations) {
       map <- map %>%

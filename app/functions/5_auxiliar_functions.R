@@ -7,30 +7,7 @@ library(dplyr)
 library(scales)
 
 
-################################################################ Functions for transformations
-# Function to convert Fahrenheit to Celsius
-fahrenheit_to_celsius <- function(temp_f) {
-  (temp_f - 32) * 5/9
-}
-
-# Function to convert current time to GMT and subtract a number of months
-from_ct_to_gmt <- function(current_time, mo){
-  # Subtract months from the current time in Central Time
-  past_time_ct <- current_time - months(mo)
-  
-  # Convert both dates to Unix timestamps in GMT
-  start_time <- as.integer(as.POSIXct(past_time_ct, tz = "GMT"))
-  end_time <- as.integer(as.POSIXct(current_time, tz = "GMT"))
-  
-  return(list(
-    start_time_gmt = start_time,
-    end_time_gmt = end_time
-  ))
-}
-
-
-
-################################################################ Function to plot the weather data
+######################################################## Function to plot the weather data, from Wisconet API data
 #################################################################### This station
 
 api_call_this_station_specifications <-function(input, station_id){
