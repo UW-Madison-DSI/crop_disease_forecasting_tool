@@ -350,29 +350,34 @@ server <- function(input, output, session) {
   })
   
   output$station_specifications <- renderText({
-    if (!is.null(shared_data$ibm_data)) {
-      paste("Given location: Lat ", shared_data$lat_location, ", Lon ", shared_data$lng_location)
-    } else {
-      data <- disease_risk_data()
-      # Check if data is not empty
-      if (nrow(data) > 0) {
-        station <- data$station_name[1]
-        earliest_api_date <- data$earliest_api_date[1]
-        
-        location <- if_else(
-          data$location[1] == "Not set", 
-          "", paste(" located at", data$location[1], ", ",data$region[1], " Region, "))
-        
-        date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
-        # Format for user-friendly reading
-        user_friendly_date <- format(date_obj, "%B %d, %Y")
-        paste(
-          station, "Station,", location," is active since:", user_friendly_date, "."
-        )
-      } else {
-        "Please select a station by clicking on it in the map from the Disease Forecasting section."
+    tryCatch({
+      if (!is.null(shared_data$ibm_data)) {
+        paste("Given location: Lat ", shared_data$lat_location, ", Lon ", shared_data$lng_location)
+      } else if (!is.null(shared_data$w_station_id)){
+        data <- disease_risk_data()
+        # Check if data is not empty
+        if (nrow(data) > 0) {
+          station <- data$station_name[1]
+          earliest_api_date <- data$earliest_api_date[1]
+          
+          location <- if_else(
+            data$location[1] == "Not set", 
+            "", paste(" located at", data$location[1], ", ",data$region[1], " Region, "))
+          
+          date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
+          # Format for user-friendly reading
+          user_friendly_date <- format(date_obj, "%B %d, %Y")
+          paste(
+            station, "Station,", location," is active since:", user_friendly_date, "."
+          )
+        } else if ((is.null(shared_data$w_station_id)) && (is.null(shared_data$ibm_data))) {
+          "Please select a station by clicking on it in the map from the Disease Forecasting section."
+        }
       }
-    }
+    }, error = function(e) {
+      # Handle error
+      message("Please select a station by clicking on it in the map from the Disease Forecasting section.")
+    })
   })
   
   output$risk_trend <- renderPlot({
@@ -381,15 +386,13 @@ server <- function(input, output, session) {
         data <- disease_risk_data()
         data_prepared <- data_table_for_station_7d(data, input)
         # Plot risk trend
-        print("Here in the 7 days risk for a given station ")
-        print(data_prepared)
         plot_trend_7days(data_prepared, custom_disease_name(input$disease_name), input$risk_threshold)
       
       }, error = function(e) {
         # Handle error
-        message("Error: ", e$message)
-        plot.new()
-        text(0.5, 0.5, paste("Error:", e$message), cex = 1.5, col = "red")
+        #message("Error: ", e$message)
+        #plot.new()
+        text(0.5, 0.5, "Please choose an station or pin a location in the map.", cex = 1.5, col = "gray")
       })
     }else if (!is.null(shared_data$lat_location)) {
       tryCatch({
@@ -463,7 +466,22 @@ server <- function(input, output, session) {
       tryCatch({
         data_ibm <- shared_data$ibm_data
         data_ibm$date <- as.Date(data_ibm$date, format = '%Y-%m-%d')
-        #data_long_rh <- data_ibm ####### TBD: relativeHumidity_min, relativeHumidity_mean, relativeHumidity_max
+        
+        data_long_rh <- data_ibm %>% ####### TBD: relativeHumidity_min, relativeHumidity_mean, relativeHumidity_max
+          select(date, relativeHumidity_min, relativeHumidity_mean, relativeHumidity_max,
+                 relativeHumidity_max_30ma
+                 ) %>%
+          pivot_longer(cols = c('relativeHumidity_min', 'relativeHumidity_mean', 'relativeHumidity_max',
+                 'relativeHumidity_max_30ma'), 
+                       names_to = "RelativeHumidity_type", 
+                       values_to = "RelativeHumidity")
+        
+        data_long_rh_hrs <- data_ibm %>%
+          select(date, hours_rh90_night_14ma, hours_rh80_allday_30ma, hours_rh90_night, hours_rh90_night) %>%
+          pivot_longer(cols = c('hours_rh90_night_14ma', 'hours_rh80_allday_30ma', 
+                                'hours_rh90_night', 'hours_rh90_night'), 
+                       names_to = "RelativeHumidityHrs_type", 
+                       values_to = "RelativeHumidityHrs")
         
         # Pivot data longer for temperature types
         data_long_temp <- data_ibm %>%
@@ -475,7 +493,7 @@ server <- function(input, output, session) {
                        names_to = "temperature_type", 
                        values_to = "temperature_value")
         
-        ggplot(data_long_temp, aes(x = date, y = temperature_value, color = temperature_type)) +
+        p1<-ggplot(data_long_temp, aes(x = date, y = temperature_value, color = temperature_type)) +
           geom_line(size = 2) +
           geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
           labs(
@@ -490,6 +508,38 @@ server <- function(input, output, session) {
             legend.position = "bottom",
             plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
           )
+        p2<-ggplot(data_long_rh, aes(x = date, y = RelativeHumidity, color = RelativeHumidity_type)) +
+          geom_line(size = 2) +
+          geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
+          labs(
+            title = "Relative Humidity (%) Trends in the Last 30 Days",
+            x = "Date",
+            y = "Relative Humidity (%)",
+            color = "Variable"
+          ) +
+          scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
+          theme_minimal() +
+          theme(
+            legend.position = "bottom",
+            plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+          )
+        p3 <- ggplot(data_long_rh_hrs, aes(x = date, y = RelativeHumidityHrs, color = RelativeHumidityHrs_type)) + 
+          geom_line(size = 2) + 
+          geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
+          labs(
+            title = "Trends in Hours of Relative Humidity Above 80% and 90% Over the Last 30 Days",  # Change the title here
+            x = "Date",
+            y = "Hrs with Relative Humidity above a threshold",
+            color = "Variable"
+          ) + 
+          scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") + 
+          theme_minimal() + 
+          theme(
+            legend.position = "bottom",
+            plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+          )
+        
+        grid.arrange(p1, p2, p3, ncol = 1)
       }, error = function(e) {
         plot.new()
         text(0.5, 0.5, e$message, cex = 1.5, col = "blue")
