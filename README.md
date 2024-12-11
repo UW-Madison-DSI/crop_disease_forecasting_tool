@@ -40,7 +40,7 @@ Our API includes the risk models: Tarspot, Gray Leaf Spot, FrogEye Leaf Spot and
   
 Method: `POST` 
 
-Response: A JSON object containing the predicted probability of tar spot incidence and the associated risk level.
+Response: A JSON object containing the predicted probability and undelying variables.
 
 ## To install
 ```bash
