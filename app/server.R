@@ -38,7 +38,7 @@ wisconsin_bbox <- list(
 
 
 
-########################################################## SETTINGS: WI boundary
+########################################################## SERVER
 server <- function(input, output, session) {
 
   # Store the clicked coordinates
@@ -55,15 +55,11 @@ server <- function(input, output, session) {
     req(input$forecast_date)
     req(input$disease_name)
     req(input$risk_threshold)
-    paste0("Response ", nrow(fetch_forecasting_data(as.character(input$forecast_date), 
-                                 input$disease_name)))
     return(fetch_forecasting_data(as.character(input$forecast_date), 
                                   input$disease_name)) #1_wisconet_calls.R
-    
   })
   
   ############################################################################## IBM data, AOI: Wisconsin
-  
   # Add a marker on user click
   observeEvent(input$risk_map_click, {
     click <- input$risk_map_click
@@ -268,12 +264,9 @@ server <- function(input, output, session) {
   # Observe click event to center the map on the selected station
   observeEvent(input$risk_map_marker_click, {
     click <- input$risk_map_marker_click
-    print("Click on map to pin a marker on the station ---------")
-    print(click)
     shared_data$w_station_id<-click$id
     
     if (!is.null(click)) {
-      
       # Update the map view to the clicked location
       leafletProxy("risk_map") %>%
         setView(lng = click$lng, lat = click$lat, zoom = 16) %>%
@@ -431,7 +424,6 @@ server <- function(input, output, session) {
     }
   })
   
-  
   output$air_temperature_plot <- renderPlot({
     print(shared_data$w_station_id)
     
@@ -583,7 +575,6 @@ server <- function(input, output, session) {
       }
       
       data_f <- data_transform(data, input)
-      
       report_template<-template_pdf(file)
       
       # Prepare report parameters
