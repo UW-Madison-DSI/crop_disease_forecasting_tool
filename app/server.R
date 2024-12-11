@@ -351,8 +351,7 @@ server <- function(input, output, session) {
   
   output$station_specifications <- renderText({
     if (!is.null(shared_data$ibm_data)) {
-      "This section will display weather-related charts for the chosen Wisconet Station or location. 
-      Please select a location from the map by doing click on the station or punctual location."
+      paste("Given location: Lat ", shared_data$lat_location, ", Lon ", shared_data$lng_location)
     } else {
       data <- disease_risk_data()
       # Check if data is not empty
