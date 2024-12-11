@@ -40,7 +40,7 @@ Our API includes the risk models: Tarspot, Gray Leaf Spot, FrogEye Leaf Spot and
   
 Method: `POST` 
 
-Response: A JSON object containing the predicted probability and undelying variables.
+Response: A JSON object containing the predicted probability and underlying variables.
 
 ## To install
 ```bash

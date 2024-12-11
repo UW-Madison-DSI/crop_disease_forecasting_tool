@@ -57,7 +57,7 @@ ui <- navbarPage(
           "forecast_date",
           "Select Forecasting Date:",
           value = Sys.Date(),
-          min = '2024-01-01',
+          min = '2020-01-01',
           max = Sys.Date()
         ),
         hr(), 
@@ -104,20 +104,18 @@ ui <- navbarPage(
             value = 35.0,
             step = 1
           )
-        )#,
-        
-        #hr(), 
+        ),
+        hr(), 
         #conditionalPanel(
         #  condition = "input.ibm_data == false",  # Use lowercase `false` in JavaScript
         #  h4("Map Layers"),
         #  checkboxInput("show_heatmap", "Show Heat Map", value = FALSE)
         #),
-        #conditionalPanel(
-        #  condition = "input.ibm_data != false",
-        #  actionButton("run_model", "Run Model", 
-        #               class = "btn-success", 
-        #               style = "background-color: yellow; color: black;")
-        #)
+        conditionalPanel(
+          condition = "input.ibm_data != false",
+          actionButton("run_model", "Run Model", 
+                       class = "btn-success")
+        )
       ),
       mainPanel(
         leafletOutput("risk_map", height = 800),
