@@ -35,9 +35,6 @@ wisconsin_bbox <- list(
   lng_max = -86.2495
 )
 
-
-
-
 ########################################################## SERVER
 server <- function(input, output, session) {
 
