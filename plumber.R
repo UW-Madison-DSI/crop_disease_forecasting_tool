@@ -3,7 +3,7 @@ library(plumber)
 
 
 source("R/crop_mangm_validations.R")
-source("R/all_stations_api_functions2.R")
+source("R/all_stations_api_functions.R")
 
 #* @apiTitle Crop Disease Risk Prediction API
 #* @apiDescription This API predicts the risk of crop diseases (Spore, Tarspoter, Gray Leaf Spot and Frog Eye Leaf Spot) based on environmental data and user inputs.
@@ -15,15 +15,15 @@ source("R/all_stations_api_functions2.R")
 #* @param tot_nhrs_rh90_14d_ma Numeric: 14-day moving average of total nighttime hours with 90% relative humidity (%) or above for each day.
 #* @post /predict_tarspot_risk
 function(
-         mean_air_temp_30d_ma, 
-         max_rh_30d_ma, 
-         tot_nhrs_rh90_14d_ma) {
+    mean_air_temp_30d_ma, 
+    max_rh_30d_ma, 
+    tot_nhrs_rh90_14d_ma) {
   
   # Validate inputs
   numeric_vars <- c(
-                    "mean_air_temp_30d_ma", 
-                    "max_rh_30d_ma", 
-                    "tot_nhrs_rh90_14d_ma")
+    "mean_air_temp_30d_ma", 
+    "max_rh_30d_ma", 
+    "tot_nhrs_rh90_14d_ma")
   
   # Convert these variables to numeric
   convert_to_numeric(environment(), numeric_vars)
@@ -36,9 +36,9 @@ function(
   } else {
     # Call the tarspot risk calculation function
     result <- calculate_tarspot_risk_function(mean_air_temp_30d_ma, 
-                                   max_rh_30d_ma, 
-                                   tot_nhrs_rh90_14d_ma)
-  
+                                              max_rh_30d_ma, 
+                                              tot_nhrs_rh90_14d_ma)
+    
     if (is.null(result)) {
       return(list(error = "An error occurred while calculating Tarspot Risk."))
     }else{
@@ -55,8 +55,8 @@ function(
 #* @param min_dewpoint_30d_ma Numeric: 30-day moving average of minimum dew point (°C)
 #* @post /predict_gray_leaf_spot_risk
 function(
-         min_air_temp_21d_ma, 
-         min_dewpoint_30d_ma) {
+    min_air_temp_21d_ma, 
+    min_dewpoint_30d_ma) {
   
   numeric_vars <- c("min_air_temp_21d_ma", "min_dewpoint_30d_ma")
   
@@ -71,7 +71,7 @@ function(
   } else {
     # Call the gray leaf spot risk calculation function
     result <- calculate_gray_leaf_spot_risk_function(min_air_temp_21d_ma, 
-                                            min_dewpoint_30d_ma)
+                                                     min_dewpoint_30d_ma)
     if(is.null(result)){
       return(NULL)
     }else{
@@ -102,7 +102,7 @@ function(max_air_temp_30d_ma,
   }
   
   convert_to_numeric(environment(), numeric_vars)
-
+  
   # Initialize result
   result <- calculate_sporecaster_risk(max_air_temp_30d_ma, 
                                        max_windspeed_30d_ma,
@@ -115,7 +115,7 @@ function(max_air_temp_30d_ma,
                 sporec_no_irr_risk=result$sporec_no_irr_risk*100,
                 success=200,
                 disease_name='sporecaster'))
-    }
+  }
 }
 
 #* Predict FrogEye Leaf Spot Risk
@@ -135,7 +135,7 @@ function(max_air_temp_30d_ma,
                 reason = "Fungicide applied in last 14d or growth stage not in the valid ranges."))
   } else {
     result <- calculate_frogeye_leaf_spot_function(max_air_temp_30d_ma, 
-                                          relative_humidity_80tot_30d_ma)
+                                                   relative_humidity_80tot_30d_ma)
     
     if (is.null(result)) {
       return(list(error = "An error occurred while calculating Frogeye Risk."))
