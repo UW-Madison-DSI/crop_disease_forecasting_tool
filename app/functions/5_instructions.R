@@ -36,6 +36,19 @@ about_page<-fluidPage(
     )
   ),
   hr(),
+  h4("Plant Disease Models"),
+  p("Selected field crops and vegetable disease model outputs are provided. These models are subject to change. The calculations used to generate each model prediction can be viewed in the source code."),
+  tags$ul(
+    tags$li('White mold (aka Sporecaster) - dry, irrigated 15-inch row spacing, irrigated 30-inch row spacing - probability of apothecial presence. More information: ',
+            tags$a(href = 'https://cropprotectionnetwork.org/news/smartphone-application-to-forecast-white-mold-in-soybean-now-available-to-growers',"Link", target = "_blank")),
+    tags$li('Frogeye Leaf Spot of soybean - probability of presence. More information: ',
+            tags$a(href = 'https://cropprotectionnetwork.org/encyclopedia/frogeye-leaf-spot-of-soybean',"Link", target = "_blank")),
+    tags$li('Gray Leaf Spot of corn - probability of presence. More information: ',
+            tags$a(href = 'https://cropprotectionnetwork.org/encyclopedia/gray-leaf-spot-of-corn',"Link", target = "_blank")),
+    tags$li('Tar Spot of corn (aka Tarspotter) - probability of presence. More information:',
+            tags$a(href = 'https://cropprotectionnetwork.org/encyclopedia/tar-spot-of-corn',"Link", target = "_blank"))
+  ),
+  hr(),
   h4("Contact Us:"),
   p("For inquiries or feedback, please reach out to us:"),
   tags$div(
