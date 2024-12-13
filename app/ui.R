@@ -32,7 +32,7 @@ ui <- navbarPage(
           class = "logo-container",
           tags$img(
             src = logo_src,
-            style = "max-width: 100%; max-height: 50px; display: block; margin: 10px auto;" # Limit height
+            style = "max-width: 500px; max-height: 100px; display: block; margin: 10px auto;" # Limit height
           )
         ),
         hr(),
