@@ -560,7 +560,7 @@ server <- function(input, output, session) {
     filename = function() {
       req(shared_data$w_station_id, cancelOutput = TRUE)
       paste0("Report_risktrend_uwmadison_",
-             input$disease_name, Sys.Date(), ".pdf")
+             input$disease_name,'_', Sys.Date(), ".pdf")
     },
     content = function(file) {
       data <- disease_risk_data()
@@ -571,7 +571,7 @@ server <- function(input, output, session) {
         stop("No data available to generate the report.")
       }
       
-      data_f <- data_transform(data, input)
+      data_f <- data_transform_risk_labels(data, input)
       report_template<-template_pdf(file)
       
       # Prepare report parameters
