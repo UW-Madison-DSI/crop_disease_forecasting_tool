@@ -138,14 +138,14 @@ ui <- navbarPage(
             textOutput('click_coordinates'),
             style = "margin-top: 10px; color: #666;"
           )
-        )#,
-        #conditionalPanel(
-        #  condition = "input.ibm_data == false",
-        #  div(
-        #    textOutput("station_count"),
-        #    style = "margin-top: 10px; color: #666; font-size: 14px;"
-        #  )
-        #)
+        ),
+        conditionalPanel(
+          condition = "input.ibm_data == false",
+          div(
+            textOutput("station_count"),
+            style = "margin-top: 10px; color: #666; font-size: 14px;"
+          )
+        )
       )
     )
   ),

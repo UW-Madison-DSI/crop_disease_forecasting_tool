@@ -14,7 +14,7 @@ library(reshape2)
 source("functions/1_wisconet_calls.R")
 source("functions/2_external_source.R")
 
-source("functions/3_weather_plots.R")
+source("functions/3_weather_plots.R") #now only on the risk trend but about to be on the weather data
 source("functions/4_pdf_template.R")
 
 source("functions/7_data_transformations.R")
@@ -48,8 +48,7 @@ server <- function(input, output, session) {
     disease_name = 'tarspot',
     stations_data = fetch_forecasting_data(Sys.Date()),
     nstations = 58,
-    this_station_data = fetch_forecasting_data(Sys.Date())%>%filter(station_id=='ALTN'),
-    start_time = Sys.time() #this is to compare the time of response in the dashboard in particular in the map creation
+    this_station_data = fetch_forecasting_data(Sys.Date())%>%filter(station_id=='ALTN') #default if not specified
   )
   
   
@@ -185,11 +184,8 @@ server <- function(input, output, session) {
       
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       
-      data <- shared_data$stations_data  # Use shared_data$stations_data
-      current_time1 <- Sys.time()
-      elapsed_time1 <- as.numeric(difftime(current_time1, shared_data$start_time, units = "secs"))
-      print(paste("Elapsed time since app launch (in seconds):", elapsed_time1))
-      
+      data <- shared_data$stations_data 
+
       if (!input$forecast_date==Sys.Date()){
         # Fetch new data based on the forecast date
         new_stations_data <- fetch_forecasting_data(input$forecast_date)
@@ -200,16 +196,8 @@ server <- function(input, output, session) {
       
         data <- shared_data$stations_data  
       }
-      showNotification(
-        paste(
-          shared_data$nstations,
-          " available stations."
-        ),
-        type = "message"
-      )
       shared_data$disease_name <- input$disease_name
       
-      print("Here the data was processed from api to be in the map -------")
       # Check if data is available
       if (nrow(data) > 0) {
         data <- data_transform_risk_labels(data, shared_data$disease_name)  # Apply transformation
@@ -218,13 +206,6 @@ server <- function(input, output, session) {
         data1 <- data %>%
           filter(forecasting_date == input$forecast_date) %>%
           mutate(`Forecasting Date` = forecasting_date)
-        
-        print("Here the data was on labels to be in the map -------")
-        current_time <- Sys.time()
-        elapsed_time <- as.numeric(difftime(current_time, shared_data$start_time, units = "secs"))
-        
-        # Print the elapsed time in the console
-        print(paste("Elapsed time since app launch (in seconds):", elapsed_time))
         
         if (shared_data$disease_name %in% c('tarspot','fe','gls')){
           # Create the map and plot the points
@@ -323,10 +304,6 @@ server <- function(input, output, session) {
     
     this_station <- shared_data$stations_data 
     this_station <- this_station%>% filter(station_name == click$id)
-    print("This station -------------------")
-    print(click$id)
-    print("-------")
-    print(this_station)
     
     shared_data$this_station_data <- this_station
     if (!is.null(click)) {
@@ -361,43 +338,9 @@ server <- function(input, output, session) {
     }
   })
   
-  output_station_count <- renderText({
+  output$station_count <- renderText({
     if(input$ibm_data==FALSE){
-      all_stations_data <- shared_data$stations_data
-      all_stations_data <- all_stations_data %>% filter(forecasting_date == input$forecast_date)
-      # Calculate mean risks
-      mean_tarspot_risk <- round(100 * mean(all_stations_data$tarspot_risk), 2)
-      mean_gls_risk <- round(100 * mean(all_stations_data$gls_risk), 2)
-      mean_fe_risk <- round(100 * mean(all_stations_data$fe_risk), 2)
-      
-      if(input$disease_name=='tarspot'){
-        paste(
-          "Number of Active Wisconet stations: ", shared_data$nstations, " for the given forecasting date. |",
-          "Mean Risks (over active stations): ",
-          "Tarspot Risk: ", mean_tarspot_risk, "%"
-        )
-      }else if(input$disease_name=='gls'){
-        paste(
-          "Number of Active Wisconet stations: ", shared_data$nstations, " for the given forecasting date. |",
-          "Mean Risk of Gray Leaf Spot (over active stations): ", mean_gls_risk, "%"
-        )
-      }else if(input$disease_name=='fe'){
-        paste(
-          "Number of Active Wisconet stations: ", shared_data$nstations, " for the given forecasting date. |",
-          "Mean Risk of FrogEye Leaf Spot (over active stations): ", mean_fe_risk, "%"
-        )
-      }else{
-        mean_whitemold_nirr_risk <- round(100 * mean(all_stations_data$whitemold_nirr_risk), 2)
-        mean_whitemold_irr_15in_risk <- round(100 * mean(all_stations_data$whitemold_irr_15in_risk), 2)
-        mean_whitemold_irr_30in_risk <- round(100 * mean(all_stations_data$whitemold_irr_30in_risk), 2)
-        paste(
-          "Number of Active Wisconet stations: ", shared_data$nstations, " for the given forecasting date. |",
-          "Mean Risk of Whitemold (over active stations): ",
-          "Whitemold-Dry: ", mean_whitemold_nirr_risk, "% |",
-          "Whitemold-Irrigated (15in): ", mean_whitemold_irr_15in_risk, "% |",
-          "Whitemold-Irrigated (30in): ", mean_whitemold_irr_30in_risk, "%"
-        )
-      }
+      paste("Number of Active Wisconet stations: ", shared_data$nstations)
     }else{
       paste("Data from IBM")
     }
@@ -467,7 +410,9 @@ server <- function(input, output, session) {
       data_f <- NULL
       if(input$ibm_data==FALSE){
         data_f <- shared_data$stations_data 
-        data_f <- data_f %>% select(station_id,date,forecasting_date,location,station_name,city,county,earliest_api_date,latitude,longitude,region,state,station_timezone,tarspot_risk,tarspot_risk_class,gls_risk,gls_risk_class,fe_risk,fe_risk_class,whitemold_irr_30in_risk,whitemold_irr_15in_risk,whitemold_nirr_risk)
+        data_f <- data_f %>%
+          select(station_id, date, forecasting_date, location, station_name, city, county, earliest_api_date, latitude, longitude, region, state, station_timezone, tarspot_risk, tarspot_risk_class, gls_risk, gls_risk_class, fe_risk, fe_risk_class, whitemold_irr_30in_risk, whitemold_irr_15in_risk, whitemold_nirr_risk) %>%
+          mutate(across(ends_with("_risk"), ~ . * 100))      
       }else if(input$ibm_data==TRUE){
         if (!is.null(shared_data$ibm_data)) {
           # Query IBM data
