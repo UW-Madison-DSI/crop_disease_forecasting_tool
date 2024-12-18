@@ -8,8 +8,6 @@ library(tidyr)
 library(dplyr)
 library(jsonlite)
 
-base_url <- 'https://wisconet.wisc.edu'
-
 
 ############################################################# Preparation
 logistic_f <- function(logit) {

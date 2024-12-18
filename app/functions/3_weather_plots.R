@@ -7,6 +7,51 @@ library(lubridate)
 library(tidyr)
 library(ggplot2)
 
+
+############################### 
+# function to standarize the risk models into a pivot tabular object and then plot the risk functions
+seven_days_trend_plot <- function(data_prepared, location){
+  # Select and rename the relevant columns
+  data_selected <- data_prepared %>%
+    filter(!is.na(tarspot_risk)) %>%
+    select(forecasting_date, tarspot_risk, gls_risk, fe_risk,
+           whitemold_irr_30in_risk,
+           whitemold_irr_15in_risk,
+           whitemold_nirr_risk) %>%
+    rename(
+      `Tar Spot` = tarspot_risk,
+      `Gray Leaf Spot` = gls_risk,
+      `Frog Eye Leaf Spot` = fe_risk,
+      `Whitemold Irr (30in)` = whitemold_irr_30in_risk,
+      `Whitemold Irr (15in)` = whitemold_irr_15in_risk,
+      `Whitemold No Irr` = whitemold_nirr_risk
+    )
+  
+  # Reshape the data into long format
+  data_long <- data_selected %>%
+    pivot_longer(cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot",
+                          "Whitemold Irr (30in)","Whitemold Irr (15in)","Whitemold No Irr"), 
+                 names_to = "Disease Model", 
+                 values_to = "risk_value")
+  data_long$risk_value <- data_long$risk_value*100
+  
+  # Plot the trend of the specified risk variables over time
+  ggplot(data_long, aes(x = forecasting_date, y = risk_value, color = `Disease Model`)) +
+    geom_line() +
+    geom_point() +
+    labs(title = paste0("Risk Trend in the last week (",location,')'),
+         x = "Forecasting Date",
+         y = "Risk (%)") +
+    scale_x_date(date_breaks = "1 day", date_labels = "%d-%b") +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+    )
+}
+
+
+
 # This is the endpoint to the pywisconet, a wrapper of Wisconet data https://github.com/UW-Madison-DSI/pywisconet.git
 ########################################################################################
 

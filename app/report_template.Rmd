@@ -8,9 +8,7 @@ fontsize: 12pt
 geometry: margin=1in
 params:
   location: NULL
-  disease: NULL
-  forecast_date: NULL
-  threshold: NULL
+  forecasting_date: NULL
   fungicide: NULL
   growth_stage: NULL
   risk_table: NULL
@@ -22,11 +20,8 @@ params:
 
 ## Specifications
 - **Location: ** `r params$location`
-- **Disease Name: ** `r params$disease`
-- **Forecast Date: ** `r params$forecast_date`
-- **Risk Threshold: ** `r params$threshold`%
+- **Forecasting Date: ** `r params$forecasting_date`
 - **No Fungicide Applied in the last 14 days?** `r ifelse(params$fungicide, "Yes", "No")`
-- **Growth Stage Within V10-R3?** `r ifelse(params$growth_stage, "Yes", "No")`
 
 ## Summary
 ```{r, echo=FALSE}
@@ -34,15 +29,45 @@ library(dplyr)
 library(knitr)
 
 if (!is.null(params$risk_table) && nrow(params$risk_table) > 0) {
-  # Select specific columns to display
-  tarspot_table <- params$risk_table
-  tarspot_table$Risk <- paste0(round(tarspot_table$Risk*100, 2), "%")
-
-  # Render the table
+  # Select and arrange the columns for display
+  risk_table <- params$risk_table %>%
+    select(
+      forecasting_date,
+      tarspot_risk, tarspot_risk_class,
+      gls_risk, gls_risk_class,
+      fe_risk, fe_risk_class,
+      whitemold_irr_30in_risk,
+      whitemold_irr_15in_risk,
+      whitemold_nirr_risk
+    )
+  
+  # Format risk values as percentages
+  risk_table <- risk_table %>%
+    mutate(
+      tarspot_risk = paste0(round(tarspot_risk * 100, 2), "%"),
+      gls_risk = paste0(round(gls_risk * 100, 2), "%"),
+      fe_risk = paste0(round(fe_risk * 100, 2), "%"),
+      whitemold_irr_30in_risk = paste0(round(whitemold_irr_30in_risk * 100, 2), "%"),
+      whitemold_irr_15in_risk = paste0(round(whitemold_irr_15in_risk * 100, 2), "%"),
+      whitemold_nirr_risk = paste0(round(whitemold_nirr_risk * 100, 2), "%")
+    )
+  
+  # Rename columns for better readability in PDF
+  colnames(risk_table) <- c(
+    "Date", 
+    "Tar Spot", "Tar Spot Class", 
+    "Grayleaf Spot Risk", "Grayleaf Spot Class", 
+    "Frog Eye", "Frog Eye Class", 
+    "White Mold (Irr-30in)", 
+    "White Mold (Irr-15in)", 
+    "White Mold Dry"
+  )
+  
+  # Render the table with a caption and apply additional formatting for PDF output
   kable(
-    tarspot_table,
-    caption = "Risk Trend",
-    format = "markdown"
+    risk_table,
+    caption = "Risk (%) Trend in the last 7 days (All Diseases)",
+    format = "markdown"  # Use LaTeX for better formatting in PDF
   )
 } else {
   cat("No Risk data available.")

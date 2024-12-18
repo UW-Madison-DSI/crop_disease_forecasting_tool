@@ -1,12 +1,11 @@
 library(httr)
 
-url_ibm <- Sys.getenv("URL_IBM")
-
 ibm_query<-function(end_date, lat, lon){
-  url <- paste0(url_ibm, end_date) 
+  url <- 'https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers/ibm'
   headers <- add_headers(accept = "application/json")
   params <- list(latitude = lat, 
                  longitude = lon, 
+                 forecasting_date = end_date,
                  token = Sys.getenv("API_KEY")
                  )
   
