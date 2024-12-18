@@ -1,130 +1,55 @@
 ################################################################################
 ############      Main function on All stations Forecasting Data    ############
 ################################################################################
+library(httr2)
+library(jsonlite)
+library(dplyr)
 
-url_all_stations_api <- "https://connect.doit.wisc.edu/forecasting_crop_disease/predict_wisconet_stations_risk?forecasting_date=%s&disease_name=%s"
+url_all_stations_api <- "https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers/wisconet?forecasting_date=%s&risk_days=%s"
+str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.1f%%<br><strong>Frogeye Leaf Spot:</strong> %.1f%%<br><strong>Gray Leaf Spot:</strong> %.1f%%<br><strong>Whitemold Dry:</strong> %.1f%%<br><strong>Whitemold Irrigation (30in):</strong> %.1f%%<br><strong>Whitemold Irrigation (15in):</strong> %.1f%%"
 
 
-fetch_forecasting_data <- function(date, disease_name, input) {
+fetch_forecasting_data <- function(date) {
   tryCatch({
-    api_url <- sprintf(
-      url_all_stations_api,
-      date, disease_name
-    )
-    response <- POST(
-      url = api_url,
-      add_headers("Content-Type" = "application/json")
-    )
+    # Construct the API URL
+    api_url <- sprintf(url_all_stations_api, date, 7)
     
-    if (status_code(response) != 200) {
-      stop(paste("API Error:", status_code(response), "Message:", content(response, as = "text")))
-    }
+    # Make the GET request
+    response <- request(api_url) %>%
+      req_headers("Content-Type" = "application/json") %>%
+      req_perform()
     
-    response_content <- content(response, as = "parsed", type = "application/json")
+    # Parse the JSON response
+    response_content <- resp_body_json(response, simplifyVector = TRUE)
     
-    if (is.null(response_content$stations_risk) || length(response_content$stations_risk) == 0) {
+    if (is.null(response_content) || length(response_content) == 0) {
       stop("No stations_risk data in API response")
     }
     
-    stations_data <- fromJSON(response_content$stations_risk[[1]])
-    stations_df <- bind_rows(lapply(stations_data, bind_rows))
-
+    stations_df <- bind_rows(response_content)
+    print(stations_df)
     
-    if (disease_name == 'tarspot') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, tarspot_risk), as.numeric),
-          risk = 100 * tarspot_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Tar Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
+    stations_df <- stations_df %>%
+      mutate(
+        forecasting_date = as.Date(date)+1,
+        across(
+          c(latitude, longitude, whitemold_nirr_risk, whitemold_irr_15in_risk, whitemold_irr_30in_risk, fe_risk, gls_risk, tarspot_risk),
+          as.numeric
+        ),
+        popup_content = sprintf(
+          str,
+          station_name,
+          location,
+          region,
+          forecasting_date,
+          tarspot_risk * 100,
+          fe_risk * 100,
+          gls_risk * 100,
+          whitemold_nirr_risk * 100,
+          whitemold_irr_30in_risk * 100,
+          whitemold_irr_15in_risk * 100
         )
-    }
-    
-    if (disease_name == 'gls') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, gls_risk), as.numeric),
-          risk = 100 * gls_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Gray Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-    }  
-    
-    if (disease_name == 'frogeye_leaf_spot') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, frogeye_risk), as.numeric),
-          risk = 100 * frogeye_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Frog Eye Leaf Spot Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-    }
-    
-    if (disease_name == 'whitemold_irr_15in') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, whitemold_irr_15in_risk), as.numeric),
-          risk = 100 * whitemold_irr_15in_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Whitemold Irrigation Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-    }
-    
-    if (disease_name == 'whitemold_irr_30in') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, whitemold_irr_30in_risk), as.numeric),
-          risk = 100 * whitemold_irr_30in_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Whitemold Irrigation Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-    }
-    
-    if (disease_name == 'whitemold_noirr') {
-      stations_df <- stations_df %>%
-        mutate(
-          across(c(latitude, longitude, whitemold_noirr_risk), as.numeric),
-          risk = 100 * whitemold_noirr_risk,  # Scale risk
-          popup_content = sprintf(
-            "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Whitemold Irrigation Risk:</strong> %.1f%%<br><strong>Forecast Date:</strong> %s",
-            station_name,
-            location,
-            region,
-            risk,
-            date
-          )
-        )
-    }
+      )
 
     return(stations_df)
   }, error = function(e) {

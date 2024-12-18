@@ -3,7 +3,7 @@ library(plumber)
 
 
 source("R/crop_mangm_validations.R")
-source("R/all_stations_api_functions.R")
+source("R/logit_functions.R")
 
 #* @apiTitle Crop Disease Risk Prediction API
 #* @apiDescription This API predicts the risk of crop diseases (Spore, Tarspoter, Gray Leaf Spot and Frog Eye Leaf Spot) based on environmental data and user inputs.
@@ -13,7 +13,7 @@ source("R/all_stations_api_functions.R")
 #* @param mean_air_temp_30d_ma Numeric: 30-day moving average of mean air temperature (°C)
 #* @param max_rh_30d_ma Numeric: 30-day moving average of max relative humidity (%)
 #* @param tot_nhrs_rh90_14d_ma Numeric: 14-day moving average of total nighttime hours with 90% relative humidity (%) or above for each day.
-#* @post /predict_tarspot_risk
+#* @get /predict_tarspot_risk
 function(
     mean_air_temp_30d_ma, 
     max_rh_30d_ma, 
@@ -53,7 +53,7 @@ function(
 #* Predict Gray Leaf Spot Risk
 #* @param min_air_temp_21d_ma Numeric: 21-day moving average of minimum air temperature (°C)
 #* @param min_dewpoint_30d_ma Numeric: 30-day moving average of minimum dew point (°C)
-#* @post /predict_gray_leaf_spot_risk
+#* @get /predict_gray_leaf_spot_risk
 function(
     min_air_temp_21d_ma, 
     min_dewpoint_30d_ma) {
@@ -88,7 +88,7 @@ function(
 #* @param max_air_temp_30d_ma Numeric: 30-day moving average of maximum air temperature (°C)
 #* @param max_windspeed_30d_ma Numeric: 30-day moving average of maximum wind speed (m/s)
 #* @param max_rh_30d_ma Numeric: 30-day moving average of relative humidity (%) (only for irrigated fields)
-#* @post /predict_sporecaster_risk
+#* @get /predict_sporecaster_risk
 function(max_air_temp_30d_ma,
          max_windspeed_30d_ma,
          max_rh_30d_ma) {
@@ -121,7 +121,7 @@ function(max_air_temp_30d_ma,
 #* Predict FrogEye Leaf Spot Risk
 #* @param max_air_temp_30d_ma Numeric: 21-day moving average of maximum air temperature (°C)
 #* @param relative_humidity_80tot_30d_ma Numeric: 30-day moving average of is the daily total hours where relative humidity (%) was 80% or above. 
-#* @post /predict_frogeye_leaf_spot_risk
+#* @get /predict_frogeye_leaf_spot_risk
 function(max_air_temp_30d_ma, 
          relative_humidity_80tot_30d_ma) {
   
@@ -146,55 +146,4 @@ function(max_air_temp_30d_ma,
                   disease_name='frogeye_leaf_spot'))
     }
   }
-}
-
-#* Predict the previous disease Risk on the active Wisconet Stations
-#* @param forecasting_date Character: Forecasting date, format YYYY-MM-dd
-#* @param station_id Character: Station id eg ALTN
-#* @param disease_name Character: tarspot, gls, sporecaster-irr, frogeye_leaf_spot 
-#* @post /predict_wisconet_stations_risk
-function(forecasting_date, 
-         station_id = NULL,
-         disease_name = NULL) {
-  
-  # Default value for disease_name
-  if (is.null(disease_name)) {
-    disease_name <- 'tarspot'
-  }
-  
-  # Validate and handle input_date
-  input_date <- if (is.null(forecasting_date)) Sys.Date() else as.Date(forecasting_date)
-  
-  # Check for invalid dates
-  if ((format(input_date, "%Y-%m") == "2024-04") || 
-      (input_date < as.Date("2022-01-01")) || 
-      (input_date > Sys.Date())) {
-    return(list(
-      error = "Data is unavailable for April 2024 or dates prior to 2022.",
-      status = 400,
-      disease_name = disease_name,
-      forecasting_date = input_date
-    ))
-  }
-  
-  # Try retrieving risk and handle errors
-  tryCatch({
-    risk <- retrieve_tarspot_all_stations(input_date, station_id, disease_name)
-    return(list(
-      status = risk$status,
-      disease_name = disease_name,
-      forecasting_date = input_date,
-      n_stations = risk$n_stations,
-      stations_risk = risk$stations_risk
-    ))
-  }, error = function(e) {
-    return(list(
-      status = 400,
-      disease_name = disease_name,
-      forecasting_date = input_date,
-      n_stations = 0,
-      stations_risk = NULL,
-      error = conditionMessage(e)  # Include error message for debugging
-    ))
-  })
 }

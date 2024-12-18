@@ -9,9 +9,21 @@ custom_disease_name <- function(disease){
     return(
       "Gray Leaf Spot"
     )
-  }else if (disease=='frogeye_leaf_spot'){
+  }else if (disease=='fe'){
     return(
       "Frogeye Leaf Spot"
+    )
+  }else if (disease=='whitemold_irr_30in'){
+    return(
+      "Whitemold Irrigation (30in)"
+    )
+  }else if (disease=='whitemold_irr_15in'){
+    return(
+      "Whitemold Irrigation (15in)"
+    )
+  }else if (disease=='whitemold_nirr'){
+    return(
+      "Whitemold Dry"
     )
   }
 }
@@ -24,7 +36,7 @@ risk_class_function <- function(risk, disease_name, threshold) {
   } else if (disease_name == "gls") {
     return(ifelse(risk < .4, "Low",
                   ifelse(risk > threshold/100, "High", "Moderate")))
-  } else if (disease_name == "frogeye_leaf_spot") {
+  } else if (disease_name == "fe") {
     return(ifelse(risk < .4, "Low",
                   ifelse(risk > threshold/100, "High", "Moderate")))
   } else {
@@ -33,34 +45,37 @@ risk_class_function <- function(risk, disease_name, threshold) {
 }
 
 
-data_transform_risk_labels<-function(data, input){
-  
-  print(data)
-  if (input$disease_name == 'tarspot') {
-    data$risk <- data$tarspot_risk
-    data$risk_class <- risk_class_function(data$tarspot_risk, 
-                                           input$disease_name, 
-                                           input$risk_threshold)
-    
-  } else if (input$disease_name == 'gls') {
-    data$risk <- data$gls_risk
-    data$risk_class <- risk_class_function(data$gls_risk, 
-                                           input$disease_name, 
-                                           input$risk_threshold)
-    
-  } else if (input$disease_name == 'frogeye_leaf_spot') {
-    data$risk <- data$frogeye_risk
-    data$risk_class <- risk_class_function(data$frogeye_risk, 
-                                           input$disease_name, 
-                                           input$risk_threshold)
+custom_palette <- function(x) {
+  if (x =="Low") {
+    return("#88CCEE")
+  } else if (x  =="Moderate") {
+    return("#DDCC77")
+  } else if (x =="High"){
+    return("#CC6677")
+  } else if (x  =="No Class"){
+    return("gray")
   }
-  data_f <- data %>%
-    #select(forecasting_date, risk, risk_class) %>%
-    rename(
-      #Station = station_name,
-      `Forecasting Date` = forecasting_date,
-      Risk = risk,
-      `Risk Class` = risk_class
-    )
-  return(data_f)
+}
+
+  
+data_transform_risk_labels<-function(data, disease_name){
+  if (disease_name == 'tarspot') {
+    data$fill_color <- sapply(data$tarspot_risk_class, custom_palette)
+    
+  } else if (disease_name == 'gls') {
+    data$fill_color <- sapply(data$gls_risk_class, custom_palette)
+    
+  } else if (disease_name == 'fe') {
+    data$fill_color <- sapply(data$fe_risk_class, custom_palette)
+    
+  } else if(disease_name == 'whitemold_irr_30in'){
+    data$Risk <- data$whitemold_irr_30in_risk
+
+  }else if(disease_name == 'whitemold_irr_15in'){
+    data$Risk <- data$whitemold_irr_15in_risk
+
+  }else if(disease_name == 'whitemold_nirr'){
+    data$Risk <- data$whitemold_nirr_risk
+  }
+  return(data)
 }

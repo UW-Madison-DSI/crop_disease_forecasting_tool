@@ -14,8 +14,8 @@ about_page<-fluidPage(
   tags$ul(
     tags$li("Select a disease and forecasting date to view the risk map."),
     tags$li("Users can click on stations to get more details and center the map on specific locations: this action will trigger the weather charts and downloadable information in the included tabs along the top of the window."),
-    tags$li("The “Trends” tab provides more detailed information of a single station, including past weather data used to provide a disease forecast and disease risk trends over the past 7 days."),
-    tags$li("The “Downloads” tab allows the user to download reports of the chosen station and a summary of all stations forecast (csv file).")
+    tags$li("The “Station summary” tab provides more detailed information of a single station or given location, about the disease forecast and disease risk trends over the past 7 days and allows the user to download a PDF report available for the Station Speficification only."),
+    tags$li("The “Trends” tab allows the user to download a CSV of the chosen station or location forecast data (csv file).")
   ),
   hr(),
   h4("Credits:"),

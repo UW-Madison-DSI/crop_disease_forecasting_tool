@@ -44,20 +44,26 @@ ui <- navbarPage(
           value = FALSE
         ),
         hr(),
-        selectInput(
-          "disease_name",
-          "Select Disease:",
-          choices = c(
-            "Tar Spot" = 'tarspot',
-            "Gray Leaf Spot" = 'gls',
-            "Frogeye Leaf Spot" = 'frogeye_leaf_spot'
+        conditionalPanel(
+          condition = "input.ibm_data == false",  # Condition to display disease selection
+          selectInput(
+            "disease_name",
+            "Select Disease:",
+            choices = c(
+              "Tar Spot" = 'tarspot',
+              "Gray Leaf Spot" = 'gls',
+              "Frogeye Leaf Spot" = 'fe',
+              "Whitemold Irr (30in)" = 'whitemold_irr_30in',
+              "Whitemold Irr (15in)" = 'whitemold_irr_15in',
+              "Whitemold Dry" = 'whitemold_nirr'
+            )
           )
         ),
         dateInput(
           "forecast_date",
           "Select Forecasting Date:",
           value = Sys.Date(),
-          min = '2020-01-01',
+          min = '2023-06-01',
           max = Sys.Date()
         ),
         hr(), 
@@ -66,7 +72,7 @@ ui <- navbarPage(
         
         # Conditional panel for Frogeye Leaf Spot
         conditionalPanel(
-          condition = "input.disease_name == 'frogeye_leaf_spot'",
+          condition = "input.disease_name == 'fe'",
           checkboxInput("crop_growth_stage", "Growth stage in the R1-R5 range?", value = TRUE),
           sliderInput(
             "risk_threshold",
@@ -132,54 +138,53 @@ ui <- navbarPage(
             textOutput('click_coordinates'),
             style = "margin-top: 10px; color: #666;"
           )
-        ),
-        conditionalPanel(
-          condition = "input.ibm_data == false",
-          div(
-            textOutput("station_count"),
-            style = "margin-top: 10px; color: #666; font-size: 14px;"
-          )
-        )
+        )#,
+        #conditionalPanel(
+        #  condition = "input.ibm_data == false",
+        #  div(
+        #    textOutput("station_count"),
+        #    style = "margin-top: 10px; color: #666; font-size: 14px;"
+        #  )
+        #)
       )
     )
   ),
   
   # Tab 2: Station Forecasting Risk and Weather Trends
   tabPanel(
-    title = "Trends",
+    title = "Summary",
     fluidPage(
-      h3("Trends of Risk and Weather for the specified location"),
+      h3("Trends of Risk and report for the specified location"),
       mainPanel(
         textOutput('station_specifications'),
         hr(),
         plotOutput("risk_trend", height = "400px", width = "100%"),   
         hr(),
-        plotOutput('air_temperature_plot', height = "1200px", width = "100%")
+        conditionalPanel(
+          condition = "input.ibm_data == false",
+          textOutput("download_reported"),
+          p("Downloadable content as a summary of the risk trend for the specified Wisconet station, disease, and forecasting date."),
+          div(
+            downloadButton("download_report", "Download Report", 
+                           class = "btn-primary", 
+                           style = "text-align: center; margin-top: 10px;")
+          )
+        )
       )
     )
   ),
-  
   # Tab 3: Downloads
   tabPanel(
-    title = "Downloads",
+    title = "Trends",
     fluidPage(
-      h3("Downloads"),
+      h3("Trends"),
       hr(),
       p("Tabular report on weather data ans risk estimate for the location that was chosed eg single station or by a location pined in the map."),
       downloadButton("download_stations", "Download csv", 
                      class = "btn-primary", 
                      style = "text-align: center; margin-top: 10px;"),
-      hr(),
-      conditionalPanel(
-        condition = "input.ibm_data == false",
-        textOutput("download_reported"),
-        p("Downloadable content as a summary of the risk trend for the specified Wisconet station, disease, and forecasting date."),
-        div(
-          downloadButton("download_report", "Download Report", 
-                         class = "btn-primary", 
-                         style = "text-align: center; margin-top: 10px;")
-        )
-      )
+      #hr(),
+      #plotOutput('air_temperature_plot', height = "1200px", width = "100%")
     )
   ),
   

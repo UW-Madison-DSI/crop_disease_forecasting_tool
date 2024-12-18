@@ -14,10 +14,14 @@ In the section **About** you can have more information about our dashboard.
 
 **Base URL**: [Forecast Crop Disease API](https://connect.doit.wisc.edu/forecasting_crop_disease/)
 
-Method: `POST` 
+Method: `GET` 
 Response: A JSON object containing the predicted probability and underlying variables.
- 
-### Disease Forecasting Models and Wisconet Stations Predictions API:
+
+### API to our models in top of Wisconet and IBM:
+- Our API provides the prediction of a number of crop diseases based on historical data sourced from 1) Wisconet and 2) IBM-source. Our API is defided to retrieve the historical data and provide the forecasting risk estimates on such locations.
+[LINK](https://github.com/UW-Madison-DSI/pywisconet)
+
+### Endpoints to the pre-trained disease models:
 
 - `/predict_tarspot_risk`  
   Predicts the probability and risk level for **Tarspot**.
@@ -31,12 +35,6 @@ Response: A JSON object containing the predicted probability and underlying vari
 - `/predict_frogeye_leaf_spot_risk`  
   Predicts the probability and risk level for **Frogeye**.
 
-- `/predict_wisconet_stations_risk`  
-  Predicts the probability of the previous models for **all the active stations, or the specified one**, given a forecast date and disease name as inputs.
-  
-### API wrapper:
-- You can also visit our API wrapper for Wisconet and IBM-source that we leveraged in our dashboard.
-[LINK](https://github.com/UW-Madison-DSI/pywisconet)
 
 ### Usage
 See example of how to do an api call on this tool in the materials section of the repository [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/example/example_api_call.R)
@@ -57,8 +55,7 @@ cd corn_disease_forecast_api
 ├── plumber.R                       <- Logic to create API
 ├── R                               <- Main functionalities for API
 │   ├── crop_mangm_validations.R      <- Crop management validations
-│   ├── logit_function.R              <- Core functions for forecasting disease api
-│   ├── all_stations_api_functions.R  <- Construction of the stations risk estimates
+│   ├── logit_functions.R              <- Core functions for forecasting disease api
 ├── materials                     <- Examples of API calls and plug in with Wisconet
 │   ├── call_wisconet                 <- Wisconet call example
 │   ├── docs                          <- Documentation of the schema
