@@ -12,10 +12,10 @@ about_page<-fluidPage(
   h4("How It Works:"),
   p("The application uses data from trusted weather and university agricultural sources to forecast the risk of crop diseases."),
   tags$ul(
-    tags$li("Select a disease and forecasting date to view the risk map."),
-    tags$li("Users can click on stations to get more details and center the map on specific locations: this action will trigger the weather charts and downloadable information in the included tabs along the top of the window."),
-    tags$li("The “Station summary” tab provides more detailed information of a single station or given location, about the disease forecast and disease risk trends over the past 7 days and allows the user to download a PDF report available for the Station Speficification only."),
-    tags$li("The “Trends” tab allows the user to download a CSV of the chosen station or location forecast data (csv file).")
+    tags$li("Select a disease and forecasting date to view the corresponding risk map."),
+    tags$li("Click on stations to view more details and center the map on specific locations. This action will trigger weather charts and display downloadable information in the tabs above."),
+    tags$li("The 'Summary' tab provides detailed information about the selected station or location, including disease forecasts and risk trends for the past 7 days. A PDF report is available for the Station Specification."),
+    tags$li("The 'Trends' tab allows users to download a CSV file of the forecast data for the selected station or location.")
   ),
   hr(),
   h4("Credits:"),
