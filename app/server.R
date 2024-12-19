@@ -136,33 +136,19 @@ server <- function(input, output, session) {
       shared_data$lng_location <- click$lng
       shared_data$lat_location <- click$lat
       
-      punctual_estimate <- ibm_query(input$forecast_date, click$lat, click$lng)
+      punctual_estimate <- ibm_query(input$forecasting_date, click$lat, click$lng)
       shared_data$ibm_data <- punctual_estimate
       
-      punctual_estimate <- punctual_estimate %>% filter(forecasting_date == as.Date(input$forecast_date))
-      
-      # Initialize risk and risk_class to default values
-      risk <- NULL
-      risk_class <- NULL
-      
-      # Define a list with all disease risks and classes
-      all_risks <- list(
-        tarspot = list(risk = punctual_estimate$tarspot_risk, risk_class = punctual_estimate$tarspot_risk_class),
-        gls = list(risk = punctual_estimate$gls_risk, risk_class = punctual_estimate$gls_risk_class),
-        fe = list(risk = punctual_estimate$fe_risk, risk_class = punctual_estimate$fe_risk_class),
-        whitemold_irr_30in = list(risk = punctual_estimate$whitemold_irr_30in_risk, risk_class = NULL),
-        whitemold_irr_15in = list(risk = punctual_estimate$whitemold_irr_15in_risk, risk_class = NULL),
-        whitemold_nirr = list(risk = punctual_estimate$whitemold_nirr_risk, risk_class = NULL)
-      )
+      punctual_estimate <- punctual_estimate %>% filter(forecasting_date == as.Date(input$forecasting_date))
       
       # Display the summary of risks for all diseases
       all_risks_text <- paste(
-        "Tarspot Risk: ", round(all_risks$tarspot$risk * 100, 2), "% | ",
-        "GLS Risk: ", round(all_risks$gls$risk * 100, 2), "% | ",
-        "FrogEye Risk: ", round(all_risks$fe$risk * 100, 2), "% | ",
-        "Whitemold Irrigated (30in) Risk: ", round(all_risks$whitemold_irr_30in$risk * 100, 2), "% | ",
-        "Whitemold Irrigated (15in) Risk: ", round(all_risks$whitemold_irr_15in$risk * 100, 2), "% | ",
-        "Whitemold Dry Risk: ", round(all_risks$whitemold_nirr$risk * 100, 2), "%"
+        "Tarspot (Corn) Risk Class: ", punctual_estimate$tarspot_risk_class, "| ",
+        "Gray Leaf Spot (Corn) Risk Class: ", punctual_estimate$gls_risk_class, "| ",
+        "FrogEye (Soybean) Risk Class: ", punctual_estimate$fe_risk_class, "| ",
+        "Whitemold Irrigated (30in) Risk: ", round(punctual_estimate$whitemold_irr_30in_risk * 100, 2), "% | ",
+        "Whitemold Irrigated (15in) Risk: ", round(punctual_estimate$whitemold_irr_15in_risk * 100, 2), "% | ",
+        "Whitemold Dry Risk: ", round(punctual_estimate$whitemold_nirr_risk * 100, 2), "%"
       )
       
       # Display the clicked coordinates and risk information
@@ -192,9 +178,9 @@ server <- function(input, output, session) {
       
       # Display the results
       cat(paste("Time for Part 1: ", time_part2, " seconds\n"))
-      if (!input$forecast_date==Sys.Date()){
+      if (!input$forecasting_date==Sys.Date()){
         # Fetch new data based on the forecast date
-        new_stations_data <- fetch_forecasting_data(input$forecast_date)
+        new_stations_data <- fetch_forecasting_data(input$forecasting_date)
         
         # Store the fetched data into shared_data
         shared_data$stations_data <- new_stations_data
@@ -208,7 +194,7 @@ server <- function(input, output, session) {
         
         # Filter data for specific forecast date
         data1 <- data %>%
-          filter(forecasting_date == input$forecast_date) %>%
+          filter(forecasting_date == input$forecasting_date) %>%
           mutate(`Forecasting Date` = forecasting_date)
         
         if (shared_data$disease_name %in% c('tarspot','fe','gls')){
@@ -242,7 +228,7 @@ server <- function(input, output, session) {
               opacity = 1
             ) 
         }else if(shared_data$disease_name %in% c('whitemold_irr_30in','whitemold_irr_15in','whitemold_nirr')){
-          map <- leaflet(data1) %>%
+          map <- leaflet(data1) %>% 
             addProviderTiles(providers$CartoDB.Positron) %>%
             setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
             addCircleMarkers(
@@ -250,7 +236,7 @@ server <- function(input, output, session) {
               lat = ~latitude,   # Latitude column in your data
               popup = ~popup_content,  # Popup content
               color = "black",  # Marker outline color
-              fillColor = ~colorNumeric(palette = "Spectral", domain = data1$Risk)(Risk),  # Color based on Risk
+              fillColor = ~colorNumeric(palette = "YlGnBu", domain = data1$Risk)(Risk),  # Color based on Risk
               fillOpacity = 0.8,  # Opacity of the marker fill
               radius = 6,  # Radius of the marker
               weight = 1.5,  # Border thickness
@@ -259,8 +245,15 @@ server <- function(input, output, session) {
                 style = list("font-weight" = "normal", padding = "3px 8px"),
                 textsize = "12px", direction = "auto"
               ),
-              layerId = ~station_name 
-            ) 
+              layerId = ~station_name
+            ) %>%
+            addLegend(
+              position = "bottomright",  # Position of the legend
+              pal = colorNumeric(palette = "YlGnBu", domain = data1$Risk),  # Same palette and domain as in addCircleMarkers
+              values = data1$Risk,  # Data used for coloring
+              title = "Risk (%)",  # Title of the legend
+              opacity = 1  # Opacity of the legend
+            )
         }
         map %>%
           addPolygons(
@@ -393,9 +386,11 @@ server <- function(input, output, session) {
     
     if (is.null(data_prepared)) {
       plot.new()
-      text(0.5, 0.5, "No data available for the selected station or location.", cex = 1.5)
+      text(0.5, 0.5, "Please select an station in the map first.", cex = 1.5)
     }else{
-      seven_days_trend_plot(data_prepared, location) 
+      selected_diseases <- input$disease
+      print(selected_diseases)
+      seven_days_trend_plot(data_prepared, location, selected_diseases) 
     }
   })
   
@@ -412,7 +407,11 @@ server <- function(input, output, session) {
       if(input$ibm_data==FALSE){
         data_f <- shared_data$stations_data 
         data_f <- data_f %>%
-          select(station_id, date, forecasting_date, location, station_name, city, county, earliest_api_date, latitude, longitude, region, state, station_timezone, tarspot_risk, tarspot_risk_class, gls_risk, gls_risk_class, fe_risk, fe_risk_class, whitemold_irr_30in_risk, whitemold_irr_15in_risk, whitemold_nirr_risk) %>%
+          select(station_id, date, forecasting_date, location, station_name, 
+                 city, county, earliest_api_date, latitude, longitude, region, state, 
+                 station_timezone, tarspot_risk, tarspot_risk_class, gls_risk, 
+                 gls_risk_class, fe_risk, fe_risk_class, 
+                 whitemold_irr_30in_risk, whitemold_irr_15in_risk, whitemold_nirr_risk) %>%
           mutate(across(ends_with("_risk"), ~ . * 100))      
       }else if(input$ibm_data==TRUE){
         if (!is.null(shared_data$ibm_data)) {
@@ -432,7 +431,7 @@ server <- function(input, output, session) {
     }
   )
   
-  ##################################### PDF report only for station choice
+  ############################################################################## PDF report only for station choice
   output$download_report <- downloadHandler(
     filename = function() {
       req(shared_data$w_station_id, cancelOutput = TRUE)
@@ -452,8 +451,8 @@ server <- function(input, output, session) {
                                 tarspot_risk,tarspot_risk_class,
                                 gls_risk,gls_risk_class,
                                 fe_risk,fe_risk_class,
-                                whitemold_irr_30in_risk,whitemold_irr_15in_risk,whitemold_nirr_risk)
-      
+                                whitemold_irr_30in_risk,whitemold_irr_15in_risk,
+                                whitemold_nirr_risk)
       
       report_template<-template_pdf(file)
       
@@ -461,7 +460,7 @@ server <- function(input, output, session) {
       report_params <- list(
         location = location_name,
         #disease = custom_disease_name(input$disease_name),
-        forecasting_date = input$forecast_date,
+        forecasting_date = input$forecasting_date,
         fungicide = input$no_fungicide,
         growth_stage = input$crop_growth_stage,
         risk_table = data_f
