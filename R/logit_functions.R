@@ -9,20 +9,8 @@ library(dplyr)
 library(jsonlite)
 
 
-############################################################# Preparation
-logistic_f <- function(logit) {
-  probability<-exp(logit) / (1 + exp(logit))
-  return(probability)
-}
 
-fahrenheit_to_celsius <- function(fahrenheit) {
-  celsius <- (fahrenheit - 32) * 5 / 9
-  return(celsius)
-}
-
-
-
-############################################################# Risk functions
+############################################################# Risk functions Damon et al
 calculate_tarspot_risk_function <- function(meanAT, maxRH, rh90_night_tot) {
   logit_LR4 <- 32.06987 - (0.89471 * meanAT) - (0.14373 * maxRH)
   logit_LR6 <- 20.35950 - (0.91093 * meanAT) - (0.29240 * rh90_night_tot)

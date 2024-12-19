@@ -48,37 +48,39 @@ server <- function(input, output, session) {
     disease_name = 'tarspot',
     stations_data = fetch_forecasting_data(Sys.Date()),
     nstations = 58,
-    this_station_data = fetch_forecasting_data(Sys.Date())%>%filter(station_id=='ALTN') #default if not specified
+    this_station_data = fetch_forecasting_data(Sys.Date())%>%filter(station_id=='ALTN'), #default if not specified
+    start_time = Sys.time()
   )
   
   
-  observeEvent(input$risk_threshold, {
-    req(input$risk_threshold)
-    req(input$disease_name)  # Ensure that disease_name is provided
+  #observeEvent(input$risk_threshold, {
+  #  req(input$risk_threshold)
+  #  req(input$disease_name)  # Ensure that disease_name is provided
     
     # Update the shared threshold
-    shared_data$risk_threshold <- input$risk_threshold
-    risk_data <- shared_data$stations_data
+  #  shared_data$risk_threshold <- input$risk_threshold
+  #  risk_data <- shared_data$stations_data
     # Apply the risk class function using if_else for conditional logic
-    risk_data <- risk_data %>%
-      mutate(
-        tarspot_risk_class = case_when(
-          input$disease_name == "tarspot" ~ sapply(tarspot_risk, risk_class_function, disease_name = "tarspot", threshold = input$risk_threshold),
-          TRUE ~ tarspot_risk_class  # Keep existing values if not 'tarspot'
-        ),
+  #  risk_data <- risk_data %>%
+  #    mutate(
+  #      tarspot_risk_class = case_when(
+  #        input$disease_name == "tarspot" ~ sapply(tarspot_risk, risk_class_function, disease_name = "tarspot", threshold = input$risk_threshold),
+  #        TRUE ~ tarspot_risk_class  # Keep existing values if not 'tarspot'
+  #      ),
         
-        gls_risk_class = case_when(
-          input$disease_name == "gls" ~ sapply(gls_risk, risk_class_function, disease_name = "gls", threshold = input$risk_threshold),
-          TRUE ~ gls_risk_class  # Keep existing values if not 'gls'
-        ),
+  #      gls_risk_class = case_when(
+  #        input$disease_name == "gls" ~ sapply(gls_risk, risk_class_function, disease_name = "gls", threshold = input$risk_threshold),
+  #        TRUE ~ gls_risk_class  # Keep existing values if not 'gls'
+  #      ),
         
-        fe_risk_class = case_when(
-          input$disease_name == "fe" ~ sapply(fe_risk, risk_class_function, disease_name = "fe", threshold = input$risk_threshold),
-          TRUE ~ fe_risk_class  # Keep existing values if not 'fe'
-        )
-      )
-    shared_data$stations_data <- risk_data
-  })
+  #      fe_risk_class = case_when(
+  #        input$disease_name == "fe" ~ sapply(fe_risk, risk_class_function, disease_name = "fe", threshold = input$risk_threshold),
+  #        TRUE ~ fe_risk_class  # Keep existing values if not 'fe'
+  #      )
+  #    )
+  #  shared_data$stations_data <- risk_data
+  #})
+  
   ############################################################################## IBM data, AOI: Wisconsin
   # Add a marker on user click
   observeEvent(input$risk_map_click, {
@@ -185,19 +187,21 @@ server <- function(input, output, session) {
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       
       data <- shared_data$stations_data 
-
+      end_time_part2 <- Sys.time()
+      time_part2 <- end_time_part2 - shared_data$start_time
+      
+      # Display the results
+      cat(paste("Time for Part 1: ", time_part2, " seconds\n"))
       if (!input$forecast_date==Sys.Date()){
         # Fetch new data based on the forecast date
         new_stations_data <- fetch_forecasting_data(input$forecast_date)
         
         # Store the fetched data into shared_data
         shared_data$stations_data <- new_stations_data
-        shared_data$nstations <- nrow(new_stations_data)/7 #because retrieving 7 days
-      
         data <- shared_data$stations_data  
       }
       shared_data$disease_name <- input$disease_name
-      
+
       # Check if data is available
       if (nrow(data) > 0) {
         data <- data_transform_risk_labels(data, shared_data$disease_name)  # Apply transformation
@@ -338,14 +342,6 @@ server <- function(input, output, session) {
     }
   })
   
-  output$station_count <- renderText({
-    if(input$ibm_data==FALSE){
-      paste("Number of Active Wisconet stations: ", shared_data$nstations)
-    }else{
-      paste("Data from IBM")
-    }
-  })
-  
   output$station_specifications <- renderText({
     tryCatch({
       if (!is.null(shared_data$ibm_data)) {
@@ -359,16 +355,19 @@ server <- function(input, output, session) {
           earliest_api_date <- data$earliest_api_date[1]
           
           location <- if_else(
-            data$location[1] == "Not set", 
-            "", paste(" located at", data$location[1], ", ",
-                      data$region[1], " Region, ", data$state[1]))
+            data$location[1] == "Not set",  
+            "", 
+            paste("situated in", data$location[1], ",", data$region[1], "Region,", data$state[1], ",")
+          )
           
-          date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")
+          date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")  
           # Format for user-friendly reading
           user_friendly_date <- format(date_obj, "%B %d, %Y")
+          
           paste(
-            station, "Station,", location," is active since:", user_friendly_date, "."
+            station, "Station,", location, "has been operational since", user_friendly_date
           )
+          
         } else if ((is.null(shared_data$w_station_id)) && (is.null(shared_data$ibm_data))) {
           "Please select a station by clicking on it in the map from the Disease Forecasting section."
         }
@@ -380,19 +379,21 @@ server <- function(input, output, session) {
   })
   
   output$risk_trend <- renderPlot({
-    if (is.null(shared_data$lat_location))  {
+    ## Logic to plot the 7 days trend, in this case all the disease modesls are displayed
+    data_prepared <- NULL
+    location <- NULL
+    if (!is.null(shared_data$w_station_id))  {
       data_prepared <- shared_data$this_station_data
       location <- paste0(shared_data$w_station_id, " Station")
-    }else if (!is.null(shared_data$lat_location)) {
+    }else if (!is.null(shared_data$ibm_data)) {
       data_prepared <- shared_data$ibm_data
       data_prepared$forecasting_date <- as.Date(data_prepared$forecasting_date, format = '%Y-%m-%d')
       location <- paste0("Lat ", shared_data$latitude, "Lon ", shared_data$longitude)
-    }else{
-      data_prepared <- NULL
-      location <- NULL
     }
-    if (is.null(data_prepared)){
-      paste("No data to display - check API")
+    
+    if (is.null(data_prepared)) {
+      plot.new()
+      text(0.5, 0.5, "No data available for the selected station or location.", cex = 1.5)
     }else{
       seven_days_trend_plot(data_prepared, location) 
     }
@@ -436,7 +437,7 @@ server <- function(input, output, session) {
     filename = function() {
       req(shared_data$w_station_id, cancelOutput = TRUE)
       paste0("Report_risktrend_uwmadison_",
-             input$disease_name,'_', Sys.Date(), ".pdf")
+             output$w_station_id,'_', Sys.Date(), ".pdf")
     },
     content = function(file) {
       data <- shared_data$this_station_data
@@ -452,6 +453,8 @@ server <- function(input, output, session) {
                                 gls_risk,gls_risk_class,
                                 fe_risk,fe_risk_class,
                                 whitemold_irr_30in_risk,whitemold_irr_15in_risk,whitemold_nirr_risk)
+      
+      
       report_template<-template_pdf(file)
       
       # Prepare report parameters
