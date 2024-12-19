@@ -9,9 +9,8 @@ This open-source plant disease forecasting API and Dashboard enables proactive a
 
 Visit our [dashboard here](https://connect.doit.wisc.edu/tarspot_forecasting_app/)
 
-## API Rest
+## API
 
-**Base URL**: [Forecast Crop Disease API](https://connect.doit.wisc.edu/forecasting_crop_disease/)
 
 Method: `GET` 
 Response: A JSON object containing the predicted probability and underlying variables.
@@ -19,9 +18,11 @@ Response: A JSON object containing the predicted probability and underlying vari
 ### API to our models in top of Wisconet and IBM:
 - Our API provides the prediction of a number of crop diseases based on historical data sourced from 1) Wisconet and 2) IBM-source. Our API is defided to retrieve the historical data and provide the forecasting risk estimates on such locations.
 [LINK](https://github.com/UW-Madison-DSI/pywisconet)
+[Endpoints](https://connect.doit.wisc.edu/pywisconet_wrapper/docs)
+
 
 ### Endpoints to the pre-trained disease models:
-
+**Base URL**: [Forecast Crop Disease API](https://connect.doit.wisc.edu/forecasting_crop_disease/)
 - `/predict_tarspot_risk`  
   Predicts the probability and risk level for **Tarspot**.
 

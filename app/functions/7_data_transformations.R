@@ -1,4 +1,24 @@
 ################################################################ Risk labels
+define_thresholds <- function(df, disease, threshold){
+  df_modified <- df %>%
+    mutate(
+      tarspot_risk_class = ifelse(disease == 'tarspot' & 
+                                    risk_threshold != 35 & 
+                                    tarspot_risk > risk_threshold/100, 
+                                  'High', tarspot_risk_class),
+      fe_risk_class = ifelse(disease == 'fe' & 
+                               risk_threshold != 40 & 
+                               fe_risk > risk_threshold/100, 
+                             'High', fe_risk_class),
+      gls_risk_class = ifelse(disease == 'gls' & 
+                                risk_threshold != 50 & 
+                                fe_risk > risk_threshold/100, 
+                              'High', gls_risk_class)
+    )
+  
+  return(df_modified)
+}
+
 custom_disease_name <- function(disease){
   #Function to map the acronim of disease to the custom name
   if (disease=='tarspot'){

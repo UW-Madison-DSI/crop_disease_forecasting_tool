@@ -50,9 +50,9 @@ ui <- navbarPage(
             "disease_name",
             "Select Disease:",
             choices = c(
-              "Tar Spot" = 'tarspot',
-              "Gray Leaf Spot" = 'gls',
-              "Frogeye Leaf Spot" = 'fe',
+              "Tar Spot (Corn)" = 'tarspot',
+              "Gray Leaf Spot (Corn)" = 'gls',
+              "Frogeye Leaf Spot (Soybean)" = 'fe',
               "Whitemold Irr (30in)" = 'whitemold_irr_30in',
               "Whitemold Irr (15in)" = 'whitemold_irr_15in',
               "Whitemold Dry" = 'whitemold_nirr'
@@ -60,7 +60,7 @@ ui <- navbarPage(
           )
         ),
         dateInput(
-          "forecast_date",
+          "forecasting_date",
           "Select Forecasting Date:",
           value = Sys.Date(),
           min = '2023-06-01',
@@ -72,7 +72,7 @@ ui <- navbarPage(
         
         # Conditional panel for Frogeye Leaf Spot
         conditionalPanel(
-          condition = "input.disease_name == 'fe'",
+          condition = "input.disease_name == 'fe' && input.ibm_data == false",
           checkboxInput("crop_growth_stage", "Growth stage in the R1-R5 range?", value = TRUE),
           sliderInput(
             "risk_threshold",
@@ -81,12 +81,16 @@ ui <- navbarPage(
             max = 50,
             value = 50,
             step = 1
+          ),
+          p(
+            "This is the recommended threshold risk.",
+            style = "font-size: 0.9em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
           )
         ),
         
         # Conditional panel for GLS
         conditionalPanel(
-          condition = "input.disease_name == 'gls'",
+          condition = "input.disease_name == 'gls' && input.ibm_data == false",
           checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
           sliderInput(
             "risk_threshold",
@@ -95,12 +99,16 @@ ui <- navbarPage(
             max = 60,
             value = 60,
             step = 1
+          ),
+          p(
+            "This is the recommended threshold risk.",
+            style = "font-size: 0.9em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
           )
         ),
         
         # Conditional panel for Tar Spot
         conditionalPanel(
-          condition = "input.disease_name == 'tarspot'",
+          condition = "input.disease_name == 'tarspot' && input.ibm_data == false",
           checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
           sliderInput(
             "risk_threshold",
@@ -109,6 +117,10 @@ ui <- navbarPage(
             max = 50,
             value = 35.0,
             step = 1
+          ),
+          p(
+            "This is the recommended threshold risk.",
+            style = "font-size: 0.9em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
           )
         ),
         hr(), 
@@ -118,9 +130,16 @@ ui <- navbarPage(
         #  checkboxInput("show_heatmap", "Show Heat Map", value = FALSE)
         #),
         conditionalPanel(
-          condition = "input.ibm_data != false",
-          actionButton("run_model", "Run Model", 
-                       class = "btn-success")
+          condition = "input.ibm_data !== false",  # Ensure the condition is checking for exactly 'false'
+          actionButton(
+            inputId = "run_model", 
+            label = "Run Model", 
+            class = "btn-success"
+          ),
+          p(
+            "This option provides a summary of all diseases for the selected location and forecasting date.",
+            style = "font-size: 0.9em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
+          )
         )
       ),
       mainPanel(
@@ -154,16 +173,22 @@ ui <- navbarPage(
   tabPanel(
     title = "Summary",
     fluidPage(
-      h3("Trends of Risk and report for the specified location"),
+      h3("Station Summary"),
       mainPanel(
         textOutput('station_specifications'),
+        hr(),
+        checkboxGroupInput("disease", 
+                           label = "Choose Diseases",
+                           choices = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", 
+                                       "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
+                           selected = c("Tar Spot", "Gray Leaf Spot"), inline = TRUE),  # Default selection
         hr(),
         plotOutput("risk_trend", height = "400px", width = "100%"),   
         hr(),
         conditionalPanel(
           condition = "input.ibm_data == false",
           textOutput("download_reported"),
-          p("Downloadable content as a summary of the risk trend for the specified Wisconet station, disease, and forecasting date."),
+          p("Downloadable summary of risk trend for the given station."),
           div(
             downloadButton("download_report", "Download Report", 
                            class = "btn-primary", 
@@ -175,11 +200,11 @@ ui <- navbarPage(
   ),
   # Tab 3: Downloads
   tabPanel(
-    title = "Trends",
+    title = "Downloads",
     fluidPage(
-      h3("Trends"),
+      h3("Downloads"),
       hr(),
-      p("Tabular report on weather data ans risk estimate for the location that was chosed eg single station or by a location pined in the map."),
+      p("A tabular report on weather data and risk estimates for the selected location, such as a specific station or a location pinned on the map."),
       downloadButton("download_stations", "Download csv", 
                      class = "btn-primary", 
                      style = "text-align: center; margin-top: 10px;"),

@@ -1,12 +1,13 @@
 ################################################################################
-############      Main function on All stations Forecasting Data    ############
+############      Main function on All Wisconet Stations Forecasting Data    ############
 ################################################################################
 library(httr2)
 library(jsonlite)
 library(dplyr)
 
 url_all_stations_api <- "https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers/wisconet?forecasting_date=%s&risk_days=%s"
-popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.1f%%<br><strong>Frogeye Leaf Spot:</strong> %.1f%%<br><strong>Gray Leaf Spot:</strong> %.1f%%<br><strong>Whitemold Dry:</strong> %.1f%%<br><strong>Whitemold Irrigation (30in):</strong> %.1f%%<br><strong>Whitemold Irrigation (15in):</strong> %.1f%%"
+popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Dry:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
+
 
 
 fetch_forecasting_data <- function(date) {

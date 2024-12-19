@@ -10,12 +10,15 @@ about_page<-fluidPage(
   ),
   hr(),
   h4("How It Works:"),
-  p("The application uses data from trusted weather and university agricultural sources to forecast the risk of crop diseases."),
+  p("The application uses data from WiscoNet and forecasting Models that were developed by researchers in the University of Madison-Wisconsin to forecast the risk of crop diseases. In this app:"),
   tags$ul(
-    tags$li("Select a disease and forecasting date to view the corresponding risk map."),
-    tags$li("Click on stations to view more details and center the map on specific locations. This action will trigger weather charts and display downloadable information in the tabs above."),
+    tags$li("The 'Disease Forecasting' tab provides a risk map on the Wisconet Stations and the option to choose a pin to retrieve forecasting information."),
+    tags$ul(
+      tags$li("Select a disease and forecasting date to view the corresponding risk map."),
+      tags$li("Click on stations to view more details and center the map on specific locations. This action will trigger weather charts and display downloadable information in the tabs above.")
+    ),
     tags$li("The 'Summary' tab provides detailed information about the selected station or location, including disease forecasts and risk trends for the past 7 days. A PDF report is available for the Station Specification."),
-    tags$li("The 'Trends' tab allows users to download a CSV file of the forecast data for the selected station or location.")
+    tags$li("The 'Downloads' tab allows users to download a CSV file of the forecast data for the selected station or location.")
   ),
   hr(),
   h4("Credits:"),
@@ -129,9 +132,9 @@ about_page<-fluidPage(
           alt = "API Icon", 
           style = "width: 24px; height: 24px; margin-right: 8px;"
         ),
-        "Use our API: ",
+        "Visit our API: ",
         tags$a(
-          href = "https://connect.doit.wisc.edu/forecasting_crop_disease/",
+          href = "https://github.com/UW-Madison-DSI/pywisconet.git",
           target = "_blank",  # Open link in a new tab
           style = "text-decoration: none; color: #007BFF;",  # Link styling
           "Forecasting Disease API"
