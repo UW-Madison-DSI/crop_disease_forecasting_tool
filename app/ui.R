@@ -86,8 +86,13 @@ ui <- navbarPage(
         ),
         # Conditional panel for Frogeye Leaf Spot
         conditionalPanel(
-          condition = "input.disease_name == 'whitemold_irr_30in' || input.disease_name == 'whitemold_nirr'",
-          checkboxInput("flowers_present", "Flowers present?", value = TRUE),
+          condition = "input.disease_name == 'whitemold_irr_15in' && input.ibm_data == false",
+          checkboxInput("flowers_present", "Are Flowers present?", value = TRUE),
+
+        ),
+        conditionalPanel(
+          condition = "(input.disease_name == 'whitemold_irr_30in' || input.disease_name == 'whitemold_nirr') && input.ibm_data == false",
+          checkboxInput("flowers_present", "Are Flowers present?", value = TRUE),
           checkboxInput("row_closure", "Row Closure over threshold?", value = TRUE),
 
           div(
@@ -107,7 +112,7 @@ ui <- navbarPage(
             "risk_threshold",
             "Risk Threshold:",
             min = 40,
-            max = 50,
+            max = 60,
             value = 50,
             step = 1
           ),
@@ -125,8 +130,8 @@ ui <- navbarPage(
           sliderInput(
             "risk_threshold",
             "Risk Threshold:",
-            min = 40,
-            max = 60,
+            min = 50,
+            max = 70,
             value = 60,
             step = 1
           ),
@@ -168,7 +173,7 @@ ui <- navbarPage(
             class = "btn-success"
           ),
           p(
-            "This option provides a summary of all diseases for the selected location and forecasting date.",
+            "This option provides a comprehensive summary of all diseases for the selected location and forecast date, assuming that the crop management practices are followed as recommended to assess the associated risk.",
             style = "font-size: 0.6em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
           )
         )

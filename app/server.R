@@ -176,45 +176,75 @@ server <- function(input, output, session) {
   ################################################################## This is the section 1 risk_map
   output$risk_map <- renderLeaflet({
     if(input$ibm_data==FALSE){
-      lowerb <- if_else(shared_data$disease_name == 'tarspot', 20, 40)
-      upperb <- if_else(input$risk_threshold != 35 & shared_data$disease_name == 'tarspot', 
-                        input$risk_threshold, 
-                        if_else(input$risk_threshold != 40 & shared_data$disease_name != 'tarspot', 
-                                input$risk_threshold, 
-                                40))
+      
       
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       
-      data <- shared_data$stations_data 
+      data <- fetch_forecasting_data(input$forecasting_date)
+    
+      if(input$disease_name %in% c('tarspot','fe','gls')){
+        lower_b <- 20
+        upper_b <- 35
+        if (input$disease_name == 'tarspot' && !input$risk_threshold %in% c(35, NULL)) {
+          lower_b <- 20
+          upper_b <- input$risk_threshold
+          data <- data %>%
+            mutate(tarspot_risk_class = case_when(
+              tarspot_risk < lower_b/100 ~ "Low",                       # If lower than lower_b
+              tarspot_risk > upper_b/100 ~ "High",                      # If higher than upper_b
+              TRUE ~ "Moderate"                                     # Otherwise, Moderate
+            ))
+          paste0("Moving the threshold in tarspot ", upper_b)
+        }
+        
+        if (input$disease_name == 'gls' && !input$risk_threshold %in% c(60, NULL)) {
+          lower_b <- 50
+          upper_b <- input$risk_threshold
+          
+          data <- data %>%
+            mutate(gls_risk_class = case_when(
+              gls_risk < lower_b/100 ~ "Low",                       # If lower than lower_b
+              gls_risk > upper_b/100 ~ "High",                      # If higher than upper_b
+              TRUE ~ "Moderate"                                 # Otherwise, Moderate
+            ))
+        }
+      
+        if (input$disease_name == 'fe' && !input$risk_threshold %in% c(50, NULL)) {
+          lower_b <- 40
+          upper_b <- input$risk_threshold
+          
+          data <- data %>%
+            mutate(fe_risk_class = case_when(
+              fe_risk < lower_b/100 ~ "Low",                       # If lower than lower_b
+              fe_risk > upper_b/100 ~ "High",                      # If higher than upper_b
+              TRUE ~ "Moderate"                                 # Otherwise, Moderate
+            ))
+        }
+      }
+      shared_data$stations_data <- data
       end_time_part2 <- Sys.time()
       time_part2 <- end_time_part2 - shared_data$start_time
       
       # Display the results
       cat(paste("Time for Part 1: ", time_part2, " seconds\n"))
-      if (!input$forecasting_date==Sys.Date()){
-        # Fetch new data based on the forecast date
-        new_stations_data <- fetch_forecasting_data(input$forecasting_date)
-        
-        # Store the fetched data into shared_data
-        shared_data$stations_data <- new_stations_data
-          
-      }
-
-      #data <- relabeling_class(data, shared_data$disease_name, upperb/100)
-      shared_data$stations_data <- data
-      data <- shared_data$stations_data
-      shared_data$disease_name <- input$disease_name
-
+      
       # Check if data is available
       if (nrow(data) > 0) {
         data <- data_transform_risk_labels(data, shared_data$disease_name)  # Apply transformation
-        
+        shared_data$stations_data <- data
         # Filter data for specific forecast date
-        data1 <- data %>%
+        data1 <- shared_data$stations_data %>%
           filter(forecasting_date == input$forecasting_date) %>%
           mutate(`Forecasting Date` = forecasting_date)
-        
-        if (shared_data$disease_name %in% c('tarspot','fe','gls')){
+        cat(paste("------------->>> ",
+                  input$disease_name,
+                  input$risk_threshold, 
+                  nrow(data),
+                  nrow(data1),
+                  colnames(data1),
+                  " \n")
+        )
+        if (input$disease_name %in% c('tarspot','fe','gls')){
           # Create the map and plot the points
           map <- leaflet(data1) %>%
             addProviderTiles(providers$CartoDB.Positron) %>%
@@ -238,14 +268,30 @@ server <- function(input, output, session) {
             addLegend(
               "bottomright",
               colors = c("#88CCEE", "#DDCC77", "#CC6677"),
-              labels = c(paste0("Low (≤ ", lowerb, '%)'), 
-                         paste0("Moderate (", lowerb, " - ", upperb,'%)'), 
-                         paste0("High (> ", upperb,'%)')),
+              labels = c(paste0("Low (≤ ", lower_b, '%)'), 
+                         paste0("Moderate (", lower_b, " - ", upper_b,'%)'), 
+                         paste0("High (> ", upper_b,'%)')),
               title = paste0("Predicted Risk (%)"),
               opacity = 1
             ) 
-        }else if(shared_data$disease_name %in% c('whitemold_irr_30in','whitemold_irr_15in','whitemold_nirr')){
-          map <- leaflet(data1) %>% 
+        }
+        # Define a mapping of disease names to their respective risk variables
+        risk_variables <- list(
+          'whitemold_irr_30in' = 'whitemold_irr_30in_risk',
+          'whitemold_irr_15in' = 'whitemold_irr_15in_risk',
+          'whitemold_nirr' = 'whitemold_nirr_risk'
+        )
+        
+        # Check if the disease name is in the mapping
+        if (input$disease_name %in% names(risk_variables)) {
+          # Get the corresponding risk variable for the selected disease
+          risk_variable <- risk_variables[[input$disease_name]]
+          
+          # Print the data (optional)
+          print(data1)
+          
+          # Create the map dynamically based on the risk variable
+          map <- leaflet(data1) %>%
             addProviderTiles(providers$CartoDB.Positron) %>%
             setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
             addCircleMarkers(
@@ -253,7 +299,7 @@ server <- function(input, output, session) {
               lat = ~latitude,   # Latitude column in your data
               popup = ~popup_content,  # Popup content
               color = "black",  # Marker outline color
-              fillColor = ~colorNumeric(palette = "YlGnBu", domain = data1$Risk)(Risk),  # Color based on Risk
+              fillColor = ~colorNumeric(palette = "YlGnBu", domain = data1[[risk_variable]])(data1[[risk_variable]]),  # Color based on dynamic Risk variable
               fillOpacity = 0.8,  # Opacity of the marker fill
               radius = 6,  # Radius of the marker
               weight = 1.5,  # Border thickness
@@ -266,12 +312,13 @@ server <- function(input, output, session) {
             ) %>%
             addLegend(
               position = "bottomright",  # Position of the legend
-              pal = colorNumeric(palette = "YlGnBu", domain = data1$Risk),  # Same palette and domain as in addCircleMarkers
-              values = data1$Risk,  # Data used for coloring
+              pal = colorNumeric(palette = "YlGnBu", domain = data1[[risk_variable]]),  # Use the same risk variable for coloring
+              values = data1[[risk_variable]],  # Values used for coloring
               title = "Risk (%)",  # Title of the legend
               opacity = 1  # Opacity of the legend
             )
         }
+        
         map %>%
           addPolygons(
             data = county_boundaries,
