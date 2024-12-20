@@ -52,7 +52,10 @@ server <- function(input, output, session) {
     start_time = Sys.time()
   )
   
-  
+  observeEvent(input$info_icon, {
+    # Toggle the visibility of the tooltip
+    toggle("info_tooltip")
+  })
   #observeEvent(input$risk_threshold, {
   #  req(input$risk_threshold)
   #  req(input$disease_name)  # Ensure that disease_name is provided
@@ -164,11 +167,21 @@ server <- function(input, output, session) {
     }
   })
   
+  relabeling_class <- function(data, disease, threshold){
+    if(disease=='tarspot' && threshold!=.35){
+      data$tarspot_risk_class <- if_else(data$tarspot_risk>threshold, "High", data$tarspot_risk_class)
+    }
+    return(data)
+  }
   ################################################################## This is the section 1 risk_map
   output$risk_map <- renderLeaflet({
     if(input$ibm_data==FALSE){
       lowerb <- if_else(shared_data$disease_name == 'tarspot', 20, 40)
-      upperb <- input$risk_threshold
+      upperb <- if_else(input$risk_threshold != 35 & shared_data$disease_name == 'tarspot', 
+                        input$risk_threshold, 
+                        if_else(input$risk_threshold != 40 & shared_data$disease_name != 'tarspot', 
+                                input$risk_threshold, 
+                                40))
       
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       
@@ -184,8 +197,12 @@ server <- function(input, output, session) {
         
         # Store the fetched data into shared_data
         shared_data$stations_data <- new_stations_data
-        data <- shared_data$stations_data  
+          
       }
+
+      #data <- relabeling_class(data, shared_data$disease_name, upperb/100)
+      shared_data$stations_data <- data
+      data <- shared_data$stations_data
       shared_data$disease_name <- input$disease_name
 
       # Check if data is available

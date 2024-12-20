@@ -20,7 +20,16 @@ tool_title <- "Agricultural Forecasting and Advisory System"
 ui <- navbarPage(
   title = tool_title,
   theme = shinythemes::shinytheme("flatly"), 
-  footer = div(class = "footer-text", "© 2024 UW-Madison"),
+  #footer = div(class = "footer-text", "© 2024 UW-Madison"),
+  # Footer as a div with "Powered by Wisconet"
+  footer = div(
+    class = "footer-text",
+    "© 2024 UW-Madison | ",
+    tags$a(href = "https://wisconet.wisc.edu", target = "_blank",
+           style = "color:#D3D3D3; font-weight: bold;",
+           "Powered by Wisconet"),
+    style = "width:100%; text-align:center; padding:5px; background-color:#B22234;" # Removed position:fixed and reduced padding
+  ),
   
   # Tab 1: Weather Map
   tabPanel(
@@ -67,13 +76,33 @@ ui <- navbarPage(
           max = Sys.Date()
         ),
         hr(), 
-        h4("Crop Management"),
-        checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
-        
+        conditionalPanel(
+          condition = "input.ibm_data == false",
+          h4("Crop Management"),
+          p(
+            "Our model predictions are advised when the next conditions are satisfied.",
+            style = "font-size: 0.6em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
+          )
+        ),
         # Conditional panel for Frogeye Leaf Spot
         conditionalPanel(
+          condition = "input.disease_name == 'whitemold_irr_30in' || input.disease_name == 'whitemold_nirr'",
+          checkboxInput("flowers_present", "Flowers present?", value = TRUE),
+          checkboxInput("row_closure", "Row Closure over threshold?", value = TRUE),
+
+          div(
+            class = "info_tooltip",
+            tags$img(
+              src = "IMG_0690.svg",
+              style = "max-width: 2000px; max-height: 100px; display: block; margin: 10px auto;" # Limit height
+            )
+          )
+        ),
+        conditionalPanel(
+          checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
           condition = "input.disease_name == 'fe' && input.ibm_data == false",
           checkboxInput("crop_growth_stage", "Growth stage in the R1-R5 range?", value = TRUE),
+          
           sliderInput(
             "risk_threshold",
             "Risk Threshold:",
@@ -83,13 +112,14 @@ ui <- navbarPage(
             step = 1
           ),
           p(
-            "This is the recommended threshold risk.",
-            style = "font-size: 0.9em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
+            "Set as the recommended risk threshold.",
+            style = "font-size: 0.5em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
           )
         ),
         
         # Conditional panel for GLS
         conditionalPanel(
+          checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
           condition = "input.disease_name == 'gls' && input.ibm_data == false",
           checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
           sliderInput(
@@ -101,13 +131,14 @@ ui <- navbarPage(
             step = 1
           ),
           p(
-            "This is the recommended threshold risk.",
-            style = "font-size: 0.9em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
-          )
+            "Set as the recommended risk threshold.",
+            style = "font-size: 0.5em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
+          ),
         ),
         
         # Conditional panel for Tar Spot
         conditionalPanel(
+          checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
           condition = "input.disease_name == 'tarspot' && input.ibm_data == false",
           checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
           sliderInput(
@@ -119,8 +150,8 @@ ui <- navbarPage(
             step = 1
           ),
           p(
-            "This is the recommended threshold risk.",
-            style = "font-size: 0.9em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
+            "Set as the recommended risk threshold.",
+            style = "font-size: 0.5em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
           )
         ),
         hr(), 
@@ -138,7 +169,7 @@ ui <- navbarPage(
           ),
           p(
             "This option provides a summary of all diseases for the selected location and forecasting date.",
-            style = "font-size: 0.9em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
+            style = "font-size: 0.6em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
           )
         )
       ),
@@ -218,5 +249,4 @@ ui <- navbarPage(
     title = "About",
     about_page
   )
-  
 )
