@@ -109,7 +109,7 @@ ui <- navbarPage(
           checkboxInput("crop_growth_stage", "Growth stage in the R1-R5 range?", value = TRUE),
           
           sliderInput(
-            "risk_threshold",
+            "risk_threshold_fe",
             "Risk Threshold:",
             min = 40,
             max = 60,
@@ -128,7 +128,7 @@ ui <- navbarPage(
           condition = "input.disease_name == 'gls' && input.ibm_data == false",
           checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
           sliderInput(
-            "risk_threshold",
+            "risk_threshold_gls",
             "Risk Threshold:",
             min = 50,
             max = 70,
@@ -147,7 +147,7 @@ ui <- navbarPage(
           condition = "input.disease_name == 'tarspot' && input.ibm_data == false",
           checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
           sliderInput(
-            "risk_threshold",
+            "risk_threshold_ts",
             "Risk Threshold:",
             min = 20,
             max = 50,

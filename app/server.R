@@ -56,6 +56,7 @@ server <- function(input, output, session) {
     # Toggle the visibility of the tooltip
     toggle("info_tooltip")
   })
+  
   #observeEvent(input$risk_threshold, {
   #  req(input$risk_threshold)
   #  req(input$disease_name)  # Ensure that disease_name is provided
@@ -93,7 +94,6 @@ server <- function(input, output, session) {
       # Gather the coordinates
       shared_data$lat_location <- click$lat
       shared_data$lng_location <- click$lng
-      
       # Check if the click is inside Wisconsin
       inside_wisconsin <- click$lat >= wisconsin_bbox$lat_min &&
         click$lat <= wisconsin_bbox$lat_max &&
@@ -181,46 +181,74 @@ server <- function(input, output, session) {
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       
       data <- fetch_forecasting_data(input$forecasting_date)
-    
-      if(input$disease_name %in% c('tarspot','fe','gls')){
-        lower_b <- 20
-        upper_b <- 35
-        if (input$disease_name == 'tarspot' && !input$risk_threshold %in% c(35, NULL)) {
-          lower_b <- 20
-          upper_b <- input$risk_threshold
-          data <- data %>%
-            mutate(tarspot_risk_class = case_when(
-              tarspot_risk < lower_b/100 ~ "Low",                       # If lower than lower_b
-              tarspot_risk > upper_b/100 ~ "High",                      # If higher than upper_b
-              TRUE ~ "Moderate"                                     # Otherwise, Moderate
-            ))
-          paste0("Moving the threshold in tarspot ", upper_b)
-        }
-        
-        if (input$disease_name == 'gls' && !input$risk_threshold %in% c(60, NULL)) {
-          lower_b <- 50
-          upper_b <- input$risk_threshold
-          
-          data <- data %>%
-            mutate(gls_risk_class = case_when(
-              gls_risk < lower_b/100 ~ "Low",                       # If lower than lower_b
-              gls_risk > upper_b/100 ~ "High",                      # If higher than upper_b
-              TRUE ~ "Moderate"                                 # Otherwise, Moderate
-            ))
-        }
       
-        if (input$disease_name == 'fe' && !input$risk_threshold %in% c(50, NULL)) {
-          lower_b <- 40
-          upper_b <- input$risk_threshold
-          
-          data <- data %>%
-            mutate(fe_risk_class = case_when(
-              fe_risk < lower_b/100 ~ "Low",                       # If lower than lower_b
-              fe_risk > upper_b/100 ~ "High",                      # If higher than upper_b
-              TRUE ~ "Moderate"                                 # Otherwise, Moderate
+      lower_b <- 20
+      upper_b1 <- (input$risk_threshold_ts)
+      if (input$disease_name == 'tarspot' && !input$risk_threshold_ts %in% c(35, NULL)) {
+        lower_b <- 20
+        upper_b1 <- (input$risk_threshold_ts)
+        data <- data %>%
+            mutate(tarspot_risk_class = case_when(
+              tarspot_risk < lower_b/100 ~ "Low",  
+              tarspot_risk > upper_b1/100 ~ "High", 
+              TRUE ~ "Moderate" 
             ))
-        }
+        paste0("Moving the threshold in tarspot ", upper_b1)
+      }else if (input$disease_name == 'tarspot' && input$risk_threshold_ts==35) {
+        lower_b <- 20
+        upper_b1 <- 35
+        data <- data %>%
+          mutate(tarspot_risk_class = case_when(
+            tarspot_risk < lower_b/100 ~ "Low",  
+            tarspot_risk > upper_b1/100 ~ "High", 
+            TRUE ~ "Moderate" 
+          ))
+        paste0("Moving the threshold in tarspot ", upper_b1)
       }
+        
+      if (input$disease_name == 'gls' && !input$risk_threshold_gls %in% c(60, NULL)) {
+        lower_b <- 50
+        upper_b1 <- (input$risk_threshold_gls)
+        data <- data %>%
+            mutate(gls_risk_class = case_when(
+              gls_risk < lower_b/100 ~ "Low",
+              gls_risk > upper_b1/100 ~ "High", 
+              TRUE ~ "Moderate"   
+          ))
+      }else if (input$disease_name == 'gls' && input$risk_threshold_gls==60) {
+        lower_b <- 50
+        upper_b1 <- 60
+        data <- data %>%
+          mutate(tarspot_risk_class = case_when(
+            tarspot_risk < lower_b/100 ~ "Low",  
+            tarspot_risk > upper_b1/100 ~ "High", 
+            TRUE ~ "Moderate" 
+          ))
+        paste0("Moving the threshold in tarspot ", upper_b1)
+      }
+      
+      if (input$disease_name == 'fe' && !input$risk_threshold_fe==50) {
+        lower_b <- 40
+        upper_b1 <- (input$risk_threshold_fe)
+        data <- data %>%
+          mutate(fe_risk_class = case_when(
+              fe_risk < lower_b/100 ~ "Low",
+              fe_risk > upper_b1/100 ~ "High",
+              TRUE ~ "Moderate"
+          ))
+      }else if (input$disease_name == 'fe' && input$risk_threshold_fe==50) {
+        lower_b <- 40
+        upper_b1 <- 50
+        data <- data %>%
+          mutate(tarspot_risk_class = case_when(
+            tarspot_risk < lower_b/100 ~ "Low",  
+            tarspot_risk > upper_b1/100 ~ "High", 
+            TRUE ~ "Moderate" 
+          ))
+        paste0("Moving the threshold in tarspot ", upper_b1)
+      }
+
+      upper_b <- upper_b1
       shared_data$stations_data <- data
       end_time_part2 <- Sys.time()
       time_part2 <- end_time_part2 - shared_data$start_time
@@ -230,15 +258,15 @@ server <- function(input, output, session) {
       
       # Check if data is available
       if (nrow(data) > 0) {
-        data <- data_transform_risk_labels(data, shared_data$disease_name)  # Apply transformation
+        data <- data_transform_risk_labels(data, shared_data$disease_name) 
         shared_data$stations_data <- data
-        # Filter data for specific forecast date
+
         data1 <- shared_data$stations_data %>%
           filter(forecasting_date == input$forecasting_date) %>%
           mutate(`Forecasting Date` = forecasting_date)
         cat(paste("------------->>> ",
                   input$disease_name,
-                  input$risk_threshold, 
+                  upper_b, lower_b,  
                   nrow(data),
                   nrow(data1),
                   colnames(data1),
@@ -269,8 +297,8 @@ server <- function(input, output, session) {
               "bottomright",
               colors = c("#88CCEE", "#DDCC77", "#CC6677"),
               labels = c(paste0("Low (≤ ", lower_b, '%)'), 
-                         paste0("Moderate (", lower_b, " - ", upper_b,'%)'), 
-                         paste0("High (> ", upper_b,'%)')),
+                         paste0("Moderate (", lower_b, " - ", upper_b1,'%)'), 
+                         paste0("High (> ", upper_b1,'%)')),
               title = paste0("Predicted Risk (%)"),
               opacity = 1
             ) 
