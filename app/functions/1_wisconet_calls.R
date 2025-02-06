@@ -1,26 +1,24 @@
 ################################################################################
-############      Main function on All Wisconet Stations Forecasting Data    ############
+##########  Main function on All Wisconet Stations Forecasting Data    #########
 ################################################################################
 
 library(httr2)
 library(jsonlite)
 library(dplyr)
+library(memoise)
+library(httr2)
 
-# Define the popup content string with 10 placeholders: <strong>Whitemold Dry:</strong> %.2f%%<br>
-# Define the popup content string with 10 placeholders: <strong>Whitemold Dry:</strong> %.2f%%<br>
 popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
 
 # Define the base URL
 base_url <- "https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers/wisconet"
 
-fetch_forecasting_data <- function(forecast_date) {
+
+fetch_forecasting_data <- memoise(function(forecast_date) {
   tryCatch({
     start_time <- Sys.time()
     converted_date <- as.Date(forecast_date, format = "%Y-%m-%d")
     formatted_date <- format(converted_date, "%Y-%m-%d")
-    
-    # Build the request and set headers
-    library(httr2)
     
     req <- request(base_url) %>%
       req_url_query(
@@ -31,16 +29,9 @@ fetch_forecasting_data <- function(forecast_date) {
     
     response <- req_perform(req)
     
-    
-    # Perform the request
-    response <- req_perform(req)
-    
     if (resp_status(response) == 200) {
       # Use resp_body_string() to get the response text, then parse with fromJSON()
       data <- fromJSON(resp_body_string(response))
-      print(data)
-      # Assuming your JSON structure has a top-level "data" element that contains station records:
-      #stations_list <- data$data
       return(data %>%
                mutate(
                  #forecasting_date = as.Date(date)+1,
@@ -70,4 +61,4 @@ fetch_forecasting_data <- function(forecast_date) {
     message(paste0("Error processing data: ", e$message))
     return(NULL)
   })
-}
+})

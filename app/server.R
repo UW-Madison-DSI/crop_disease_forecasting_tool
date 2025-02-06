@@ -56,38 +56,16 @@ server <- function(input, output, session) {
     start_time = Sys.time()
   )
   
+  forecast_data <- reactive({
+    # This will re-run only when input$forecasting_date changes.
+    fetch_forecasting_data(input$forecasting_date)
+  })
+  
   observeEvent(input$info_icon, {
     # Toggle the visibility of the tooltip
     toggle("info_tooltip")
   })
   
-  #observeEvent(input$risk_threshold, {
-  #  req(input$risk_threshold)
-  #  req(input$disease_name)  # Ensure that disease_name is provided
-    
-    # Update the shared threshold
-  #  shared_data$risk_threshold <- input$risk_threshold
-  #  risk_data <- shared_data$stations_data
-    # Apply the risk class function using if_else for conditional logic
-  #  risk_data <- risk_data %>%
-  #    mutate(
-  #      tarspot_risk_class = case_when(
-  #        input$disease_name == "tarspot" ~ sapply(tarspot_risk, risk_class_function, disease_name = "tarspot", threshold = input$risk_threshold),
-  #        TRUE ~ tarspot_risk_class  # Keep existing values if not 'tarspot'
-  #      ),
-        
-  #      gls_risk_class = case_when(
-  #        input$disease_name == "gls" ~ sapply(gls_risk, risk_class_function, disease_name = "gls", threshold = input$risk_threshold),
-  #        TRUE ~ gls_risk_class  # Keep existing values if not 'gls'
-  #      ),
-        
-  #      fe_risk_class = case_when(
-  #        input$disease_name == "fe" ~ sapply(fe_risk, risk_class_function, disease_name = "fe", threshold = input$risk_threshold),
-  #        TRUE ~ fe_risk_class  # Keep existing values if not 'fe'
-  #      )
-  #    )
-  #  shared_data$stations_data <- risk_data
-  #})
   
   ############################################################################## IBM data, AOI: Wisconsin
   # Add a marker on user click
@@ -182,7 +160,7 @@ server <- function(input, output, session) {
     if(input$ibm_data==FALSE){
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       
-      data <- fetch_forecasting_data(input$forecasting_date)
+      data <- forecast_data()
       print(data)
       print(input$forecasting_date)
       lower_b <- 20
@@ -267,14 +245,7 @@ server <- function(input, output, session) {
         data1 <- shared_data$stations_data %>%
           filter(forecasting_date == input$forecasting_date) %>%
           mutate(`Forecasting Date` = forecasting_date)
-        cat(paste("------------->>> ",
-                  input$disease_name,
-                  upper_b, lower_b,  
-                  nrow(data),
-                  nrow(data1),
-                  colnames(data1),
-                  " \n")
-        )
+
         if (input$disease_name %in% c('tarspot','fe','gls')){
           # Create the map and plot the points
           map <- leaflet(data1) %>%
@@ -306,7 +277,7 @@ server <- function(input, output, session) {
               opacity = 1
             ) 
         }
-        # Define a mapping of disease names to their respective risk variables
+
         risk_variables <- list(
           'whitemold_irr_30in' = 'whitemold_irr_30in_risk',
           'whitemold_irr_15in' = 'whitemold_irr_15in_risk',
@@ -318,23 +289,20 @@ server <- function(input, output, session) {
           # Get the corresponding risk variable for the selected disease
           risk_variable <- risk_variables[[input$disease_name]]
           
-          # Print the data (optional)
-          print(data1)
-          
-          # Create the map dynamically based on the risk variable
           map <- leaflet(data1) %>%
             addProviderTiles(providers$CartoDB.Positron) %>%
             setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
             addCircleMarkers(
-              lng = ~longitude,  # Longitude column in your data
-              lat = ~latitude,   # Latitude column in your data
-              popup = ~popup_content,  # Popup content
-              color = "black",  # Marker outline color
-              fillColor = ~colorNumeric(palette = "YlGnBu", domain = data1[[risk_variable]])(data1[[risk_variable]]),  # Color based on dynamic Risk variable
-              fillOpacity = 0.8,  # Opacity of the marker fill
-              radius = 6,  # Radius of the marker
-              weight = 1.5,  # Border thickness
-              label = ~station_name,  # Label on hover (optional)
+              lng = ~longitude,
+              lat = ~latitude,
+              popup = ~popup_content, 
+              color = "black",
+              fillColor = ~colorNumeric(palette = "YlGnBu", 
+                          domain = data1[[risk_variable]])(data1[[risk_variable]]),
+              fillOpacity = 0.8,
+              radius = 6, 
+              weight = 1.5, 
+              label = ~station_name,
               labelOptions = labelOptions(
                 style = list("font-weight" = "normal", padding = "3px 8px"),
                 textsize = "12px", direction = "auto"
@@ -342,11 +310,11 @@ server <- function(input, output, session) {
               layerId = ~station_name
             ) %>%
             addLegend(
-              position = "bottomright",  # Position of the legend
-              pal = colorNumeric(palette = "YlGnBu", domain = data1[[risk_variable]]),  # Use the same risk variable for coloring
-              values = data1[[risk_variable]],  # Values used for coloring
-              title = "Risk (%)",  # Title of the legend
-              opacity = 1  # Opacity of the legend
+              position = "bottomright", 
+              pal = colorNumeric(palette = "YlGnBu", domain = data1[[risk_variable]]), 
+              values = data1[[risk_variable]],
+              title = "Risk (%)",  
+              opacity = 1 
             )
         }
         
