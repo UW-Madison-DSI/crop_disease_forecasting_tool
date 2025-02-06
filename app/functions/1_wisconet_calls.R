@@ -9,8 +9,6 @@ library(memoise)
 library(httr2)
 
 popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
-
-# Define the base URL
 base_url <- "https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers/wisconet"
 
 
@@ -57,7 +55,6 @@ fetch_forecasting_data <- memoise(function(forecast_date) {
     }
     
   }, error = function(e) {
-    print(e)
     message(paste0("Error processing data: ", e$message))
     return(NULL)
   })

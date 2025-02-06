@@ -132,8 +132,8 @@ server <- function(input, output, session) {
         "Gray Leaf Spot (Corn) Risk Class: ", punctual_estimate$gls_risk_class, "| ",
         "FrogEye (Soybean) Risk Class: ", punctual_estimate$fe_risk_class, "| ",
         "Whitemold Irrigated (30in) Risk: ", round(punctual_estimate$whitemold_irr_30in_risk * 100, 2), "% | ",
-        "Whitemold Irrigated (15in) Risk: ", round(punctual_estimate$whitemold_irr_15in_risk * 100, 2), "% | ",
-        "Whitemold Dry Risk: ", round(punctual_estimate$whitemold_nirr_risk * 100, 2), "%"
+        "Whitemold Irrigated (15in) Risk: ", round(punctual_estimate$whitemold_irr_15in_risk * 100, 2), "% | "
+        #"Whitemold Dry Risk: ", round(punctual_estimate$whitemold_nirr_risk * 100, 2), "%"
       )
       
       # Display the clicked coordinates and risk information
@@ -474,7 +474,7 @@ server <- function(input, output, session) {
                  city, county, earliest_api_date, latitude, longitude, region, state, 
                  station_timezone, tarspot_risk, tarspot_risk_class, gls_risk, 
                  gls_risk_class, fe_risk, fe_risk_class, 
-                 whitemold_irr_30in_risk, whitemold_irr_15in_risk, whitemold_nirr_risk) %>%
+                 whitemold_irr_30in_risk, whitemold_irr_15in_risk) %>%
           mutate(across(ends_with("_risk"), ~ . * 100))      
       }else if(input$ibm_data==TRUE){
         if (!is.null(shared_data$ibm_data)) {
@@ -514,8 +514,9 @@ server <- function(input, output, session) {
                                 tarspot_risk,tarspot_risk_class,
                                 gls_risk,gls_risk_class,
                                 fe_risk,fe_risk_class,
-                                whitemold_irr_30in_risk,whitemold_irr_15in_risk,
-                                whitemold_nirr_risk)
+                                whitemold_irr_30in_risk,whitemold_irr_15in_risk
+                                #whitemold_nirr_risk
+                                )
       
       report_template<-template_pdf(file)
       
