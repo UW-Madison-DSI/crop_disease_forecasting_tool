@@ -10,6 +10,7 @@ options(tigris_use_cache = TRUE)
 library(DT)
 library(gridExtra)
 library(reshape2)
+library(httr2)
 
 source("functions/1_wisconet_calls.R")
 source("functions/2_external_source.R")
@@ -34,6 +35,9 @@ wisconsin_bbox <- list(
   lng_min = -92.8894,
   lng_max = -86.2495
 )
+
+
+
 
 ######################################################################## SERVER
 server <- function(input, output, session) {
@@ -176,12 +180,11 @@ server <- function(input, output, session) {
   ################################################################## This is the section 1 risk_map
   output$risk_map <- renderLeaflet({
     if(input$ibm_data==FALSE){
-      
-      
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       
       data <- fetch_forecasting_data(input$forecasting_date)
-      
+      print(data)
+      print(input$forecasting_date)
       lower_b <- 20
       upper_b1 <- (input$risk_threshold_ts)
       if (input$disease_name == 'tarspot' && !input$risk_threshold_ts %in% c(35, NULL)) {

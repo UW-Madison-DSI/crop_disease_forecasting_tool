@@ -1,64 +1,72 @@
 ################################################################################
 ############      Main function on All Wisconet Stations Forecasting Data    ############
 ################################################################################
+
 library(httr2)
 library(jsonlite)
 library(dplyr)
 
-url_all_stations_api <- "https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers/wisconet?forecasting_date=%s&risk_days=%s"
-popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Dry:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
+# Define the popup content string with 10 placeholders: <strong>Whitemold Dry:</strong> %.2f%%<br>
+# Define the popup content string with 10 placeholders: <strong>Whitemold Dry:</strong> %.2f%%<br>
+popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
 
+# Define the base URL
+base_url <- "https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers/wisconet"
 
-
-fetch_forecasting_data <- function(date) {
+fetch_forecasting_data <- function(forecast_date) {
   tryCatch({
-    # Construct the API URL
     start_time <- Sys.time()
-    cat("API call started at:", start_time, "\n")
+    converted_date <- as.Date(forecast_date, format = "%Y-%m-%d")
+    formatted_date <- format(converted_date, "%Y-%m-%d")
     
-    api_url <- sprintf(url_all_stations_api, date, 7) # retrieve 7 days historical data
+    # Build the request and set headers
+    library(httr2)
     
-    # Make the GET request
-    response <- request(api_url) %>%
-      req_headers("Content-Type" = "application/json") %>%
-      req_perform()
+    req <- request(base_url) %>%
+      req_url_query(
+        forecasting_date = formatted_date,  # Use the formatted string
+        risk_days = 1
+      ) %>%
+      req_headers("Accept" = "application/json")
     
-    # Parse the JSON response
-    response_content <- resp_body_json(response, simplifyVector = TRUE)
-    end_time1 <- Sys.time()
+    response <- req_perform(req)
     
-    cat("Time taken for API call response before turned it as tabular:", end_time1 - start_time, "\n")
-    if (is.null(response_content) || length(response_content) == 0) {
-      stop("No stations_risk data in API response")
+    
+    # Perform the request
+    response <- req_perform(req)
+    
+    if (resp_status(response) == 200) {
+      # Use resp_body_string() to get the response text, then parse with fromJSON()
+      data <- fromJSON(resp_body_string(response))
+      print(data)
+      # Assuming your JSON structure has a top-level "data" element that contains station records:
+      #stations_list <- data$data
+      return(data %>%
+               mutate(
+                 #forecasting_date = as.Date(date)+1,
+                 popup_content = sprintf(
+                   popup_content_str,
+                   station_name,
+                   location,
+                   region,
+                   forecasting_date,
+                   tarspot_risk * 100,
+                   fe_risk * 100,
+                   gls_risk * 100,
+                   #whitemold_nirr_risk * 100,
+                   whitemold_irr_30in_risk * 100,
+                   whitemold_irr_15in_risk * 100
+                 )
+               ))
+      
+    } else {
+      cat("Request failed with status code:", resp_status(response), "\n")
+      cat("Response body:\n", resp_body_string(response), "\n")
+      return(NULL)
     }
     
-    stations_df <- bind_rows(response_content)
-    print(head(stations_df))
-    
-    stations_df <- stations_df %>%
-      mutate(
-        forecasting_date = as.Date(date)+1,
-        popup_content = sprintf(
-          popup_content_str,
-          station_name,
-          location,
-          region,
-          forecasting_date,
-          tarspot_risk * 100,
-          fe_risk * 100,
-          gls_risk * 100,
-          whitemold_nirr_risk * 100,
-          whitemold_irr_30in_risk * 100,
-          whitemold_irr_15in_risk * 100
-        )
-      )
-    
-    end_time <- Sys.time()
-    
-    cat("Time taken for API call complete:", end_time - start_time, "\n")
-    return(stations_df)
-  
   }, error = function(e) {
+    print(e)
     message(paste0("Error processing data: ", e$message))
     return(NULL)
   })
