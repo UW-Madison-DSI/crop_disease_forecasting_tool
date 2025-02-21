@@ -37,8 +37,6 @@ wisconsin_bbox <- list(
 )
 
 
-
-
 ######################################################################## SERVER
 server <- function(input, output, session) {
   
@@ -52,7 +50,7 @@ server <- function(input, output, session) {
     disease_name = 'tarspot',
     stations_data = fetch_forecasting_data(Sys.Date()),
     nstations = 58,
-    this_station_data = fetch_forecasting_data(Sys.Date())%>%filter(station_id=='ALTN'), #default if not specified
+    this_station_data = fetch_forecasting_data(Sys.Date()), #default if not specified
     start_time = Sys.time()
   )
   
@@ -161,7 +159,8 @@ server <- function(input, output, session) {
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       
       data <- forecast_data()
-      print(data)
+      print("---------------------------")
+      print(nrow(data))
       print(input$forecasting_date)
       lower_b <- 20
       upper_b1 <- (input$risk_threshold_ts)
@@ -239,13 +238,15 @@ server <- function(input, output, session) {
       
       # Check if data is available
       if (nrow(data) > 0) {
-        data <- data_transform_risk_labels(data, shared_data$disease_name) 
+        data1 <- data_transform_risk_labels(data, shared_data$disease_name) 
         shared_data$stations_data <- data
-
-        data1 <- shared_data$stations_data %>%
-          filter(forecasting_date == input$forecasting_date) %>%
-          mutate(`Forecasting Date` = forecasting_date)
-
+        
+        print(data)
+        #data1 <- shared_data$stations_data %>%
+        #  filter(forecasting_date == input$forecasting_date) %>%
+        #  mutate(`Forecasting Date` = forecasting_date)
+        
+        
         if (input$disease_name %in% c('tarspot','fe','gls')){
           # Create the map and plot the points
           map <- leaflet(data1) %>%
