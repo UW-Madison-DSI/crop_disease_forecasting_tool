@@ -1,3 +1,5 @@
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+
 library(shiny)
 library(leaflet)
 library(httr)
@@ -19,6 +21,14 @@ source("functions/3_weather_plots.R") #now only on the risk trend but about to b
 source("functions/4_pdf_template.R")
 
 source("functions/7_data_transformations.R")
+
+library(arrow)
+
+# Read the Parquet file into an R data frame
+library(readr)
+
+historical_data <- read_parquet("snapshot_0224_0225_stations.parquet") %>% 
+  mutate(forecasting_date = as.POSIXct(forecasting_date, format = "%Y-%m-%d %H:%M:%S", tz = "CST6CDT"))
 
 
 ########################################################## SETTINGS: WI boundary
@@ -48,16 +58,28 @@ server <- function(input, output, session) {
     lng_location = NULL,
     ibm_data = NULL,
     disease_name = 'tarspot',
-    stations_data = fetch_forecasting_data(Sys.Date()),
+    stations_data = historical_data%>%filter(forecasting_date=='2025-02-22'),
     nstations = 58,
-    this_station_data = fetch_forecasting_data(Sys.Date()), #default if not specified
+    this_station_data = historical_data%>%filter((forecasting_date=='2025-02-22')
+                                                & (station_id=='ALTN')),
     start_time = Sys.time()
   )
   
   forecast_data <- reactive({
     # This will re-run only when input$forecasting_date changes.
-    fetch_forecasting_data(input$forecasting_date)
+    req(input$forecasting_date)  # Ensure the input is available
+    
+    # Convert input date to Date objects for safe comparison
+    forecast_date <- as.Date(input$forecasting_date)
+    cutoff_date <- as.Date("2025-02-22")
+    
+    if (forecast_date < cutoff_date) {
+      return(historical_data %>% filter(forecasting_date == forecast_date))
+    } else {
+      fetch_forecasting_data(forecast_date)
+    }
   })
+  
   
   observeEvent(input$info_icon, {
     # Toggle the visibility of the tooltip
@@ -159,134 +181,140 @@ server <- function(input, output, session) {
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       
       data <- forecast_data()
-      print("---------------------------")
-      print(nrow(data))
-      print(input$forecasting_date)
-      lower_b <- 20
-      upper_b1 <- (input$risk_threshold_ts)
-      if (input$disease_name == 'tarspot' && !input$risk_threshold_ts %in% c(35, NULL)) {
-        lower_b <- 20
-        upper_b1 <- (input$risk_threshold_ts)
-        data <- data %>%
-            mutate(tarspot_risk_class = case_when(
-              tarspot_risk < lower_b/100 ~ "Low",  
-              tarspot_risk > upper_b1/100 ~ "High", 
-              TRUE ~ "Moderate" 
-            ))
-        paste0("Moving the threshold in tarspot ", upper_b1)
-      }else if (input$disease_name == 'tarspot' && input$risk_threshold_ts==35) {
-        lower_b <- 20
-        upper_b1 <- 35
-        data <- data %>%
-          mutate(tarspot_risk_class = case_when(
-            tarspot_risk < lower_b/100 ~ "Low",  
-            tarspot_risk > upper_b1/100 ~ "High", 
-            TRUE ~ "Moderate" 
-          ))
-        paste0("Moving the threshold in tarspot ", upper_b1)
-      }
-        
-      if (input$disease_name == 'gls' && !input$risk_threshold_gls %in% c(60, NULL)) {
-        lower_b <- 50
-        upper_b1 <- (input$risk_threshold_gls)
-        data <- data %>%
-            mutate(gls_risk_class = case_when(
-              gls_risk < lower_b/100 ~ "Low",
-              gls_risk > upper_b1/100 ~ "High", 
-              TRUE ~ "Moderate"   
-          ))
-      }else if (input$disease_name == 'gls' && input$risk_threshold_gls==60) {
-        lower_b <- 50
-        upper_b1 <- 60
-        data <- data %>%
-          mutate(tarspot_risk_class = case_when(
-            tarspot_risk < lower_b/100 ~ "Low",  
-            tarspot_risk > upper_b1/100 ~ "High", 
-            TRUE ~ "Moderate" 
-          ))
-        paste0("Moving the threshold in tarspot ", upper_b1)
-      }
       
-      if (input$disease_name == 'fe' && !input$risk_threshold_fe==50) {
-        lower_b <- 40
-        upper_b1 <- (input$risk_threshold_fe)
-        data <- data %>%
-          mutate(fe_risk_class = case_when(
-              fe_risk < lower_b/100 ~ "Low",
-              fe_risk > upper_b1/100 ~ "High",
-              TRUE ~ "Moderate"
-          ))
-      }else if (input$disease_name == 'fe' && input$risk_threshold_fe==50) {
-        lower_b <- 40
-        upper_b1 <- 50
-        data <- data %>%
-          mutate(tarspot_risk_class = case_when(
-            tarspot_risk < lower_b/100 ~ "Low",  
-            tarspot_risk > upper_b1/100 ~ "High", 
-            TRUE ~ "Moderate" 
-          ))
-        paste0("Moving the threshold in tarspot ", upper_b1)
-      }
-
-      upper_b <- upper_b1
+      #upper_b <- upper_b1
       shared_data$stations_data <- data
       end_time_part2 <- Sys.time()
       time_part2 <- end_time_part2 - shared_data$start_time
       
       # Display the results
       cat(paste("Time for Part 1: ", time_part2, " seconds\n"))
+      risk_variables <- list(
+        'whitemold_irr_30in' = 'whitemold_irr_30in_risk',
+        'whitemold_irr_15in' = 'whitemold_irr_15in_risk',
+        'whitemold_nirr' = 'whitemold_nirr_risk'
+      )
+      
       
       # Check if data is available
       if (nrow(data) > 0) {
-        data1 <- data_transform_risk_labels(data, shared_data$disease_name) 
-        shared_data$stations_data <- data
-        
-        print(data)
-        #data1 <- shared_data$stations_data %>%
-        #  filter(forecasting_date == input$forecasting_date) %>%
-        #  mutate(`Forecasting Date` = forecasting_date)
+        data1 <- data %>%
+          filter(as.Date(forecasting_date) == as.Date(input$forecasting_date))%>%
+          mutate(`Forecasting Date` = forecasting_date)
         
         
         if (input$disease_name %in% c('tarspot','fe','gls')){
-          # Create the map and plot the points
-          map <- leaflet(data1) %>%
-            addProviderTiles(providers$CartoDB.Positron) %>%
-            setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
-            addCircleMarkers(
-              lng = ~longitude,  # Longitude column in your data
-              lat = ~latitude,   # Latitude column in your data
-              popup = ~popup_content,  # Popup content
-              color = "black",  # Marker outline color
-              fillColor = ~fill_color,  # Fill color based on your `fill_color` column
-              fillOpacity = 0.8,  # Opacity of the marker fill
-              radius = 6,  # Radius of the marker
-              weight = 1.5,  # Border thickness
-              label = ~station_name,  # Label on hover (optional)
-              labelOptions = labelOptions(
-                style = list("font-weight" = "normal", padding = "3px 8px"),
-                textsize = "12px", direction = "auto"
-              ),
-              layerId = ~station_name 
-            ) %>%
-            addLegend(
-              "bottomright",
-              colors = c("#88CCEE", "#DDCC77", "#CC6677"),
-              labels = c(paste0("Low (≤ ", lower_b, '%)'), 
-                         paste0("Moderate (", lower_b, " - ", upper_b1,'%)'), 
-                         paste0("High (> ", upper_b1,'%)')),
-              title = paste0("Predicted Risk (%)"),
-              opacity = 1
-            ) 
-        }
-
-        risk_variables <- list(
-          'whitemold_irr_30in' = 'whitemold_irr_30in_risk',
-          'whitemold_irr_15in' = 'whitemold_irr_15in_risk',
-          'whitemold_nirr' = 'whitemold_nirr_risk'
-        )
-        
-        # Check if the disease name is in the mapping
-        if (input$disease_name %in% names(risk_variables)) {
+          library(leaflet)
+          
+          # Define a color palette function for categorical risk levels
+          pal <- colorFactor(
+            palette = c("Low" = "#009E73", "Moderate" = "#F0E442", "High" = "#D55E00"),
+            domain = c("Low", "Moderate", "High")
+          )
+          
+          # Assign colors and filter based on disease type
+          if (input$disease_name %in% c('tarspot')) {
+            data1 <- data1 %>% filter(tarspot_risk_class %in% c("Low", "Moderate", "High"))
+            data1$tarspot_risk_class <- factor(data1$tarspot_risk_class, levels = c("Low", "Moderate", "High"))
+            data1$ts_color <- pal(data1$tarspot_risk_class)
+            
+            # Create the map and plot the points
+            map <- leaflet(data1) %>%
+              addProviderTiles(providers$CartoDB.Positron) %>%
+              setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+              addCircleMarkers(
+                lng = ~longitude,
+                lat = ~latitude,
+                popup = ~popup_content,
+                color = ~ts_color,
+                fillColor = ~ts_color,
+                fillOpacity = 0.8,
+                radius = 6,
+                weight = 1.5,
+                label = ~station_name,
+                labelOptions = labelOptions(
+                  style = list("font-weight" = "normal", padding = "3px 8px"),
+                  textsize = "12px", direction = "auto"
+                ),
+                layerId = ~station_name
+              ) %>%
+              addLegend(
+                position = "bottomright",
+                title = "Predicted Risk (%)",
+                pal = pal,
+                values = c("Low", "Moderate", "High"),
+                opacity = 1
+              )
+          }
+          
+          if (input$disease_name %in% c('fe')) {
+            data1 <- data1 %>% filter(fe_risk_class %in% c("Low", "Moderate", "High"))
+            data1$fe_risk_class <- factor(data1$fe_risk_class, levels = c("Low", "Moderate", "High"))
+            data1$fe_color <- pal(data1$fe_risk_class)
+            
+            map <- leaflet(data1) %>%
+              addProviderTiles(providers$CartoDB.Positron) %>%
+              setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+              addCircleMarkers(
+                lng = ~longitude,
+                lat = ~latitude,
+                popup = ~popup_content,
+                color = ~fe_color,
+                fillColor = ~fe_color,
+                fillOpacity = 0.8,
+                radius = 6,
+                weight = 1.5,
+                label = ~station_name,
+                labelOptions = labelOptions(
+                  style = list("font-weight" = "normal", padding = "3px 8px"),
+                  textsize = "12px", direction = "auto"
+                ),
+                layerId = ~station_name
+              ) %>%
+              addLegend(
+                position = "bottomright",
+                title = "Predicted Risk (%)",
+                pal = pal,
+                values = c("Low", "Moderate", "High"),
+                opacity = 1
+              )
+          }
+          
+          if (input$disease_name %in% c('gls')) {
+            data1 <- data1 %>% filter(gls_risk_class %in% c("Low", "Moderate", "High"))
+            data1$gls_risk_class <- factor(data1$gls_risk_class, levels = c("Low", "Moderate", "High"))
+            data1$color <- pal(data1$gls_risk_class)
+            
+            map <- leaflet(data1) %>%
+              addProviderTiles(providers$CartoDB.Positron) %>%
+              setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+              addCircleMarkers(
+                lng = ~longitude,
+                lat = ~latitude,
+                popup = ~popup_content,
+                color = ~color,
+                fillColor = ~color,
+                fillOpacity = 0.8,
+                radius = 6,
+                weight = 1.5,
+                label = ~station_name,
+                labelOptions = labelOptions(
+                  style = list("font-weight" = "normal", padding = "3px 8px"),
+                  textsize = "12px", direction = "auto"
+                ),
+                layerId = ~station_name
+              ) %>%
+              addLegend(
+                position = "bottomright",
+                title = "Predicted Risk (%)",
+                pal = pal,
+                values = c("Low", "Moderate", "High"),
+                opacity = 1
+              )
+          }
+          
+          
+        }else if (input$disease_name %in% names(risk_variables)) {
           # Get the corresponding risk variable for the selected disease
           risk_variable <- risk_variables[[input$disease_name]]
           
@@ -422,7 +450,7 @@ server <- function(input, output, session) {
           user_friendly_date <- format(date_obj, "%B %d, %Y")
           
           paste(
-            station, "Station,", location, "has been operational since", user_friendly_date
+            station, "Station,", location, "."
           )
           
         } else if ((is.null(shared_data$w_station_id)) && (is.null(shared_data$ibm_data))) {
@@ -440,7 +468,7 @@ server <- function(input, output, session) {
     data_prepared <- NULL
     location <- NULL
     if (!is.null(shared_data$w_station_id))  {
-      data_prepared <- shared_data$this_station_data
+      data_prepared <- historical_data%>%filter(station_name==shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
     }else if (!is.null(shared_data$ibm_data)) {
       data_prepared <- shared_data$ibm_data
@@ -454,7 +482,56 @@ server <- function(input, output, session) {
     }else{
       selected_diseases <- input$disease
       print(selected_diseases)
-      seven_days_trend_plot(data_prepared, location, selected_diseases) 
+      print(shared_data$w_station_id)
+      print(data_prepared)
+      
+      # Your existing data preparation code remains the same
+      data_selected <- data_prepared %>% 
+        mutate(forecasting_date = as.Date(date, format = "%Y-%m-%d") + 1) %>% 
+        filter(!is.na(tarspot_risk)) %>% 
+        select(forecasting_date, tarspot_risk, gls_risk, fe_risk, 
+               whitemold_irr_30in_risk, whitemold_irr_15in_risk, whitemold_nirr_risk) %>% 
+        rename(
+          `Tar Spot` = tarspot_risk,
+          `Gray Leaf Spot` = gls_risk,
+          `Frog Eye Leaf Spot` = fe_risk,
+          `Whitemold Irr (30in)` = whitemold_irr_30in_risk,
+          `Whitemold Irr (15in)` = whitemold_irr_15in_risk,
+          `Whitemold No Irr` = whitemold_nirr_risk
+        )
+      
+      # Reshape the data into long format
+      data_long <- data_selected %>% 
+        pivot_longer(
+          cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"), 
+          names_to = "Disease Model", 
+          values_to = "risk_value"
+        ) 
+      
+      data_long$risk_value <- data_long$risk_value * 100
+      df_subset <- data_long %>% filter(`Disease Model` %in% selected_diseases)
+      
+      # Modified plot code
+      ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = `Disease Model`)) + 
+        geom_line(size = 1) + 
+        geom_point(size = 3) + 
+        labs(
+          title = paste0("Historical Risk Trend (", location, ")"),
+          x = "Forecasting Date",
+          y = "Risk (%)",
+          color = "Disease Model"
+        ) + 
+        # Modify the date breaks to match your data timeframe (e.g., "1 day" for a week of data)
+        scale_x_date(date_breaks = "1 month", date_labels = "%d-%b") + 
+        scale_y_continuous(limits = c(0, min(100, max(df_subset$risk_value) * 1.1))) + 
+        theme_minimal() + 
+        theme(
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold"),
+          legend.text = element_text(size = 10),
+          plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+          axis.text.x = element_text(angle = 45, hjust = 1)  # Angle the date labels for better readability
+        )
     }
   })
   
@@ -503,15 +580,24 @@ server <- function(input, output, session) {
              output$w_station_id,'_', Sys.Date(), ".pdf")
     },
     content = function(file) {
-      data <- shared_data$this_station_data
+      data <- historical_data %>% filter(as.Date(forecasting_date) == as.Date(input$forecasting_date) 
+                                         & (station_id==shared_data$w_station_id))
       location_name <- paste0(data$station_name[1], " Station")
       
       if (is.null(data) || nrow(data) == 0) {
         showNotification("No data available to generate the report.", type = "warning")
         stop("No data available to generate the report.")
       }
-      
-      data_f <- data %>% select(forecasting_date,
+      output$downloadData <- downloadHandler(
+        filename = function() {
+          paste("historical_data_", Sys.Date(), ".csv", sep = "")
+        },
+        content = function(file) {
+          # Write CSV file without row names
+          write.csv(historical_data, file, row.names = FALSE)
+        }
+      )
+      data_f <- historical_data %>% select(forecasting_date,
                                 tarspot_risk,tarspot_risk_class,
                                 gls_risk,gls_risk_class,
                                 fe_risk,fe_risk_class,

@@ -71,9 +71,9 @@ ui <- navbarPage(
         dateInput(
           "forecasting_date",
           "Select Forecasting Date:",
-          value = Sys.Date(),
-          min = '2023-06-01',
-          max = Sys.Date()
+          value = '2025-02-20',
+          min = '2024-02-20',
+          max = '2025-02-20',
         ),
         hr(), 
         conditionalPanel(
@@ -106,58 +106,22 @@ ui <- navbarPage(
         conditionalPanel(
           checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
           condition = "input.disease_name == 'fe' && input.ibm_data == false",
-          checkboxInput("crop_growth_stage", "Growth stage in the R1-R5 range?", value = TRUE),
-          
-          sliderInput(
-            "risk_threshold_fe",
-            "Risk Threshold:",
-            min = 40,
-            max = 60,
-            value = 50,
-            step = 1
-          ),
-          p(
-            "Set as the recommended risk threshold.",
-            style = "font-size: 0.5em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
-          )
+          checkboxInput("crop_growth_stage", "Growth stage in the R1-R5 range?", value = TRUE)
         ),
         
         # Conditional panel for GLS
         conditionalPanel(
           checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
           condition = "input.disease_name == 'gls' && input.ibm_data == false",
-          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
-          sliderInput(
-            "risk_threshold_gls",
-            "Risk Threshold:",
-            min = 50,
-            max = 70,
-            value = 60,
-            step = 1
-          ),
-          p(
-            "Set as the recommended risk threshold.",
-            style = "font-size: 0.5em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
-          ),
+          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE)
+          
         ),
         
         # Conditional panel for Tar Spot
         conditionalPanel(
           checkboxInput("no_fungicide", "No fungicide applied in the last 14 days?", value = TRUE),
           condition = "input.disease_name == 'tarspot' && input.ibm_data == false",
-          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE),
-          sliderInput(
-            "risk_threshold_ts",
-            "Risk Threshold:",
-            min = 20,
-            max = 50,
-            value = 35.0,
-            step = 1
-          ),
-          p(
-            "Set as the recommended risk threshold.",
-            style = "font-size: 0.5em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
-          )
+          checkboxInput("crop_growth_stage", "Growth stage in the V10-R3 range?", value = TRUE)
         ),
         hr(), 
         #conditionalPanel(
@@ -219,18 +183,8 @@ ui <- navbarPage(
                                        "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
                            selected = c("Tar Spot", "Gray Leaf Spot"), inline = TRUE),  # Default selection
         hr(),
-        plotOutput("risk_trend", height = "400px", width = "100%"),   
-        hr(),
-        conditionalPanel(
-          condition = "input.ibm_data == false",
-          textOutput("download_reported"),
-          p("Downloadable summary of risk trend for the given station."),
-          div(
-            downloadButton("download_report", "Download Report", 
-                           class = "btn-primary", 
-                           style = "text-align: center; margin-top: 10px;")
-          )
-        )
+        plotOutput("risk_trend", height = "400px", width = "100%")   
+        
       )
     )
   ),

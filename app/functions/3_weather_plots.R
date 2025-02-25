@@ -12,8 +12,9 @@ library(ggplot2)
 seven_days_trend_plot <- function(data_prepared, location, selected_diseases){
   # Select and rename the relevant columns
   data_selected <- data_prepared %>%
+    mutate(date = as.Date(date, format = "%Y-%m-%d") + 1) %>% 
     filter(!is.na(tarspot_risk)) %>%
-    select(forecasting_date, tarspot_risk, gls_risk, fe_risk,
+    select(date, tarspot_risk, gls_risk, fe_risk,
            whitemold_irr_30in_risk,
            whitemold_irr_15in_risk,
            whitemold_nirr_risk) %>%
@@ -36,7 +37,7 @@ seven_days_trend_plot <- function(data_prepared, location, selected_diseases){
   df_subset <- data_long %>% filter(`Disease Model` %in% c(selected_diseases))
 
   # Plot the trend of the specified risk variables over time
-  ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = `Disease Model`)) +
+  ggplot(df_subset, aes(x = date, y = risk_value, color = `Disease Model`)) +
     geom_line() +
     geom_point() +
     labs(title = paste0("Risk Trend in the last week (",location,')'),
