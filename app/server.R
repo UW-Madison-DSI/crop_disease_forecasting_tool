@@ -1,4 +1,5 @@
 options(repos = c(CRAN = "https://cran.rstudio.com/"))
+install.packages("shinyWidgets")
 
 library(shiny)
 library(leaflet)
@@ -27,7 +28,7 @@ library(arrow)
 # Read the Parquet file into an R data frame
 library(readr)
 
-historical_data <- read_parquet("snapshot_0224_0225_stations.parquet") %>% 
+historical_data <- historical_data <- readRDS("historical_data.rds") %>% 
   mutate(forecasting_date = as.POSIXct(forecasting_date, format = "%Y-%m-%d %H:%M:%S", tz = "CST6CDT"))
 
 
