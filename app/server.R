@@ -1,5 +1,5 @@
 options(repos = c(CRAN = "https://cran.rstudio.com/"))
-install.packages("shinyWidgets")
+#install.packages("memoise")
 
 library(shiny)
 library(leaflet)
@@ -14,22 +14,40 @@ library(DT)
 library(gridExtra)
 library(reshape2)
 library(httr2)
+library(readr)
+
 
 source("functions/1_wisconet_calls.R")
 source("functions/2_external_source.R")
 
-source("functions/3_weather_plots.R") #now only on the risk trend but about to be on the weather data
+source("functions/3_weather_plots.R") 
 source("functions/4_pdf_template.R")
 
 source("functions/7_data_transformations.R")
 
-library(arrow)
+popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
 
-# Read the Parquet file into an R data frame
-library(readr)
+#historical_data <- read.parquet("snapshot_0224_0225_stations.parquet")
+historical_data <- get(load("data/historical_data.RData"))%>%
+  mutate(
+    forecasting_date = as.Date(date)+1,
+    popup_content = sprintf(
+      popup_content_str,
+      station_name,
+      location,
+      region,
+      forecasting_date,
+      tarspot_risk * 100,
+      fe_risk * 100,
+      gls_risk * 100,
+      #whitemold_nirr_risk * 100,
+      whitemold_irr_30in_risk * 100,
+      whitemold_irr_15in_risk * 100
+    )
+  )
+head(historical_data)
 
-historical_data <- historical_data <- readRDS("historical_data.rds") %>% 
-  mutate(forecasting_date = as.POSIXct(forecasting_date, format = "%Y-%m-%d %H:%M:%S", tz = "CST6CDT"))
+print(historical_data%>%arrange(desc(date)))
 
 
 ########################################################## SETTINGS: WI boundary
@@ -62,7 +80,7 @@ server <- function(input, output, session) {
     stations_data = historical_data%>%filter(forecasting_date=='2025-02-22'),
     nstations = 58,
     this_station_data = historical_data%>%filter((forecasting_date=='2025-02-22')
-                                                & (station_id=='ALTN')),
+                                                & (station_id=='HNCK')),
     start_time = Sys.time()
   )
   
@@ -72,10 +90,10 @@ server <- function(input, output, session) {
     
     # Convert input date to Date objects for safe comparison
     forecast_date <- as.Date(input$forecasting_date)
-    cutoff_date <- as.Date("2025-02-22")
+    cutoff_date <- as.Date("2025-02-21")
     
     if (forecast_date < cutoff_date) {
-      return(historical_data %>% filter(forecasting_date == forecast_date))
+      return(historical_data%>% filter(forecasting_date == input$forecasting_date))
     } else {
       fetch_forecasting_data(forecast_date)
     }
@@ -183,13 +201,15 @@ server <- function(input, output, session) {
       
       data <- forecast_data()
       
+      print("++++++++++++++++++++++++++++++++++++++++")
+      print(data$forecasting_date)
       #upper_b <- upper_b1
       shared_data$stations_data <- data
       end_time_part2 <- Sys.time()
       time_part2 <- end_time_part2 - shared_data$start_time
       
       # Display the results
-      cat(paste("Time for Part 1: ", time_part2, " seconds\n"))
+      cat(paste("Time for Part 2: ", time_part2, " seconds\n"))
       risk_variables <- list(
         'whitemold_irr_30in' = 'whitemold_irr_30in_risk',
         'whitemold_irr_15in' = 'whitemold_irr_15in_risk',
@@ -204,8 +224,10 @@ server <- function(input, output, session) {
           mutate(`Forecasting Date` = forecasting_date)
         
         
+        print(data1)
+        
         if (input$disease_name %in% c('tarspot','fe','gls')){
-          library(leaflet)
+          
           
           # Define a color palette function for categorical risk levels
           pal <- colorFactor(
@@ -549,7 +571,7 @@ server <- function(input, output, session) {
       if(input$ibm_data==FALSE){
         data_f <- shared_data$stations_data 
         data_f <- data_f %>%
-          select(station_id, date, forecasting_date, location, station_name, 
+          select(date, forecasting_date, location, station_name, 
                  city, county, earliest_api_date, latitude, longitude, region, state, 
                  station_timezone, tarspot_risk, tarspot_risk_class, gls_risk, 
                  gls_risk_class, fe_risk, fe_risk_class, 
@@ -583,6 +605,8 @@ server <- function(input, output, session) {
     content = function(file) {
       data <- historical_data %>% filter(as.Date(forecasting_date) == as.Date(input$forecasting_date) 
                                          & (station_id==shared_data$w_station_id))
+      print("----------------------")
+      print(data)
       location_name <- paste0(data$station_name[1], " Station")
       
       if (is.null(data) || nrow(data) == 0) {

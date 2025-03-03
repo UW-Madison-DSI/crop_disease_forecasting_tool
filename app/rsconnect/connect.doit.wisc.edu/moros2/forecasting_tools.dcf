@@ -5,8 +5,9 @@ account: moros2
 server: connect.doit.wisc.edu
 hostUrl: https://connect.doit.wisc.edu/__api__
 appId: 367
-bundleId: 3260
+bundleId: 3313
 url: https://connect.doit.wisc.edu/tarspot_forecasting_app/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
+ignoredFiles: cache/7dc8c0f77d352fe5|data/historical_data.rds|data/snapshot_0224_0225_stations.parquet|persisting_file.R|report_template.Rmd|test/testthat/test_1_wisconet_calls.R

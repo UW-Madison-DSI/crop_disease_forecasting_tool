@@ -60,10 +60,3 @@ fetch_forecasting_data <- memoise(function(forecast_date) {
   })
 })
 
-
-install.packages("arrow")
-
-# Load the arrow package
-library(arrow)
-
-historical_data <- read_parquet("snapshot_0224_0225_stations.parquet")

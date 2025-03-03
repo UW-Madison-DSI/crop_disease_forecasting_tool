@@ -1,0 +1,13 @@
+name: opensource-cropdiseaseforecasting
+title: opensource-cropdiseaseforecasting
+username: moros2
+account: moros2
+server: connect.doit.wisc.edu
+hostUrl: https://connect.doit.wisc.edu/__api__
+appId: 437
+bundleId: 3311
+url: https://connect.doit.wisc.edu/content/dab6a782-0cc2-46c3-8dd6-a351dbca0322/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: cache/7dc8c0f77d352fe5|persisting_file.R|test/testthat/test_1_wisconet_calls.R

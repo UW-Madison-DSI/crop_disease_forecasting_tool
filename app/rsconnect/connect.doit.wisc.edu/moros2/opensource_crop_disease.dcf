@@ -1,0 +1,13 @@
+name: opensource_crop_disease
+title: opensource_crop_disease
+username: moros2
+account: moros2
+server: connect.doit.wisc.edu
+hostUrl: https://connect.doit.wisc.edu/__api__
+appId: 436
+bundleId: 3301
+url: https://connect.doit.wisc.edu/content/2474ca66-5951-4c4a-8829-67c86419db40/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: cache/7dc8c0f77d352fe5|persisting_file.R
