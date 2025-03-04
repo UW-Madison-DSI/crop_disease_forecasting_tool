@@ -26,9 +26,7 @@ source("functions/4_pdf_template.R")
 source("functions/7_data_transformations.R")
 
 popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
-
-#historical_data <- read.parquet("snapshot_0224_0225_stations.parquet")
-historical_data <- get(load("data/historical_data.RData"))%>%
+historical_data <- get(load("data/historical_data_2.RData"))%>%
   mutate(
     forecasting_date = as.Date(date)+1,
     popup_content = sprintf(
@@ -77,9 +75,9 @@ server <- function(input, output, session) {
     lng_location = NULL,
     ibm_data = NULL,
     disease_name = 'tarspot',
-    stations_data = historical_data%>%filter(forecasting_date=='2025-02-22'),
+    stations_data = historical_data%>%filter(forecasting_date=='2025-03-03'),
     nstations = 58,
-    this_station_data = historical_data%>%filter((forecasting_date=='2025-02-22')
+    this_station_data = historical_data%>%filter((forecasting_date=='2025-03-03')
                                                 & (station_id=='HNCK')),
     start_time = Sys.time()
   )

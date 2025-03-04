@@ -1,10 +1,14 @@
 #### Code to persist the historical data as rds for quick readability
-#install.packages("arrow")
-#library(arrow)
+install.packages("arrow")
+library(arrow)
 library(dplyr)
 
-historical_data <- read_parquet("data/snapshot_0224_0225_stations.parquet") %>%
-  mutate(forecasting_date = as.POSIXct(forecasting_date,format = "%Y-%m-%d %H:%M:%S", tz = "CST6CDT"))
+historical_data <- read_parquet("data/snapshot_0224_0225_stations.parquet")
+historical_data$forecasting_date <- as.Date(as.POSIXct(historical_data$forecasting_date, format = "%Y-%m-%d %H:%M:%S %Z"))
+
+print(historical_data$forecasting_date)
+
+remove.packages("arrow")
 
 colnames(historical_data)
 # Assume df is your loaded data frame
@@ -24,14 +28,17 @@ hiatorical_to_save <- historical_data%>%select("date","station_id","o_collection
                                                "station_slug","station_name","latitude","longitude",                
                                                "elevation","location","station_timezone","city",                    
                                                "county","region","state","earliest_api_date",     
-                                               "forecast_date")
-save(hiatorical_to_save, file = "app/data/historical_data.RData")
+                                               "forecasting_date")
+save(hiatorical_to_save, file = "historical_data_2.RData")
+
+print(hiatorical_to_save$forecasting_date)
+
 
 # Disconnect from Spark when done
 saveRDS(historical_data, "historical_data.rds")
 
 
-remove.packages("arrow")
+
 
 ############# Reading from RData
 # This trick returns the names of the loaded objects and assigns the object to 'df'

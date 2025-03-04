@@ -71,9 +71,9 @@ ui <- navbarPage(
         dateInput(
           "forecasting_date",
           "Select Forecasting Date:",
-          value = '2025-02-20',
-          min = '2024-02-20',
-          max = Sys.Date(),
+          value = Sys.Date(),
+          min = '2023-08-20',
+          max = Sys.Date()
         ),
         hr(), 
         conditionalPanel(

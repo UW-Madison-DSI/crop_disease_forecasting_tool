@@ -78,7 +78,7 @@ calculate_sporecaster_risk <- function(maxAT30MA, maxWS30MA, maxRH30MA){
 # Frogeye Leaf Spot
 calculate_frogeye_leaf_spot_function <- function(maxAT30, rh80tot30) {
   # Logistic regression formula, no rrigation needed
-  logit_fe <- -5.92485 -(0.1220 * maxAT30) + (0.1732 * rh80tot30)
+  logit_fe <- -5.92485 +(0.1220 * maxAT30) + (0.1732 * rh80tot30)
   prob_logit_fe <- logistic_f(logit_fe)
   
   class <- if (prob_logit_fe < 0.5) {
