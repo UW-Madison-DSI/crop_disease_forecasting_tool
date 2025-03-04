@@ -21,7 +21,7 @@ fetch_forecasting_data <- memoise(function(forecast_date) {
     req <- request(base_url) %>%
       req_url_query(
         forecasting_date = formatted_date,  # Use the formatted string
-        risk_days = 1
+        risk_days = 7
       ) %>%
       req_headers("Accept" = "application/json")
     
@@ -29,24 +29,26 @@ fetch_forecasting_data <- memoise(function(forecast_date) {
     
     if (resp_status(response) == 200) {
       # Use resp_body_string() to get the response text, then parse with fromJSON()
-      data <- fromJSON(resp_body_string(response))
-      return(data %>%
-               mutate(
-                 #forecasting_date = as.Date(date)+1,
-                 popup_content = sprintf(
-                   popup_content_str,
-                   station_name,
-                   location,
-                   region,
-                   forecasting_date,
-                   tarspot_risk * 100,
-                   fe_risk * 100,
-                   gls_risk * 100,
-                   #whitemold_nirr_risk * 100,
-                   whitemold_irr_30in_risk * 100,
-                   whitemold_irr_15in_risk * 100
-                 )
-               ))
+      data <- fromJSON(resp_body_string(response))%>%
+              mutate(
+                #forecasting_date = as.Date(date)+1,
+                popup_content = sprintf(
+                  popup_content_str,
+                  station_name,
+                  location,
+                  region,
+                  forecasting_date,
+                  tarspot_risk * 100,
+                  fe_risk * 100,
+                  gls_risk * 100,
+                  #whitemold_nirr_risk * 100,
+                  whitemold_irr_30in_risk * 100,
+                  whitemold_irr_15in_risk * 100
+                )
+              )
+      
+      print(data)
+      return(data)
       
     } else {
       cat("Request failed with status code:", resp_status(response), "\n")

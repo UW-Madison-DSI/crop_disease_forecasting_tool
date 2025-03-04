@@ -61,7 +61,7 @@ ui <- navbarPage(
             choices = c(
               "Tar Spot (Corn)" = 'tarspot',
               "Gray Leaf Spot (Corn)" = 'gls',
-              "Frogeye Leaf Spot (Soybean)" = 'fe',
+              #"Frogeye Leaf Spot (Soybean)" = 'fe',
               "Whitemold Irr (30in)" = 'whitemold_irr_30in',
               "Whitemold Irr (15in)" = 'whitemold_irr_15in'
               #"Whitemold Dry" = 'whitemold_nirr'
@@ -72,7 +72,7 @@ ui <- navbarPage(
           "forecasting_date",
           "Select Forecasting Date:",
           value = Sys.Date(),
-          min = '2023-08-20',
+          min = '2023-10-20',
           max = Sys.Date()
         ),
         hr(), 
@@ -179,11 +179,11 @@ ui <- navbarPage(
         hr(),
         checkboxGroupInput("disease", 
                            label = "Choose Diseases",
-                           choices = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", 
+                           choices = c("Tar Spot", "Gray Leaf Spot", #"Frog Eye Leaf Spot", 
                                        "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
                            selected = c("Tar Spot", "Gray Leaf Spot"), inline = TRUE),  # Default selection
         hr(),
-        plotOutput("risk_trend", height = "400px", width = "100%")   
+        plotOutput("risk_trend", height = "400px", width = "800px")   
         
       )
     )

@@ -1,9 +1,9 @@
 #### Code to persist the historical data as rds for quick readability
-install.packages("arrow")
-library(arrow)
+#install.packages("arrow")
+#library(arrow)
 library(dplyr)
 
-historical_data <- read_parquet("data/snapshot_0224_0225_stations.parquet")
+historical_data <- read_parquet("/Users/mariaoros/Documents/DataScienceInstitute/2024/Forecasting-models/corn_disease_forecast_api/data/snapshot_0224_0225_stations.parquet")
 historical_data$forecasting_date <- as.Date(as.POSIXct(historical_data$forecasting_date, format = "%Y-%m-%d %H:%M:%S %Z"))
 
 print(historical_data$forecasting_date)
@@ -17,20 +17,19 @@ print(column_classes)
 sapply(df, class)
 
 
-hiatorical_to_save <- historical_data%>%select("date","station_id","o_collection_time","collection_time","air_temp_max_f","air_temp_min_f",           
-                                               "rh_max","min_dp","max_ws","min_dp_c",
-                                               "air_temp_max_c","air_temp_min_c","air_temp_avg_c","rh_above_90_night_14d_ma",
-                                               "rh_above_80_day_30d_ma","air_temp_min_c_21d_ma","air_temp_max_c_30d_ma","air_temp_avg_c_30d_ma",   
-                                               "rh_max_30d_ma","max_ws_30d_ma","dp_min_30d_c_ma","tarspot_risk",
+
+
+hiatorical_to_save <- historical_data%>%select("date","station_id","collection_time","tarspot_risk",
                                                "tarspot_risk_class","gls_risk","gls_risk_class","whitemold_nirr_risk",      
                                                "whitemold_nirr_risk_class","whitemold_irr_30in_risk","whitemold_irr_15in_risk","fe_risk",                 
-                                               "fe_risk_class","id","campbell_cloud_id",                
-                                               "station_slug","station_name","latitude","longitude",                
-                                               "elevation","location","station_timezone","city",                    
+                                               "fe_risk_class",             
+                                               "station_name","latitude","longitude",                
+                                               "location","city",                    
                                                "county","region","state","earliest_api_date",     
                                                "forecasting_date")
 save(hiatorical_to_save, file = "historical_data_2.RData")
 
+saaply(hiatorical_to_save, class)
 print(hiatorical_to_save$forecasting_date)
 
 

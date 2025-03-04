@@ -26,7 +26,7 @@ source("functions/4_pdf_template.R")
 source("functions/7_data_transformations.R")
 
 popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
-historical_data <- get(load("data/historical_data_2.RData"))%>%
+historical_data <- get(load("data/historical_data.RData"))%>%
   mutate(
     forecasting_date = as.Date(date)+1,
     popup_content = sprintf(
@@ -45,12 +45,12 @@ historical_data <- get(load("data/historical_data_2.RData"))%>%
   )
 head(historical_data)
 
-print(historical_data%>%arrange(desc(date)))
-
+print(historical_data%>%arrange(desc(forecasting_date)))
 
 ########################################################## SETTINGS: WI boundary
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf") %>%
   st_transform(crs = 4326)
+
 
 wi_boundary <- states(cb = TRUE) %>%
   filter(NAME == "Wisconsin") %>%
@@ -87,13 +87,18 @@ server <- function(input, output, session) {
     req(input$forecasting_date)  # Ensure the input is available
     
     # Convert input date to Date objects for safe comparison
-    forecast_date <- as.Date(input$forecasting_date)
+    #forecast_date <- as.Date(input$forecasting_date)
     cutoff_date <- as.Date("2025-02-21")
     
-    if (forecast_date < cutoff_date) {
-      return(historical_data%>% filter(forecasting_date == input$forecasting_date))
+    if (input$forecasting_date < "2025-02-21") {
+      return(historical_data%>% filter(forecasting_date == input$forecasting_date)%>%
+               mutate(`Forecasting Date` = forecasting_date))
     } else {
-      fetch_forecasting_data(forecast_date)
+      fetch_forecasting_data(input$forecasting_date)%>%
+        mutate(`Forecasting Date` = forecasting_date) %>%
+        group_by(station_id) %>%
+        filter(forecasting_date == max(forecasting_date)) %>%
+        ungroup()
     }
   })
   
@@ -200,7 +205,9 @@ server <- function(input, output, session) {
       data <- forecast_data()
       
       print("++++++++++++++++++++++++++++++++++++++++")
+      
       print(data$forecasting_date)
+      
       #upper_b <- upper_b1
       shared_data$stations_data <- data
       end_time_part2 <- Sys.time()
@@ -213,30 +220,25 @@ server <- function(input, output, session) {
         'whitemold_irr_15in' = 'whitemold_irr_15in_risk',
         'whitemold_nirr' = 'whitemold_nirr_risk'
       )
-      
-      
+      data1 <- data      
+      print(nrow(data1))
       # Check if data is available
-      if (nrow(data) > 0) {
-        data1 <- data %>%
-          filter(as.Date(forecasting_date) == as.Date(input$forecasting_date))%>%
-          mutate(`Forecasting Date` = forecasting_date)
-        
-        
-        print(data1)
-        
+      if (nrow(data1) > 0) {
+
         if (input$disease_name %in% c('tarspot','fe','gls')){
-          
           
           # Define a color palette function for categorical risk levels
           pal <- colorFactor(
-            palette = c("Low" = "#009E73", "Moderate" = "#F0E442", "High" = "#D55E00"),
+            palette = c("Low" = "#D55E00", "Moderate" = "#F0E442", "High" = "#009E73"),
             domain = c("Low", "Moderate", "High")
           )
           
           # Assign colors and filter based on disease type
           if (input$disease_name %in% c('tarspot')) {
-            data1 <- data1 %>% filter(tarspot_risk_class %in% c("Low", "Moderate", "High"))
-            data1$tarspot_risk_class <- factor(data1$tarspot_risk_class, levels = c("Low", "Moderate", "High"))
+            print(data1 %>% select(station_id,forecasting_date, tarspot_risk, tarspot_risk_class))
+            print(nrow(data1))
+            #data1 <- data1 %>% filter(tarspot_risk_class %in% c("Low", "Moderate", "High"))
+            #data1$tarspot_risk_class <- factor(data1$tarspot_risk_class, levels = c("Low", "Moderate", "High"))
             data1$ts_color <- pal(data1$tarspot_risk_class)
             
             # Create the map and plot the points
@@ -379,7 +381,11 @@ server <- function(input, output, session) {
             group = "County Boundaries",
             popup = ~NAME
           ) %>%
-          addLayersControl(
+            addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
+            addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+            addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
+            addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
+            addLayersControl(
             baseGroups = c("CartoDB Positron", "OpenStreetMap", "Topographic", "Esri Imagery"),
             overlayGroups = c("County Boundaries"),
             options = layersControlOptions(collapsed = TRUE)
@@ -392,7 +398,7 @@ server <- function(input, output, session) {
           setView(lng = -89.75, lat = 44.76, zoom = 7.2)
       }
     }else{
-      map<-leaflet() %>%
+      map<-map%>%leaflet() %>%
         addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
         addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
         addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
@@ -490,6 +496,7 @@ server <- function(input, output, session) {
     location <- NULL
     if (!is.null(shared_data$w_station_id))  {
       data_prepared <- historical_data%>%filter(station_name==shared_data$w_station_id)
+      #historical_data%>%filter(station_name==shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
     }else if (!is.null(shared_data$ibm_data)) {
       data_prepared <- shared_data$ibm_data
@@ -525,34 +532,55 @@ server <- function(input, output, session) {
       data_long <- data_selected %>% 
         pivot_longer(
           cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"), 
-          names_to = "Disease Model", 
+          names_to = "Disease", 
           values_to = "risk_value"
         ) 
       
       data_long$risk_value <- data_long$risk_value * 100
-      df_subset <- data_long %>% filter(`Disease Model` %in% selected_diseases)
+      df_subset <- data_long %>% filter(Disease %in% selected_diseases)
+      print(df_subset)
       
-      # Modified plot code
-      ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = `Disease Model`)) + 
-        geom_line(size = 1) + 
-        geom_point(size = 3) + 
-        labs(
-          title = paste0("Historical Risk Trend (", location, ")"),
-          x = "Forecasting Date",
-          y = "Risk (%)",
-          color = "Disease Model"
-        ) + 
-        # Modify the date breaks to match your data timeframe (e.g., "1 day" for a week of data)
-        scale_x_date(date_breaks = "1 month", date_labels = "%d-%b") + 
-        scale_y_continuous(limits = c(0, min(100, max(df_subset$risk_value) * 1.1))) + 
-        theme_minimal() + 
-        theme(
-          legend.position = "bottom",
-          legend.title = element_text(face = "bold"),
-          legend.text = element_text(size = 10),
-          plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
-          axis.text.x = element_text(angle = 45, hjust = 1)  # Angle the date labels for better readability
-        )
+      df_subset$forecasting_date <- as.Date(df_subset$forecasting_date, origin = "1970-01-01")
+      
+      # Create a color palette for different diseases
+      unique_diseases <- unique(df_subset$Disease)
+      disease_colors <- rainbow(length(unique_diseases))
+      names(disease_colors) <- unique_diseases
+      
+      # Set up the plot with more robust parameters
+      plot(df_subset$forecasting_date, df_subset$risk_value, 
+           type = "n",  # Create an empty plot first
+           xlab = "Forecasting Date", 
+           ylab = "Risk (%)", 
+           main = "Disease Risk Trend",
+           xaxt = "n")  # Suppress default x-axis
+      
+      # Add x-axis with formatted dates
+      axis.Date(1, at = pretty(df_subset$forecasting_date), 
+                format = "%b %d", 
+                las = 2)  # Rotate labels for readability
+      
+      # Plot lines and points for each unique disease
+      for (disease in unique_diseases) {
+        disease_data <- df_subset[df_subset$Disease == disease, ]
+        lines(disease_data$forecasting_date, 
+              disease_data$risk_value, 
+              type = "b", 
+              col = disease_colors[disease],
+              pch = 16)  # Solid point symbol
+      }
+      
+      # Add a more comprehensive legend
+      legend("topright", 
+             legend = unique_diseases, 
+             col = disease_colors, 
+             pch = 16, 
+             lty = 1,  # Add line type to legend
+             title = "Disease Models",
+             cex = 0.8)  # Slightly smaller legend text
+      
+      # Add grid for better readability
+      grid(nx = NULL, ny = NULL, lty = 2, col = "gray", lwd = 0.5)
     }
   })
   
