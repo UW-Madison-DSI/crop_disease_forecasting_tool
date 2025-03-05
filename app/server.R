@@ -536,35 +536,141 @@ server <- function(input, output, session) {
           values_to = "risk_value"
         ) 
       
-      data_long$risk_value <- data_long$risk_value
+      data_long$risk_value <- data_long$risk_value*100
+      data_long$risk_value <- as.numeric(data_long$risk_value)
+      data_long$Disease <- as.character(data_long$Disease)
       df_subset <- data_long %>% filter(Disease %in% selected_diseases)
-      df_subset$forecasting_date <- as.Date(df_subset$forecasting_date)
-      df_subset$risk_value <- as.numeric(df_subset$risk_value)
-      df_subset$Disease <- as.character(df_subset$Disease)
+      #df_subset$forecasting_date <- as.Date(df_subset$forecasting_date)
       
-      
-      
-      df_subset %>%
-        ggplot(aes(x = forecasting_date, y = risk_value, color = Disease)) +
-        geom_line() +
-        geom_point() +
-        labs(
-          title = paste("Risk Trend at", shared_data$w_station_id, "Station"),
-          x = "Forecasting Date",
-          y = "Risk Value (%)",
-          color = "Disease"
-        ) +
-        #scale_y_continuous(labels = percent_format()) +
-        scale_x_date(date_breaks = "1 month") 
-        theme_minimal() +
-        theme(
-          plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-          axis.text.x = element_text(angle = 45, hjust = 1),
-          legend.position = "bottom"
-        )
+      print(min(df_subset$forecasting_date))
+      if (selected_diseases=='Tar Spot'){
+        df_subset %>%
+          ggplot(aes(x = forecasting_date, y = risk_value, color = Disease)) +
+          geom_line() +
+          geom_point() +
+          geom_hline(yintercept = 35, linetype = "dashed", color = "green") +
+          geom_hline(yintercept = 50, linetype = "dashed", color = "gray50") +
+          # Annotate the risk levels: adjust x positions as needed
+          annotate("text", x = min(df_subset$forecasting_date), y = 17.5, label = "Low", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 42.5, label = "Moderate", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 57.5, label = "High", vjust = -0.5, hjust = 0, size = 4) +
+          labs(
+            title = paste("Risk Trend at", shared_data$w_station_id, "Station"),
+            x = "Forecasting Date",
+            y = "Risk (%)",
+            color = "Disease"
+          ) +
+          #scale_y_continuous(labels = percent_format()) +
+          #scale_x_date(date_breaks = "1 month") 
+          theme_minimal() +
+          theme(
+            plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+            legend.position = "bottom"
+          )
+      }else if(selected_diseases=='Gray Leaf Spot'){
+        df_subset %>%
+          ggplot(aes(x = forecasting_date, y = risk_value, color = Disease)) +
+          geom_line() +
+          geom_point() +
+          geom_hline(yintercept = 39, linetype = "dashed", color = "green") +
+          geom_hline(yintercept = 60, linetype = "dashed", color = "gray50") +
+          # Annotate the risk levels: adjust x positions as needed
+          annotate("text", x = min(df_subset$forecasting_date), y = 17.5, label = "Low", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 42.5, label = "Moderate", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 67.5, label = "High", vjust = -0.5, hjust = 0, size = 4) +
+          labs(
+            title = paste("Risk Trend at", shared_data$w_station_id, "Station"),
+            x = "Forecasting Date",
+            y = "Risk (%)",
+            color = "Disease"
+          ) +
+          #scale_y_continuous(labels = percent_format()) +
+          #scale_x_date(date_breaks = "1 month") 
+          theme_minimal() +
+          theme(
+            plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+            legend.position = "bottom"
+          )
+      }else{
+        df_subset %>%
+          ggplot(aes(x = forecasting_date, y = risk_value, color = Disease)) +
+          geom_line() +
+          geom_point() +
+          labs(
+            title = paste("Risk Trend at", shared_data$w_station_id, "Station"),
+            x = "Forecasting Date",
+            y = "Risk (%)",
+            color = "Disease"
+          ) +
+          #scale_y_continuous(labels = percent_format()) +
+          #scale_x_date(date_breaks = "1 month") 
+          theme_minimal() +
+          theme(
+            plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+            legend.position = "bottom"
+          )
+      }
     }
   }, width = 800, height = 600)
   
+  output$weather_trend <- renderPlot({
+    # Prepare the data based on shared_data.
+    if (!is.null(shared_data$w_station_id)) {
+      data_prepared <- historical_data %>%
+        filter(station_name == shared_data$w_station_id)
+      location <- paste0(shared_data$w_station_id, " Station")
+    } else if (!is.null(shared_data$ibm_data)) {
+      data_prepared <- shared_data$ibm_data
+      data_prepared$forecasting_date <- as.Date(data_prepared$forecasting_date, format = '%Y-%m-%d')
+      location <- paste0("Lat ", shared_data$latitude, " Lon ", shared_data$longitude)
+    }
+    
+    # Prepare air temperature data.
+    air_temp_data <- data_prepared %>%
+      pivot_longer(
+        cols = c(contains("air_temp"), -ends_with("_f")),
+        names_to = "variable",
+        values_to = "value"
+      )
+    
+    p1 <- ggplot(air_temp_data, aes(x = forecasting_date, y = value, color = variable)) +
+      geom_line() +
+      geom_point() +
+      labs(
+        title = paste("Air Temperature (°C) Trends at", location),
+        x = "Forecasting Date",
+        y = "Air Temperature (°C)"
+      ) +
+      theme_minimal()
+    
+    # Prepare relative humidity data.
+    rh_data <- data_prepared %>%
+      pivot_longer(
+        cols = contains("rh_max"),
+        names_to = "variable",
+        values_to = "value"
+      )
+    
+    p2 <- ggplot(rh_data, aes(x = forecasting_date, y = value, color = variable)) +
+      geom_line() +
+      geom_point() +
+      labs(
+        title = paste("Relative Humidity Trends at", location),
+        x = "Forecasting Date",
+        y = "Relative Humidity (%)"
+      ) +
+      theme_minimal()
+    
+    # Combine the two plots in a vertical layout.
+    # You can also use patchwork (e.g., p1 / p2) if preferred.
+    library(gridExtra)
+    grid.arrange(p1, p2, ncol = 1)
+  }, width = 800, height = 600)
+  
+
   ############################################################################## This is the section 3 Download a csv with the wisconet Stations data
   output$download_stations <- downloadHandler(
     # Dynamically generate the filename
@@ -612,8 +718,7 @@ server <- function(input, output, session) {
     content = function(file) {
       data <- historical_data %>% filter(as.Date(forecasting_date) == as.Date(input$forecasting_date) 
                                          & (station_id==shared_data$w_station_id))
-      print("----------------------")
-      print(data)
+
       location_name <- paste0(data$station_name[1], " Station")
       
       if (is.null(data) || nrow(data) == 0) {

@@ -177,13 +177,16 @@ ui <- navbarPage(
       mainPanel(
         textOutput('station_specifications'),
         hr(),
-        checkboxGroupInput("disease", 
-                           label = "Choose Diseases",
-                           choices = c("Tar Spot", "Gray Leaf Spot", #"Frog Eye Leaf Spot", 
-                                       "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
-                           selected = c("Tar Spot", "Gray Leaf Spot"), inline = TRUE),  # Default selection
+        radioButtons("disease", 
+                     label = "Choose Disease",
+                     choices = c("Gray Leaf Spot", "Tar Spot", 
+                                 "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
+                     selected = "Gray Leaf Spot",
+                     inline = TRUE),
         hr(),
-        plotOutput("risk_trend", width = "100%", height = "600px")  
+        plotOutput("risk_trend", width = "100%", height = "600px"),
+        hr(),
+        plotOutput("weather_trend", width = "100%", height = "600px")
       )
     )
   ),
