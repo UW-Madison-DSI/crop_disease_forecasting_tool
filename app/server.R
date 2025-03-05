@@ -15,7 +15,7 @@ library(gridExtra)
 library(reshape2)
 library(httr2)
 library(readr)
-
+library(scales)
 
 source("functions/1_wisconet_calls.R")
 source("functions/2_external_source.R")
@@ -464,15 +464,15 @@ server <- function(input, output, session) {
         # Check if data is not empty
         if (nrow(data) > 0) {
           station <- data$station_name[1]
-          earliest_api_date <- data$earliest_api_date[1]
+          #earliest_api_date <- data$earliest_api_date[1]
           
           location <- if_else(
             data$location[1] == "Not set",  
             "", 
-            paste("situated in", data$location[1], ",", data$region[1], "Region,", data$state[1], ",")
+            paste("situated in", data$location[1], ",", data$region[1], "Region,", data$state[1])
           )
           
-          date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")  
+          #date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")  
           # Format for user-friendly reading
           user_friendly_date <- format(date_obj, "%B %d, %Y")
           
@@ -536,53 +536,34 @@ server <- function(input, output, session) {
           values_to = "risk_value"
         ) 
       
-      data_long$risk_value <- data_long$risk_value * 100
+      data_long$risk_value <- data_long$risk_value
       df_subset <- data_long %>% filter(Disease %in% selected_diseases)
-      print(df_subset)
+      df_subset$forecasting_date <- as.Date(df_subset$forecasting_date)
+      df_subset$risk_value <- as.numeric(df_subset$risk_value)
+      df_subset$Disease <- as.character(df_subset$Disease)
       
-      df_subset$forecasting_date <- as.Date(df_subset$forecasting_date, origin = "1970-01-01")
       
-      # Create a color palette for different diseases
-      unique_diseases <- unique(df_subset$Disease)
-      disease_colors <- rainbow(length(unique_diseases))
-      names(disease_colors) <- unique_diseases
       
-      # Set up the plot with more robust parameters
-      plot(df_subset$forecasting_date, df_subset$risk_value, 
-           type = "n",  # Create an empty plot first
-           xlab = "Forecasting Date", 
-           ylab = "Risk (%)", 
-           main = "Disease Risk Trend",
-           xaxt = "n")  # Suppress default x-axis
-      
-      # Add x-axis with formatted dates
-      axis.Date(1, at = pretty(df_subset$forecasting_date), 
-                format = "%b %d", 
-                las = 2)  # Rotate labels for readability
-      
-      # Plot lines and points for each unique disease
-      for (disease in unique_diseases) {
-        disease_data <- df_subset[df_subset$Disease == disease, ]
-        lines(disease_data$forecasting_date, 
-              disease_data$risk_value, 
-              type = "b", 
-              col = disease_colors[disease],
-              pch = 16)  # Solid point symbol
-      }
-      
-      # Add a more comprehensive legend
-      legend("topright", 
-             legend = unique_diseases, 
-             col = disease_colors, 
-             pch = 16, 
-             lty = 1,  # Add line type to legend
-             title = "Disease Models",
-             cex = 0.8)  # Slightly smaller legend text
-      
-      # Add grid for better readability
-      grid(nx = NULL, ny = NULL, lty = 2, col = "gray", lwd = 0.5)
+      df_subset %>%
+        ggplot(aes(x = forecasting_date, y = risk_value, color = Disease)) +
+        geom_line() +
+        geom_point() +
+        labs(
+          title = paste("Risk Trend at", shared_data$w_station_id, "Station"),
+          x = "Forecasting Date",
+          y = "Risk Value (%)",
+          color = "Disease"
+        ) +
+        #scale_y_continuous(labels = percent_format()) +
+        scale_x_date(date_breaks = "1 month") 
+        theme_minimal() +
+        theme(
+          plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "bottom"
+        )
     }
-  })
+  }, width = 800, height = 600)
   
   ############################################################################## This is the section 3 Download a csv with the wisconet Stations data
   output$download_stations <- downloadHandler(

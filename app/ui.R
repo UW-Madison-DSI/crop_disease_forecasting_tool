@@ -183,8 +183,7 @@ ui <- navbarPage(
                                        "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
                            selected = c("Tar Spot", "Gray Leaf Spot"), inline = TRUE),  # Default selection
         hr(),
-        plotOutput("risk_trend", height = "400px", width = "800px")   
-        
+        plotOutput("risk_trend", width = "100%", height = "600px")  
       )
     )
   ),
