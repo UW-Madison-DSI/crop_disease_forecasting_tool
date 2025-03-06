@@ -61,41 +61,6 @@ wisconsin_bbox <- list(
   lng_max = -86.2495
 )
 
-#today <- as.character(Sys.Date())
-#today_forecasting <- fetch_forecasting_data(today)
-# Create a memoised version of the API call using a filesystem cache
-#memo_fetch_api_data <- memoise(today_forecasting, cache = cache_filesystem("api_cache"))
-
-# Define a function to check for a new day and update the cache conditionally
-update_cache_if_new_day <- function(memo_func, meta_file = "api_cache/meta.rds") {
-  if (file.exists(meta_file)) {
-    meta <- readRDS(meta_file)
-    if (meta$date != today) {
-      # New day detected: clear the cache
-      forget(memo_func)
-      meta$date <- today
-      saveRDS(meta, meta_file)
-      message("Cache cleared. New day, new API call will be made.")
-    } else {
-      message("Same day. Using cached data.")
-    }
-  } else {
-    # Meta file doesn't exist; create it with today's date
-    meta <- list(date = today)
-    saveRDS(meta, meta_file)
-    message("Meta file created. API call will be cached.")
-  }
-}
-
-# Call the helper function to update the cache if needed
-#update_cache_if_new_day(memo_fetch_api_data)
-
-# Now, call the memoised API function.
-# On the same day, subsequent calls will use the cached data.
-#api_data <- memo_fetch_api_data()
-
-# Use or inspect the data as needed
-#print(api_data)
 
 ######################################################################## SERVER
 server <- function(input, output, session) {
@@ -109,7 +74,6 @@ server <- function(input, output, session) {
     ibm_data = NULL,
     disease_name = 'tarspot',
     stations_data = historical_data%>%filter(forecasting_date=='2025-03-03'),
-    nstations = 58,
     this_station_data = historical_data%>%filter((forecasting_date=='2025-03-03')
                                                 & (station_id=='HNCK')),
     start_time = Sys.time()
