@@ -14,13 +14,12 @@ base_url <- "https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers
 
 fetch_forecasting_data <- memoise(function(forecast_date) {
   tryCatch({
-    start_time <- Sys.time()
     converted_date <- as.Date(forecast_date, format = "%Y-%m-%d")
-    formatted_date <- format(converted_date, "%Y-%m-%d")
+    init <- Sys.time()
     
     req <- request(base_url) %>%
       req_url_query(
-        forecasting_date = formatted_date,  # Use the formatted string
+        forecasting_date = format(converted_date, "%Y-%m-%d"),  # Use the formatted string
         risk_days = 7
       ) %>%
       req_headers("Accept" = "application/json")
@@ -47,7 +46,9 @@ fetch_forecasting_data <- memoise(function(forecast_date) {
                 )
               )
       
-      print(data)
+      end_time_part2 <- Sys.time()
+      time_part1 <- end_time_part2 - init
+      cat(paste("/n time on api call:", time_part1))
       return(data)
       
     } else {
@@ -62,3 +63,11 @@ fetch_forecasting_data <- memoise(function(forecast_date) {
   })
 })
 
+
+update_api_cache <- function(cache_file = "api_cache.rds") {
+  data <- fetch_forecasting_data(Sys.Date())
+  saveRDS(data, cache_file)
+  message("API data updated and stored in cache file.")
+}
+
+#update_api_cache()

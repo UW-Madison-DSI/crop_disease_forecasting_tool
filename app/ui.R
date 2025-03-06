@@ -61,7 +61,7 @@ ui <- navbarPage(
             choices = c(
               "Tar Spot (Corn)" = 'tarspot',
               "Gray Leaf Spot (Corn)" = 'gls',
-              #"Frogeye Leaf Spot (Soybean)" = 'fe',
+              "Frogeye Leaf Spot (Soybean)" = 'fe',
               "Whitemold Irr (30in)" = 'whitemold_irr_30in',
               "Whitemold Irr (15in)" = 'whitemold_irr_15in'
               #"Whitemold Dry" = 'whitemold_nirr'

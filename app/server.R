@@ -43,9 +43,7 @@ historical_data <- get(load("data/historical_data.RData"))%>%
       whitemold_irr_15in_risk * 100
     )
   )
-head(historical_data)
 
-print(historical_data%>%arrange(desc(forecasting_date)))
 
 ########################################################## SETTINGS: WI boundary
 county_boundaries <- counties(state = "WI", cb = TRUE, class = "sf") %>%
@@ -63,6 +61,41 @@ wisconsin_bbox <- list(
   lng_max = -86.2495
 )
 
+#today <- as.character(Sys.Date())
+#today_forecasting <- fetch_forecasting_data(today)
+# Create a memoised version of the API call using a filesystem cache
+#memo_fetch_api_data <- memoise(today_forecasting, cache = cache_filesystem("api_cache"))
+
+# Define a function to check for a new day and update the cache conditionally
+update_cache_if_new_day <- function(memo_func, meta_file = "api_cache/meta.rds") {
+  if (file.exists(meta_file)) {
+    meta <- readRDS(meta_file)
+    if (meta$date != today) {
+      # New day detected: clear the cache
+      forget(memo_func)
+      meta$date <- today
+      saveRDS(meta, meta_file)
+      message("Cache cleared. New day, new API call will be made.")
+    } else {
+      message("Same day. Using cached data.")
+    }
+  } else {
+    # Meta file doesn't exist; create it with today's date
+    meta <- list(date = today)
+    saveRDS(meta, meta_file)
+    message("Meta file created. API call will be cached.")
+  }
+}
+
+# Call the helper function to update the cache if needed
+#update_cache_if_new_day(memo_fetch_api_data)
+
+# Now, call the memoised API function.
+# On the same day, subsequent calls will use the cached data.
+#api_data <- memo_fetch_api_data()
+
+# Use or inspect the data as needed
+#print(api_data)
 
 ######################################################################## SERVER
 server <- function(input, output, session) {
@@ -95,6 +128,7 @@ server <- function(input, output, session) {
                mutate(`Forecasting Date` = forecasting_date))
     } else {
       fetch_forecasting_data(input$forecasting_date)%>%
+      #api_data%>%
         mutate(`Forecasting Date` = forecasting_date) %>%
         group_by(station_id) %>%
         filter(forecasting_date == max(forecasting_date)) %>%
@@ -204,24 +238,20 @@ server <- function(input, output, session) {
       
       data <- forecast_data()
       
-      print("++++++++++++++++++++++++++++++++++++++++")
-      
-      print(data$forecasting_date)
-      
       #upper_b <- upper_b1
       shared_data$stations_data <- data
       end_time_part2 <- Sys.time()
       time_part2 <- end_time_part2 - shared_data$start_time
       
       # Display the results
-      cat(paste("Time for Part 2: ", time_part2, " seconds\n"))
+      cat(paste(" -> Time to display the map: ", time_part2, " seconds\n"))
       risk_variables <- list(
         'whitemold_irr_30in' = 'whitemold_irr_30in_risk',
         'whitemold_irr_15in' = 'whitemold_irr_15in_risk',
         'whitemold_nirr' = 'whitemold_nirr_risk'
       )
       data1 <- data      
-      print(nrow(data1))
+
       # Check if data is available
       if (nrow(data1) > 0) {
 
@@ -235,8 +265,7 @@ server <- function(input, output, session) {
           
           # Assign colors and filter based on disease type
           if (input$disease_name %in% c('tarspot')) {
-            print(data1 %>% select(station_id,forecasting_date, tarspot_risk, tarspot_risk_class))
-            print(nrow(data1))
+
             #data1 <- data1 %>% filter(tarspot_risk_class %in% c("Low", "Moderate", "High"))
             #data1$tarspot_risk_class <- factor(data1$tarspot_risk_class, levels = c("Low", "Moderate", "High"))
             data1$ts_color <- pal(data1$tarspot_risk_class)
@@ -381,12 +410,13 @@ server <- function(input, output, session) {
             group = "County Boundaries",
             popup = ~NAME
           ) %>%
-            addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
             addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+            addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
             addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
             addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
             addLayersControl(
-            baseGroups = c("CartoDB Positron", "OpenStreetMap", "Topographic", "Esri Imagery"),
+            baseGroups = c("OpenStreetMap", "CartoDB Positron", 
+                           "Topographic", "Esri Imagery"),
             overlayGroups = c("County Boundaries"),
             options = layersControlOptions(collapsed = TRUE)
           ) %>%
@@ -509,9 +539,6 @@ server <- function(input, output, session) {
       text(0.5, 0.5, "Please select an station in the map first.", cex = 1.5)
     }else{
       selected_diseases <- input$disease
-      print(selected_diseases)
-      print(shared_data$w_station_id)
-      print(data_prepared)
       
       # Your existing data preparation code remains the same
       data_selected <- data_prepared %>% 
@@ -542,7 +569,6 @@ server <- function(input, output, session) {
       df_subset <- data_long %>% filter(Disease %in% selected_diseases)
       #df_subset$forecasting_date <- as.Date(df_subset$forecasting_date)
       
-      print(min(df_subset$forecasting_date))
       if (selected_diseases=='Tar Spot'){
         df_subset %>%
           ggplot(aes(x = forecasting_date, y = risk_value, color = Disease)) +
