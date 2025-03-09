@@ -16,6 +16,7 @@ library(reshape2)
 library(httr2)
 library(readr)
 library(scales)
+library(later)
 
 source("functions/1_wisconet_calls.R")
 source("functions/2_external_source.R")
@@ -76,36 +77,42 @@ server <- function(input, output, session) {
     stations_data = historical_data%>%filter(forecasting_date=='2025-03-03'),
     this_station_data = historical_data%>%filter((forecasting_date=='2025-03-03')
                                                 & (station_id=='HNCK')),
-    start_time = Sys.time()
+    start_time = Sys.time(),
+    is_loading = FALSE
   )
   
   forecast_data <- reactive({
     # This will re-run only when input$forecasting_date changes.
     req(input$forecasting_date)  # Ensure the input is available
-    
+
     # Convert input date to Date objects for safe comparison
-    #forecast_date <- as.Date(input$forecasting_date)
     cutoff_date <- as.Date("2025-02-21")
     
     if (input$forecasting_date < "2025-02-21") {
-      return(historical_data%>% filter(forecasting_date == input$forecasting_date)%>%
-               mutate(`Forecasting Date` = forecasting_date))
+      result<-historical_data%>% filter(forecasting_date == input$forecasting_date)%>%
+               mutate(`Forecasting Date` = forecasting_date)
     } else {
-      fetch_forecasting_data(input$forecasting_date)%>%
+      result<-fetch_forecasting_data(input$forecasting_date)%>%
       #api_data%>%
         mutate(`Forecasting Date` = forecasting_date) %>%
         group_by(station_id) %>%
         filter(forecasting_date == max(forecasting_date)) %>%
         ungroup()
     }
+
+    return(result)
   })
   
-  
-  observeEvent(input$info_icon, {
-    # Toggle the visibility of the tooltip
-    toggle("info_tooltip")
+  observeEvent(forecast_data(), {
+    # Make sure forecast_data() returns data and is not NULL
+    data1 <- forecast_data()
+    if (!is.null(data1) && nrow(data1) > 0) {
+      # Data is ready: remove the loading notification
+      removeNotification(id = "loading-notification")
+      # Optionally, update shared_data$is_loading to indicate completion
+      shared_data$is_loading <- FALSE
+    }
   })
-  
   
   ############################################################################## IBM data, AOI: Wisconsin
   # Add a marker on user click
@@ -154,7 +161,7 @@ server <- function(input, output, session) {
   observeEvent(input$run_model, {
     # Ensure click has occurred and ibm_data is TRUE
     req(!is.null(input$risk_map_click), input$ibm_data)
-    shared_data$run_model <- TRUE
+    #shared_data$run_model <- TRUE
     click <- input$risk_map_click
     
     if (!is.null(click$lng)) {
@@ -199,7 +206,7 @@ server <- function(input, output, session) {
   # Create a reactive value to track if data is loaded
   output$risk_map <- renderLeaflet({
     # Base map setup
-    map <- leaflet() %>%
+    default_map <- leaflet() %>%
       addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
       addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
       addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
@@ -210,9 +217,11 @@ server <- function(input, output, session) {
         options = layersControlOptions(collapsed = TRUE)
       )
     
-    data1 <- forecast_data()
+    
     
     if (input$ibm_data == FALSE) {
+      data1 <- forecast_data()
+      
       # Transform boundaries and record timing
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
       shared_data$stations_data <- data1
@@ -226,6 +235,7 @@ server <- function(input, output, session) {
       )
       
       if (nrow(data1) > 0) {
+
         pal <- colorFactor(
           palette = c("Low" = "#D55E00", "Moderate" = "#F0E442", "High" = "#009E73"),
           domain = c("Low", "Moderate", "High")

@@ -72,7 +72,7 @@ ui <- navbarPage(
           "forecasting_date",
           "Select Forecasting Date:",
           value = Sys.Date(),
-          min = '2023-10-20',
+          min = '2024-04-02',
           max = Sys.Date()
         ),
         hr(), 
