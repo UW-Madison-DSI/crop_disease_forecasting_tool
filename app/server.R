@@ -196,144 +196,143 @@ server <- function(input, output, session) {
     return(data)
   }
   ################################################################## This is the section 1 risk_map
+  # Create a reactive value to track if data is loaded
   output$risk_map <- renderLeaflet({
-    if(input$ibm_data==FALSE){
+    # Base map setup
+    map <- leaflet() %>%
+      addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
+      addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+      addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
+      addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
+      setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+      addLayersControl(
+        baseGroups = c("OpenStreetMap", "CartoDB Positron", "Topographic", "Esri Imagery"),
+        options = layersControlOptions(collapsed = TRUE)
+      )
+    
+    data1 <- forecast_data()
+    
+    if (input$ibm_data == FALSE) {
+      # Transform boundaries and record timing
       county_boundaries <- st_transform(county_boundaries, crs = 4326)
-      
-      data <- forecast_data()
-      
-      #upper_b <- upper_b1
-      shared_data$stations_data <- data
-      end_time_part2 <- Sys.time()
-      time_part2 <- end_time_part2 - shared_data$start_time
-      
-      # Display the results
+      shared_data$stations_data <- data1
+      time_part2 <- Sys.time() - shared_data$start_time
       cat(paste(" -> Time to display the map: ", time_part2, " seconds\n"))
+      
       risk_variables <- list(
         'whitemold_irr_30in' = 'whitemold_irr_30in_risk',
         'whitemold_irr_15in' = 'whitemold_irr_15in_risk',
-        'whitemold_nirr' = 'whitemold_nirr_risk'
+        'whitemold_nirr'     = 'whitemold_nirr_risk'
       )
-      data1 <- data      
-
-      # Check if data is available
+      
       if (nrow(data1) > 0) {
-
-        if (input$disease_name %in% c('tarspot','fe','gls')){
+        pal <- colorFactor(
+          palette = c("Low" = "#D55E00", "Moderate" = "#F0E442", "High" = "#009E73"),
+          domain = c("Low", "Moderate", "High")
+        )
+        
+        # For tarspot risk
+        if (input$disease_name %in% c('tarspot')) {
+          data1$ts_color <- pal(data1$tarspot_risk_class)
+          map <- leaflet(data1) %>%
+            addProviderTiles(providers$CartoDB.Positron) %>%
+            setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+            addCircleMarkers(
+              lng = ~longitude,
+              lat = ~latitude,
+              popup = ~popup_content,
+              color = ~ts_color,
+              fillColor = ~ts_color,
+              fillOpacity = 0.8,
+              radius = 6,
+              weight = 1.5,
+              label = ~station_name,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "12px", direction = "auto"
+              ),
+              layerId = ~station_name
+            ) %>%
+            addLegend(
+              position = "bottomright",
+              title = "Predicted Risk (%)",
+              pal = pal,
+              values = c("Low", "Moderate", "High"),
+              opacity = 1
+            )
+        }
+        
+        # For frogeye leaf spot risk
+        if (input$disease_name %in% c('fe')) {
+          data1 <- data1 %>% filter(fe_risk_class %in% c("Low", "Moderate", "High"))
+          data1$fe_risk_class <- factor(data1$fe_risk_class, levels = c("Low", "Moderate", "High"))
+          data1$fe_color <- pal(data1$fe_risk_class)
           
-          # Define a color palette function for categorical risk levels
-          pal <- colorFactor(
-            palette = c("Low" = "#D55E00", "Moderate" = "#F0E442", "High" = "#009E73"),
-            domain = c("Low", "Moderate", "High")
-          )
+          map <- leaflet(data1) %>%
+            addProviderTiles(providers$CartoDB.Positron) %>%
+            setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+            addCircleMarkers(
+              lng = ~longitude,
+              lat = ~latitude,
+              popup = ~popup_content,
+              color = ~fe_color,
+              fillColor = ~fe_color,
+              fillOpacity = 0.8,
+              radius = 6,
+              weight = 1.5,
+              label = ~station_name,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "12px", direction = "auto"
+              ),
+              layerId = ~station_name
+            ) %>%
+            addLegend(
+              position = "bottomright",
+              title = "Predicted Risk (%)",
+              pal = pal,
+              values = c("Low", "Moderate", "High"),
+              opacity = 1
+            )
+        }
+        
+        # For gray leaf spot risk
+        if (input$disease_name %in% c('gls')) {
+          data1 <- data1 %>% filter(gls_risk_class %in% c("Low", "Moderate", "High"))
+          data1$gls_risk_class <- factor(data1$gls_risk_class, levels = c("Low", "Moderate", "High"))
+          data1$color <- pal(data1$gls_risk_class)
           
-          # Assign colors and filter based on disease type
-          if (input$disease_name %in% c('tarspot')) {
-
-            #data1 <- data1 %>% filter(tarspot_risk_class %in% c("Low", "Moderate", "High"))
-            #data1$tarspot_risk_class <- factor(data1$tarspot_risk_class, levels = c("Low", "Moderate", "High"))
-            data1$ts_color <- pal(data1$tarspot_risk_class)
-            
-            # Create the map and plot the points
-            map <- leaflet(data1) %>%
-              addProviderTiles(providers$CartoDB.Positron) %>%
-              setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
-              addCircleMarkers(
-                lng = ~longitude,
-                lat = ~latitude,
-                popup = ~popup_content,
-                color = ~ts_color,
-                fillColor = ~ts_color,
-                fillOpacity = 0.8,
-                radius = 6,
-                weight = 1.5,
-                label = ~station_name,
-                labelOptions = labelOptions(
-                  style = list("font-weight" = "normal", padding = "3px 8px"),
-                  textsize = "12px", direction = "auto"
-                ),
-                layerId = ~station_name
-              ) %>%
-              addLegend(
-                position = "bottomright",
-                title = "Predicted Risk (%)",
-                pal = pal,
-                values = c("Low", "Moderate", "High"),
-                opacity = 1
-              )
-          }
-          
-          if (input$disease_name %in% c('fe')) {
-            data1 <- data1 %>% filter(fe_risk_class %in% c("Low", "Moderate", "High"))
-            data1$fe_risk_class <- factor(data1$fe_risk_class, levels = c("Low", "Moderate", "High"))
-            data1$fe_color <- pal(data1$fe_risk_class)
-            
-            map <- leaflet(data1) %>%
-              addProviderTiles(providers$CartoDB.Positron) %>%
-              setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
-              addCircleMarkers(
-                lng = ~longitude,
-                lat = ~latitude,
-                popup = ~popup_content,
-                color = ~fe_color,
-                fillColor = ~fe_color,
-                fillOpacity = 0.8,
-                radius = 6,
-                weight = 1.5,
-                label = ~station_name,
-                labelOptions = labelOptions(
-                  style = list("font-weight" = "normal", padding = "3px 8px"),
-                  textsize = "12px", direction = "auto"
-                ),
-                layerId = ~station_name
-              ) %>%
-              addLegend(
-                position = "bottomright",
-                title = "Predicted Risk (%)",
-                pal = pal,
-                values = c("Low", "Moderate", "High"),
-                opacity = 1
-              )
-          }
-          
-          if (input$disease_name %in% c('gls')) {
-            data1 <- data1 %>% filter(gls_risk_class %in% c("Low", "Moderate", "High"))
-            data1$gls_risk_class <- factor(data1$gls_risk_class, levels = c("Low", "Moderate", "High"))
-            data1$color <- pal(data1$gls_risk_class)
-            
-            map <- leaflet(data1) %>%
-              addProviderTiles(providers$CartoDB.Positron) %>%
-              setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
-              addCircleMarkers(
-                lng = ~longitude,
-                lat = ~latitude,
-                popup = ~popup_content,
-                color = ~color,
-                fillColor = ~color,
-                fillOpacity = 0.8,
-                radius = 6,
-                weight = 1.5,
-                label = ~station_name,
-                labelOptions = labelOptions(
-                  style = list("font-weight" = "normal", padding = "3px 8px"),
-                  textsize = "12px", direction = "auto"
-                ),
-                layerId = ~station_name
-              ) %>%
-              addLegend(
-                position = "bottomright",
-                title = "Predicted Risk (%)",
-                pal = pal,
-                values = c("Low", "Moderate", "High"),
-                opacity = 1
-              )
-          }
-          
-          
-        }else if (input$disease_name %in% names(risk_variables)) {
-          # Get the corresponding risk variable for the selected disease
+          map <- leaflet(data1) %>%
+            addProviderTiles(providers$CartoDB.Positron) %>%
+            setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+            addCircleMarkers(
+              lng = ~longitude,
+              lat = ~latitude,
+              popup = ~popup_content,
+              color = ~color,
+              fillColor = ~color,
+              fillOpacity = 0.8,
+              radius = 6,
+              weight = 1.5,
+              label = ~station_name,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "12px", direction = "auto"
+              ),
+              layerId = ~station_name
+            ) %>%
+            addLegend(
+              position = "bottomright",
+              title = "Predicted Risk (%)",
+              pal = pal,
+              values = c("Low", "Moderate", "High"),
+              opacity = 1
+            )
+        }
+        
+        # For other disease names with risk variables
+        if (input$disease_name %in% names(risk_variables)) {
           risk_variable <- risk_variables[[input$disease_name]]
-          
           map <- leaflet(data1) %>%
             addProviderTiles(providers$CartoDB.Positron) %>%
             setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
@@ -343,7 +342,7 @@ server <- function(input, output, session) {
               popup = ~popup_content, 
               color = "black",
               fillColor = ~colorNumeric(palette = "YlGnBu", 
-                          domain = data1[[risk_variable]])(data1[[risk_variable]]),
+                                        domain = data1[[risk_variable]])(data1[[risk_variable]]),
               fillOpacity = 0.8,
               radius = 6, 
               weight = 1.5, 
@@ -356,14 +355,15 @@ server <- function(input, output, session) {
             ) %>%
             addLegend(
               position = "bottomright", 
-              pal = colorNumeric(palette = "YlGnBu", domain = data1[[risk_variable]]), 
+              pal = colorNumeric(palette = "YlGnBu", domain = data1[[risk_variable]]),
               values = data1[[risk_variable]],
               title = "Risk (%)",  
               opacity = 1 
             )
         }
         
-        map %>%
+        # Add county boundaries and additional base layers
+        map <- map %>%
           addPolygons(
             data = county_boundaries,
             color = "gray",
@@ -374,37 +374,32 @@ server <- function(input, output, session) {
             group = "County Boundaries",
             popup = ~NAME
           ) %>%
-            addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
-            addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
-            addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
-            addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
-            addLayersControl(
-            baseGroups = c("OpenStreetMap", "CartoDB Positron", 
-                           "Topographic", "Esri Imagery"),
+          addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+          addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
+          addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
+          addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
+          addLayersControl(
+            baseGroups = c("OpenStreetMap", "CartoDB Positron", "Topographic", "Esri Imagery"),
             overlayGroups = c("County Boundaries"),
             options = layersControlOptions(collapsed = TRUE)
           ) %>%
           hideGroup("County Boundaries")
+        
+        map  # Return the constructed map
       } else {
-        # Return a default map if no data is available
+        # If no data available, return a default map
         leaflet() %>%
           addProviderTiles(providers$CartoDB.Positron) %>%
           setView(lng = -89.75, lat = 44.76, zoom = 7.2)
       }
-    }else{
-      map<-map%>%leaflet() %>%
-        addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
-        addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
-        addProviderTiles("USGS.USTopo", group = "Topographic") %>% 
-        addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
-        setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
-        addLayersControl(
-          baseGroups = c("OpenStreetMap", "CartoDB Positron","Topographic",  #"Terrain",
-                         "Esri Imagery"),
-          options = layersControlOptions(collapsed = TRUE)
-        )
+    } else {
+      # When input$ibm_data is TRUE, return a default map
+      leaflet() %>%
+        addProviderTiles(providers$CartoDB.Positron) %>%
+        setView(lng = -89.75, lat = 44.76, zoom = 7.2)
     }
   })
+  
   
   # Observe click event to center the map on the selected station
   observeEvent(input$risk_map_marker_click, {
@@ -485,26 +480,28 @@ server <- function(input, output, session) {
   })
   
   output$risk_trend <- renderPlot({
-    ## Logic to plot the 7 days trend, in this case all the disease modesls are displayed
+    ## Preparación de la data y definición de la ubicación
     data_prepared <- NULL
     location <- NULL
     if (!is.null(shared_data$w_station_id))  {
-      data_prepared <- historical_data%>%filter(station_name==shared_data$w_station_id)
-      #historical_data%>%filter(station_name==shared_data$w_station_id)
+      data_prepared <- historical_data %>% filter(station_name == shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
-    }else if (!is.null(shared_data$ibm_data)) {
+    } else if (!is.null(shared_data$ibm_data)) {
       data_prepared <- shared_data$ibm_data
       data_prepared$forecasting_date <- as.Date(data_prepared$forecasting_date, format = '%Y-%m-%d')
-      location <- paste0("Lat ", shared_data$latitude, "Lon ", shared_data$longitude)
+      location <- paste0("Lat ", shared_data$latitude, " Lon ", shared_data$longitude)
     }
     
-    if (is.null(data_prepared)) {
+    # Si no hay datos (por ejemplo, mientras se espera la respuesta del API)
+    if (is.null(data_prepared) || nrow(data_prepared) == 0) {
+      # Se muestra un mapa o gráfico por defecto
       plot.new()
-      text(0.5, 0.5, "Please select an station in the map first.", cex = 1.5)
-    }else{
+      title("Mapa por defecto")
+      text(0.5, 0.5, "Cargando datos o seleccione una estación...", cex = 1.5)
+    } else {
+      # Si la data está disponible, se prepara y se genera el gráfico
       selected_diseases <- input$disease
       
-      # Your existing data preparation code remains the same
       data_selected <- data_prepared %>% 
         mutate(forecasting_date = as.Date(date, format = "%Y-%m-%d") + 1) %>% 
         filter(!is.na(tarspot_risk)) %>% 
@@ -519,28 +516,25 @@ server <- function(input, output, session) {
           `Whitemold No Irr` = whitemold_nirr_risk
         )
       
-      # Reshape the data into long format
+      # Reestructurar la data a formato long
       data_long <- data_selected %>% 
         pivot_longer(
-          cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"), 
-          names_to = "Disease", 
+          cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
+          names_to = "Disease",
           values_to = "risk_value"
-        ) 
+        )
       
-      data_long$risk_value <- data_long$risk_value*100
-      data_long$risk_value <- as.numeric(data_long$risk_value)
-      data_long$Disease <- as.character(data_long$Disease)
+      data_long$risk_value <- as.numeric(data_long$risk_value) * 100
+      
       df_subset <- data_long %>% filter(Disease %in% selected_diseases)
-      #df_subset$forecasting_date <- as.Date(df_subset$forecasting_date)
       
-      if (selected_diseases=='Tar Spot'){
-        df_subset %>%
-          ggplot(aes(x = forecasting_date, y = risk_value, color = Disease)) +
+      # Ejemplo para Tar Spot
+      if (selected_diseases == 'Tar Spot') {
+        ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = Disease)) +
           geom_line() +
           geom_point() +
           geom_hline(yintercept = 35, linetype = "dashed", color = "green") +
           geom_hline(yintercept = 50, linetype = "dashed", color = "gray50") +
-          # Annotate the risk levels: adjust x positions as needed
           annotate("text", x = min(df_subset$forecasting_date), y = 17.5, label = "Low", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 42.5, label = "Moderate", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 57.5, label = "High", vjust = -0.5, hjust = 0, size = 4) +
@@ -550,22 +544,18 @@ server <- function(input, output, session) {
             y = "Risk (%)",
             color = "Disease"
           ) +
-          #scale_y_continuous(labels = percent_format()) +
-          #scale_x_date(date_breaks = "1 month") 
           theme_minimal() +
           theme(
             plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
             legend.position = "bottom"
           )
-      }else if(selected_diseases=='Gray Leaf Spot'){
-        df_subset %>%
-          ggplot(aes(x = forecasting_date, y = risk_value, color = Disease)) +
+      } else if (selected_diseases == 'Gray Leaf Spot') {
+        ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = Disease)) +
           geom_line() +
           geom_point() +
           geom_hline(yintercept = 39, linetype = "dashed", color = "green") +
           geom_hline(yintercept = 60, linetype = "dashed", color = "gray50") +
-          # Annotate the risk levels: adjust x positions as needed
           annotate("text", x = min(df_subset$forecasting_date), y = 17.5, label = "Low", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 42.5, label = "Moderate", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 67.5, label = "High", vjust = -0.5, hjust = 0, size = 4) +
@@ -575,17 +565,14 @@ server <- function(input, output, session) {
             y = "Risk (%)",
             color = "Disease"
           ) +
-          #scale_y_continuous(labels = percent_format()) +
-          #scale_x_date(date_breaks = "1 month") 
           theme_minimal() +
           theme(
             plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
             legend.position = "bottom"
           )
-      }else{
-        df_subset %>%
-          ggplot(aes(x = forecasting_date, y = risk_value, color = Disease)) +
+      } else {
+        ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = Disease)) +
           geom_line() +
           geom_point() +
           labs(
@@ -594,17 +581,16 @@ server <- function(input, output, session) {
             y = "Risk (%)",
             color = "Disease"
           ) +
-          #scale_y_continuous(labels = percent_format()) +
-          #scale_x_date(date_breaks = "1 month") 
           theme_minimal() +
           theme(
             plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
             legend.position = "bottom"
           )
       }
     }
   }, width = 800, height = 600)
+  
   
   output$weather_trend <- renderPlot({
     # Prepare the data based on shared_data.
