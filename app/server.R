@@ -502,14 +502,11 @@ server <- function(input, output, session) {
       location <- paste0("Lat ", shared_data$latitude, " Lon ", shared_data$longitude)
     }
     
-    # Si no hay datos (por ejemplo, mientras se espera la respuesta del API)
     if (is.null(data_prepared) || nrow(data_prepared) == 0) {
-      # Se muestra un mapa o gráfico por defecto
       plot.new()
-      title("Mapa por defecto")
-      text(0.5, 0.5, "Cargando datos o seleccione una estación...", cex = 1.5)
+      #title("Please choose an station from the map first")
+      text(0.5, 0.5, "Please choose an station from the map to display the risk and weather trends for such location", cex = 1.5)
     } else {
-      # Si la data está disponible, se prepara y se genera el gráfico
       selected_diseases <- input$disease
       
       data_selected <- data_prepared %>% 
@@ -526,7 +523,6 @@ server <- function(input, output, session) {
           `Whitemold No Irr` = whitemold_nirr_risk
         )
       
-      # Reestructurar la data a formato long
       data_long <- data_selected %>% 
         pivot_longer(
           cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
@@ -538,7 +534,6 @@ server <- function(input, output, session) {
       
       df_subset <- data_long %>% filter(Disease %in% selected_diseases)
       
-      # Ejemplo para Tar Spot
       if (selected_diseases == 'Tar Spot') {
         ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = Disease)) +
           geom_line() +
