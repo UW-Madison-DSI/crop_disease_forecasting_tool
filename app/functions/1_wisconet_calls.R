@@ -1,11 +1,10 @@
-# global.R o al inicio de app.R
 library(shiny)
 library(httr2)
 library(jsonlite)
 library(dplyr)
 library(memoise)
 
-popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
+popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %s<br><strong>Frogeye Leaf Spot:</strong> %s<br><strong>Gray Leaf Spot:</strong> %s<br><strong>Whitemold Irrigation (30in):</strong> %s<br><strong>Whitemold Irrigation (15in):</strong> %s<br><strong>Whitemold Dry:</strong> %s"
 base_url <- "https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers/wisconet"
 
 # simple function not cache
@@ -32,11 +31,12 @@ fetch_forecasting_data_uncached <- function(forecast_date) {
             location,
             region,
             forecasting_date,
-            tarspot_risk * 100,
-            fe_risk * 100,
-            gls_risk * 100,
-            whitemold_irr_30in_risk * 100,
-            whitemold_irr_15in_risk * 100
+            tarspot_risk_class,
+            fe_risk_class,
+            gls_risk_class,
+            whitemold_irr_class,
+            whitemold_irr_class,
+            whitemold_nirr_risk_class
           )
         )
       

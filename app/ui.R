@@ -62,9 +62,9 @@ ui <- navbarPage(
               "Tar Spot (Corn)" = 'tarspot',
               "Gray Leaf Spot (Corn)" = 'gls',
               "Frogeye Leaf Spot (Soybean)" = 'fe',
-              "Whitemold Irr (30in)" = 'whitemold_irr_30in',
-              "Whitemold Irr (15in)" = 'whitemold_irr_15in'
-              #"Whitemold Dry" = 'whitemold_nirr'
+              "Whitemold Irr 30in (Soybean)" = 'whitemold_irr_30in',
+              "Whitemold Irr 15in (Soybean)" = 'whitemold_irr_15in',
+              "Whitemold Dry (Soybean)" = 'whitemold_nirr'
             )
           )
         ),
@@ -80,7 +80,7 @@ ui <- navbarPage(
           condition = "input.ibm_data == false",
           h4("Crop Management"),
           p(
-            "Our model predictions are advised when the next conditions are satisfied.",
+            "Our model predictions are advised when air temperature is above 15°C in average from the last 30 days and the next conditions are satisfied.",
             style = "font-size: 0.6em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
           )
         ),
