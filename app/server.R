@@ -178,14 +178,16 @@ server <- function(input, output, session) {
       punctual_estimate <- punctual_estimate %>% filter(forecasting_date == as.Date(input$forecasting_date))
       
       # Display the summary of risks for all diseases
-      all_risks_text <- paste(
-        "Tarspot (Corn) Risk Class: ", punctual_estimate$tarspot_risk_class, "| ",
-        "Gray Leaf Spot (Corn) Risk Class: ", punctual_estimate$gls_risk_class, "| ",
-        "FrogEye (Soybean) Risk Class: ", punctual_estimate$fe_risk_class, "| ",
-        "Whitemold Irrigated (30in) Risk: ", round(punctual_estimate$whitemold_irr_30in_risk * 100, 2), "% | ",
-        "Whitemold Irrigated (15in) Risk: ", round(punctual_estimate$whitemold_irr_15in_risk * 100, 2), "% | ",
-        "Whitemold Dry Risk: ", round(punctual_estimate$whitemold_nirr_risk * 100, 2), "%"
+      all_risks_text <- sprintf(
+        "Tarspot (Corn) Risk Class: %s | Gray Leaf Spot (Corn) Risk Class: %s | FrogEye (Soybean) Risk Class: %s | Whitemold Irrigated 30in Soybean: %s | Whitemold Irrigated 15in Soybean: %s | Whitemold Dry Risk Soybean: %s.",
+        punctual_estimate$tarspot_risk_class,
+        punctual_estimate$gls_risk_class,
+        punctual_estimate$fe_risk_class,
+        punctual_estimate$whitemold_irr_class,
+        punctual_estimate$whitemold_irr_class,
+        punctual_estimate$whitemold_nirr_risk_class
       )
+      
       
       # Display the clicked coordinates and risk information
       output$click_coordinates <- renderText({
@@ -513,14 +515,19 @@ server <- function(input, output, session) {
             clearMarkers() %>%
             clearControls() %>%
             addProviderTiles(providers$CartoDB.Positron) %>%
-            setView(lng = -89.75, lat = 44.76, zoom = 7.2)
+            setView(lng = -89.75, lat = 44.76, zoom = 7.2) %>%
+            addLayersControl(
+              baseGroups = c("OpenStreetMap", "CartoDB.Positron", "Topographic", "Esri Imagery"),
+              options = layersControlOptions(collapsed = TRUE)
+            )
         }
       } else {
         # When input$ibm_data is TRUE, return a default map
-        leafletProxy("risk_map") %>%
-          clearShapes() %>%
-          clearMarkers() %>%
-          clearControls() %>%
+        map_proxy <- leafletProxy() %>%
+          addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
+          addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
+          addProviderTiles("USGS.USTopo", group = "Topographic") %>%
+          addProviderTiles("Esri.WorldImagery", group = "Esri Imagery") %>%
           addProviderTiles(providers$CartoDB.Positron) %>%
           setView(lng = -89.75, lat = 44.76, zoom = 7.2)
       }
