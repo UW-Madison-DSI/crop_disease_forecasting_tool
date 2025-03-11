@@ -154,7 +154,7 @@ ui <- navbarPage(
         conditionalPanel(
           condition = "input.ibm_data != false",
           div(
-            textOutput('click_coordinates'),
+            uiOutput('click_coordinates'),
             style = "margin-top: 10px; color: #666;"
           )
         ),
@@ -164,6 +164,9 @@ ui <- navbarPage(
             textOutput("station_count"),
             style = "margin-top: 10px; color: #666; font-size: 14px;"
           )
+        ),
+        p("Results will update after a short delay",
+          style = "font-size: 0.6em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
         )
       )
     )
