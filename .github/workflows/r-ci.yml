@@ -17,9 +17,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Install required R packages here
           Rscript -e 'install.packages("testthat", repos="https://cran.rstudio.com")'
-          Rscript -e 'install.packages("devtools", repos="https://cran.rstudio.com")'
+          Rscript -e 'install.packages("shiny", repos="https://cran.rstudio.com")'
+          Rscript -e 'install.packages("leaflet", repos="https://cran.rstudio.com")'
 
       - name: Run a specific test
         run: Rscript -e 'testthat::test_file("app/test/testthat/test-server-functions.R")'
