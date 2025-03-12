@@ -95,11 +95,7 @@ server <- function(input, output, session) {
       result<-historical_data%>% filter(forecasting_date == input$forecasting_date)%>%
                mutate(`Forecasting Date` = forecasting_date)
     } else {
-      result<-fetch_forecasting_data(input$forecasting_date)%>%
-        mutate(`Forecasting Date` = forecasting_date) %>%
-        group_by(station_id) %>%
-        filter(forecasting_date == max(forecasting_date)) %>%
-        ungroup()
+      result<-fetch_forecasting_data(input$forecasting_date)
 
     }
 
@@ -274,7 +270,11 @@ server <- function(input, output, session) {
         type = "default",
         duration = 5                    # Stay visible until removed
       )
-      data1 <- forecast_data()
+      data1 <- forecast_data()%>%
+        mutate(`Forecasting Date` = forecasting_date) %>%
+        group_by(station_id) %>%
+        filter(forecasting_date == max(forecasting_date)) %>%
+        ungroup()
       # Debug print
       cat("Data retrieved, rows:", nrow(data1), "\n")
       
@@ -671,11 +671,11 @@ server <- function(input, output, session) {
   })
   
   output$risk_trend <- renderPlot({
-    ## Preparación de la data y definición de la ubicación
+    ## Risk trend
     data_prepared <- historical_data %>% filter(station_name == 'ALTN')
     location <- "HNCK Station"
     if (!is.null(shared_data$w_station_id)) {
-      data_prepared <- historical_data %>% filter(station_name == shared_data$w_station_id)
+      data_prepared <- forecast_data() %>% filter(station_name == shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
       title_txt <- paste0("Risk Trend at", shared_data$w_station_id, "Station")
       data_selected <- data_prepared %>% 
@@ -724,7 +724,7 @@ server <- function(input, output, session) {
       
       data_long <- data_selected %>% 
         pivot_longer(
-          cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
+          cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold No Irr", "Whitemold Irr (30in)", "Whitemold Irr (15in)"),
           names_to = "Disease",
           values_to = "risk_value"
         )
@@ -808,8 +808,7 @@ server <- function(input, output, session) {
     rh_data <- NULL
     
     if (!is.null(shared_data$w_station_id)) {
-      data_prepared <- historical_data %>%
-        filter(station_name == shared_data$w_station_id)
+      data_prepared <- historical_data %>% filter(station_name == shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
       air_temp_data <- data_prepared %>%
         pivot_longer(
