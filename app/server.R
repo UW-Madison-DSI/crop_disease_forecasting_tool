@@ -178,7 +178,7 @@ server <- function(input, output, session) {
         risk_class,
         "Inactive" = icon("snowflake",  lib = "font-awesome", style = "color:gray; margin-right:4px;"),
         "1.Low"    = icon("leaf",       lib = "font-awesome", style = "color:green; margin-right:4px;"),
-        "2.Medium" = icon("circle",     lib = "font-awesome", style = "color:gold; margin-right:4px;"),
+        "2.Medium" = icon("circle",     lib = "font-awesome", style = "color:yellow; margin-right:4px;"),
         "3.High"   = icon("circle",     lib = "font-awesome", style = "color:red; margin-right:4px;"),
         # default / unknown:
         icon("circle-question", lib = "font-awesome", style = "color:black; margin-right:4px;")
@@ -219,12 +219,13 @@ server <- function(input, output, session) {
       output$click_coordinates <- renderText({
         paste(
           "Clicked Coordinates: Latitude =", round(click$lat, 4),
-          ", Longitude =", round(click$lng, 4), "|", 
+          ", Longitude =", round(click$lng, 4), "|",
+          " Forecasting Date =", input$forecasting_date, " | \n",
           " Summary of All Diseases Risk:", all_risks_text
         )
       })
     } else {
-      showNotification("Please click on the map for a location within the State of Wisconsin, USA to run the model.", type = "message")
+      showNotification("Please click on the map for a location within the State of Wisconsin, USA, to run the model.", type = "message")
     }
   })
   
@@ -254,7 +255,7 @@ server <- function(input, output, session) {
     # If forecast_data() is NULL => show the notification, else remove it
     if (is.null(forecast_data())) {
       showNotification(
-        ui = "Loading data...",
+        ui = "ok...",
         id = "loading_data_notification",   # A unique ID
         type = "message",
         duration = NULL                    # Stay visible until removed
@@ -264,15 +265,14 @@ server <- function(input, output, session) {
     }
   })
   
-  
   # Make the map responsive to both data changes AND disease selection changes
   observeEvent(list(forecast_data(), input$disease_name), {
     tryCatch({
       showNotification(
         ui = "Loading data...",
         id = "loading_data_notification",   # A unique ID
-        type = "message",
-        duration = 20                    # Stay visible until removed
+        type = "default",
+        duration = 5                    # Stay visible until removed
       )
       data1 <- forecast_data()
       # Debug print
@@ -564,7 +564,7 @@ server <- function(input, output, session) {
       } else {
         #removeNotification("loading_data_notification")
         # When input$ibm_data is TRUE, return a default map
-        map_proxy <- leafletProxy() %>%
+        map_proxy <- leafletProxy("risk_map") %>%
           addProviderTiles("OpenStreetMap", group = "OpenStreetMap") %>%
           addProviderTiles("CartoDB.Positron", group = "CartoDB Positron") %>%
           addProviderTiles("USGS.USTopo", group = "Topographic") %>%
@@ -677,8 +677,9 @@ server <- function(input, output, session) {
     if (!is.null(shared_data$w_station_id)) {
       data_prepared <- historical_data %>% filter(station_name == shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
+      title_txt <- paste0("Risk Trend at", shared_data$w_station_id, "Station")
       data_selected <- data_prepared %>% 
-        mutate(forecasting_date = as.Date(date, format = "%Y-%m-%d") + 1) %>% 
+        mutate(forecasting_date = as.Date(date, format = "%Y-%m-%d")) %>% 
         filter(!is.na(tarspot_risk)) %>% 
         select(forecasting_date, tarspot_risk, gls_risk, fe_risk, 
                whitemold_irr_30in_risk, whitemold_irr_15in_risk, whitemold_nirr_risk) %>% 
@@ -696,6 +697,7 @@ server <- function(input, output, session) {
       data_prepared <- shared_data$ibm_data
       data_prepared$forecasting_date <- as.Date(data_prepared$forecasting_date, format = '%Y-%m-%d')
       location <- paste0("Lat ", shared_data$latitude, " Lon ", shared_data$longitude)
+      title_txt <- paste0("Risk Trend at Lat ", shared_data$latitude, " Lon ", shared_data$longitude)
       
       data_selected <- data_prepared %>% 
         mutate(forecasting_date = date)%>%#as.Date(date, format = "%Y-%m-%d") + 1) %>% 
@@ -741,7 +743,7 @@ server <- function(input, output, session) {
           annotate("text", x = min(df_subset$forecasting_date), y = 42.5, label = "2.Moderate", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 57.5, label = "3.High", vjust = -0.5, hjust = 0, size = 4) +
           labs(
-            title = paste("Risk Trend at", shared_data$w_station_id, "Station"),
+            title = title_txt,
             x = "Forecasting Date",
             y = "Risk (%)",
             color = "Disease"
@@ -802,6 +804,9 @@ server <- function(input, output, session) {
   output$weather_trend <- renderPlot({
     # Prepare the data based on shared_data.
     data_prepared <- historical_data %>% filter(station_name == 'ALTN')
+    air_temp_data <- NULL
+    rh_data <- NULL
+    
     if (!is.null(shared_data$w_station_id)) {
       data_prepared <- historical_data %>%
         filter(station_name == shared_data$w_station_id)
@@ -838,7 +843,7 @@ server <- function(input, output, session) {
         )
     }
     
-    if(!is.null(data_prepared)){
+    if(!is.null(air_temp_data) && !is.null(rh_data)){
       # Prepare air temperature data.
       p1 <- ggplot(air_temp_data, aes(x = forecasting_date, y = value, color = variable)) +
         geom_line() +
@@ -850,8 +855,6 @@ server <- function(input, output, session) {
         ) +
         theme_minimal()
       
-      
-      
       p2 <- ggplot(rh_data, aes(x = forecasting_date, y = value, color = variable)) +
         geom_line() +
         geom_point() +
@@ -861,7 +864,6 @@ server <- function(input, output, session) {
           y = "Relative Humidity (%)"
         ) +
         theme_minimal()
-      
       
       grid.arrange(p1, p2, ncol = 1)
     }else{
