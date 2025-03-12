@@ -182,7 +182,7 @@ ui <- navbarPage(
         hr(),
         radioButtons("disease", 
                      label = "Choose Disease",
-                     choices = c("Gray Leaf Spot", "Tar Spot", 
+                     choices = c("Gray Leaf Spot", "Tar Spot", "Frog Eye Leaf Spot",
                                  "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
                      selected = "Gray Leaf Spot",
                      inline = TRUE),

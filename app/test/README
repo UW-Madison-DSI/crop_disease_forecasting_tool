@@ -1,0 +1,5 @@
+# Run all tests manually
+source("tests/test-all.R")
+
+# Or run a specific test file
+test_file("tests/testthat/test-data-transformations.R")
