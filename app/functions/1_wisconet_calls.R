@@ -34,9 +34,10 @@ fetch_forecasting_data_uncached <- function(forecast_date) {
             tarspot_risk_class,
             fe_risk_class,
             gls_risk_class,
-            whitemold_irr_class,
-            whitemold_irr_class,
-            whitemold_nirr_risk_class
+            whitemold_irr_15in_class,
+            whitemold_irr_30in_class,
+            whitemold_nirr_risk_class,
+            whitemold_nirr_risk
           )
         )
       

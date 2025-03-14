@@ -29,6 +29,31 @@ source("functions/7_data_transformations.R")
 risk_class_vector <- c("1.Low", "2.Moderate", "3.High",'Inactive')
 popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
 
+getStationIcon <- function(risk_class) {
+  icon_color <- switch(
+    as.character(risk_class),
+    "1.Low" = "green",
+    "2.Moderate" = "orange",
+    "3.High" = "red",
+    "Inactive" = "gray",
+    "black" # default
+  )
+  
+  # Create custom marker icons
+  leaflet::makeIcon(
+    iconUrl = sprintf("https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-%s.png", icon_color),
+    iconWidth = 25, 
+    iconHeight = 41,
+    iconAnchorX = 12, 
+    iconAnchorY = 41,
+    shadowUrl = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+    shadowWidth = 41, 
+    shadowHeight = 41,
+    shadowAnchorX = 12, 
+    shadowAnchorY = 41
+  )
+}
+
 historical_data <- get(load("data/historical_data.RData"))%>%
   mutate(
     forecasting_date = as.Date(date)+1,
@@ -209,8 +234,8 @@ server <- function(input, output, session) {
         getRiskIcon(punctual_estimate$tarspot_risk_class), punctual_estimate$tarspot_risk_class,
         getRiskIcon(punctual_estimate$gls_risk_class), punctual_estimate$gls_risk_class,
         getRiskIcon(punctual_estimate$fe_risk_class), punctual_estimate$fe_risk_class,
-        getRiskIcon(punctual_estimate$whitemold_irr_class), punctual_estimate$whitemold_irr_class,
-        getRiskIcon(punctual_estimate$whitemold_irr_class), punctual_estimate$whitemold_irr_class,
+        getRiskIcon(punctual_estimate$whitemold_irr_30in_class), punctual_estimate$whitemold_irr_30in_class,
+        getRiskIcon(punctual_estimate$whitemold_irr_15in_class), punctual_estimate$whitemold_irr_15in_class,
         getRiskIcon(punctual_estimate$whitemold_nirr_risk_class), punctual_estimate$whitemold_nirr_risk_class
       )
       
@@ -347,21 +372,24 @@ server <- function(input, output, session) {
           
           # For tarspot risk
           if (input$disease_name %in% c("tarspot")) {
+            
             filtered_data <- data1 %>% filter(tarspot_risk_class %in% risk_class_vector)
             filtered_data$tarspot_risk_class <- factor(filtered_data$tarspot_risk_class,
                                                        levels = risk_class_vector)
             filtered_data$ts_color <- pal(filtered_data$tarspot_risk_class)
-
+            #icons_list <- lapply(filtered_data$tarspot_risk_class, getStationIcon)
+            
             map_proxy %>%
               addCircleMarkers(
                 data = filtered_data,
                 lng = ~longitude,
                 lat = ~latitude,
                 popup = ~popup_content,
+                #icon = icons_list,
                 color = ~ts_color,
                 fillColor = ~ts_color,
                 fillOpacity = 0.8,
-                radius = 6,
+                radius = 12,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
@@ -372,7 +400,7 @@ server <- function(input, output, session) {
               ) %>%
               addLegend(
                 position = "bottomright",
-                title = "Predicted Risk (%)",
+                title = "Tar Spot Risk",
                 pal = pal,
                 values = risk_class_vector,
                 opacity = 1
@@ -405,7 +433,7 @@ server <- function(input, output, session) {
                 color = ~fe_color,
                 fillColor = ~fe_color,
                 fillOpacity = 0.8,
-                radius = 6,
+                radius = 12,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
@@ -416,7 +444,7 @@ server <- function(input, output, session) {
               ) %>%
               addLegend(
                 position = "bottomright",
-                title = "Predicted Risk (%)",
+                title = "Frog Eye Leaf Spot Risk",
                 pal = pal,
                 values = risk_class_vector,
                 opacity = 1
@@ -446,7 +474,7 @@ server <- function(input, output, session) {
                 color = ~whitemold_nirr_color,
                 fillColor = ~whitemold_nirr_color,
                 fillOpacity = 0.8,
-                radius = 6,
+                radius = 12,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
@@ -457,7 +485,7 @@ server <- function(input, output, session) {
               ) %>%
               addLegend(
                 position = "bottomright",
-                title = "Predicted Risk (%)",
+                title = "White Mold Dry Risk",
                 pal = pal,
                 values = risk_class_vector,
                 opacity = 1
@@ -465,17 +493,17 @@ server <- function(input, output, session) {
           }
           
           # For whitemold irrigated risk
-          if (input$disease_name %in% c("whitemold_irr_30in", "whitemold_irr_15in")) {
+          if (input$disease_name %in% c("whitemold_irr_30in")) {
             
-            filtered_data <- data1 %>% filter(whitemold_irr_class %in% risk_class_vector)
+            filtered_data <- data1 %>% filter(whitemold_irr_30in_class %in% risk_class_vector)
             if (nrow(filtered_data) == 0) {
               cat("WARNING: No valid whitemold_irr_class data found after filtering\n")
               return()
             }
             
-            filtered_data$whitemold_irr_class <- factor(filtered_data$whitemold_irr_class,
+            filtered_data$whitemold_irr_30in_class <- factor(filtered_data$whitemold_irr_30in_class,
                                                         levels = risk_class_vector)
-            filtered_data$whitemold_irr_color <- pal(filtered_data$whitemold_irr_class)
+            filtered_data$whitemold_irr_30in_class_color <- pal(filtered_data$whitemold_irr_30in_class)
             
             map_proxy %>%
               addCircleMarkers(
@@ -483,10 +511,10 @@ server <- function(input, output, session) {
                 lng = ~longitude,
                 lat = ~latitude,
                 popup = ~popup_content,
-                color = ~whitemold_irr_color,
-                fillColor = ~whitemold_irr_color,
+                color = ~whitemold_irr_30in_class_color,
+                fillColor = ~whitemold_irr_30in_class_color,
                 fillOpacity = 0.8,
-                radius = 6,
+                radius = 12,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
@@ -497,7 +525,47 @@ server <- function(input, output, session) {
               ) %>%
               addLegend(
                 position = "bottomright",
-                title = "Predicted Risk (%)",
+                title = "White mold irr 30in",
+                pal = pal,
+                values = risk_class_vector,
+                opacity = 1
+              )
+          }
+          
+          # For whitemold irrigated risk
+          if (input$disease_name %in% c("whitemold_irr_15in")) {
+            
+            filtered_data <- data1 %>% filter(whitemold_irr_15in_class_class %in% risk_class_vector)
+            if (nrow(filtered_data) == 0) {
+              cat("WARNING: No valid whitemold_irr_class data found after filtering\n")
+              return()
+            }
+            
+            filtered_data$whitemold_irr_15in_class <- factor(filtered_data$whitemold_irr_15in_class,
+                                                             levels = risk_class_vector)
+            filtered_data$whitemold_irr_15in_class_color <- pal(filtered_data$whitemold_irr_15in_class)
+            
+            map_proxy %>%
+              addCircleMarkers(
+                data = filtered_data,
+                lng = ~longitude,
+                lat = ~latitude,
+                popup = ~popup_content,
+                color = ~whitemold_irr_15in_class_color,
+                fillColor = ~whitemold_irr_15in_class_color,
+                fillOpacity = 0.8,
+                radius = 12,
+                weight = 1.5,
+                label = ~station_name,
+                labelOptions = labelOptions(
+                  style = list("font-weight" = "normal", padding = "3px 8px"),
+                  textsize = "12px", direction = "auto"
+                ),
+                layerId = ~station_name
+              ) %>%
+              addLegend(
+                position = "bottomright",
+                title = "White mold irr 15in",
                 pal = pal,
                 values = risk_class_vector,
                 opacity = 1
@@ -530,7 +598,7 @@ server <- function(input, output, session) {
                 color = ~gls_risk_color,
                 fillColor = ~gls_risk_color,
                 fillOpacity = 0.8,
-                radius = 6,
+                radius = 16,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
@@ -541,7 +609,7 @@ server <- function(input, output, session) {
               ) %>%
               addLegend(
                 position = "bottomright",
-                title = "Predicted Risk (%)",
+                title = "Crop Disease Risk",
                 pal = pal,
                 values = risk_class_vector,
                 opacity = 1
@@ -652,10 +720,6 @@ server <- function(input, output, session) {
             paste("situated in", data$location[1], ",", data$region[1], "Region,", data$state[1])
           )
           
-          #date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")  
-          # Format for user-friendly reading
-          user_friendly_date <- format(date_obj, "%B %d, %Y")
-          
           paste(
             station, "Station,", location, "."
           )
@@ -672,7 +736,7 @@ server <- function(input, output, session) {
   
   output$risk_trend <- renderPlot({
     ## Preparación de la data y definición de la ubicación
-    data_prepared <- historical_data %>% filter(station_name == 'ALTN')
+    data_prepared <- historical_data %>% filter(station_name == 'HNCK')
     location <- "HNCK Station"
     if (!is.null(shared_data$w_station_id)) {
       data_prepared <- historical_data %>% filter(station_name == shared_data$w_station_id)
