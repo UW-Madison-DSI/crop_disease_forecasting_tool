@@ -7,7 +7,7 @@ This open-source plant disease forecasting API and Dashboard enables proactive a
 
 ## Shiny APP
 
-Visit our [dashboard here](https://connect.doit.wisc.edu/tarspot_forecasting_app/)
+Visit our [dashboard here](https://connect.doit.wisc.edu/ag_forecasting/)
 
 ## API
 
