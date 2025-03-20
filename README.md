@@ -23,7 +23,7 @@ Response: A JSON object containing the predicted probability and underlying vari
 
 
 ### Usage
-See example of how to do an api call on this tool in the materials section of the repository [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/example/example_api_call.R)
+See example of how to do an api call on this tool in the materials section of the repository [HERE](https://github.com/UW-Madison-DSI/crop_disease_forecasting_tool/blob/main/materials/callapi.ipynb)
 
 
 ## For Developers
