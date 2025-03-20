@@ -16,9 +16,11 @@ Method: `GET`
 Response: A JSON object containing the predicted probability and underlying variables.
 
 ### API to our models in top of Wisconet and IBM:
-- Our API provides the prediction of a number of crop diseases based on historical data sourced from 1) Wisconet and 2) IBM-source. Our API is defided to retrieve the historical data and provide the forecasting risk estimates on such locations.
-[LINK](https://github.com/UW-Madison-DSI/pywisconet)
-[Endpoints](https://connect.doit.wisc.edu/pywisconet_wrapper/docs)
+Our API predicts various crop diseases using historical data sourced from Wisconet and IBM. It retrieves and processes historical records to generate risk forecasts for specific locations.
+
+- [LINK](https://github.com/UW-Madison-DSI/pywisconet)
+
+- [Endpoints](https://connect.doit.wisc.edu/pywisconet_wrapper/docs)
 
 
 
