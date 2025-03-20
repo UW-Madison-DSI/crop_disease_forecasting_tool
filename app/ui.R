@@ -57,11 +57,11 @@ ui <- navbarPage(
           condition = "input.ibm_data == false",  # Condition to display disease selection
           selectInput(
             "disease_name",
-            "Select Disease:",
+            "Select Crop Disease:",
             choices = c(
               "Tar Spot (Corn)" = 'tarspot',
               "Gray Leaf Spot (Corn)" = 'gls',
-              "Frogeye Leaf Spot (Soybean)" = 'fe',
+              "Frogeye Leaf Spot (Corn)" = 'fe',
               "Whitemold Irr 30in (Soybean)" = 'whitemold_irr_30in',
               "Whitemold Irr 15in (Soybean)" = 'whitemold_irr_15in',
               "Whitemold Dry (Soybean)" = 'whitemold_nirr'
@@ -176,14 +176,17 @@ ui <- navbarPage(
   tabPanel(
     title = "Summary",
     fluidPage(
-      h3("Station Summary"),
+      h3("Location Summary"),
       mainPanel(
         textOutput('station_specifications'),
         hr(),
         radioButtons("disease", 
-                     label = "Choose Disease",
-                     choices = c("Gray Leaf Spot", "Tar Spot", "Frog Eye Leaf Spot",
-                                 "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
+                     label = "Choose Crop Disease",
+                     choices = c("Gray Leaf Spot", "Frog Eye Leaf Spot",
+                                 "Tar Spot",
+                                 "Whitemold Irr (30in)", 
+                                 "Whitemold Irr (15in)", 
+                                 "Whitemold No Irr"),
                      selected = "Gray Leaf Spot",
                      inline = TRUE),
         hr(),
