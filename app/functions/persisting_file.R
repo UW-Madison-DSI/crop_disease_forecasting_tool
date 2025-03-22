@@ -3,7 +3,7 @@
 #library(arrow)
 library(dplyr)
 
-historical_data <- read_parquet("/Users/mariaoros/Documents/DataScienceInstitute/2024/Forecasting-models/corn_disease_forecast_api/data/snapshot_0224_0225_stations.parquet")
+historical_data <- read_parquet("../corn_disease_forecast_api/data/snapshot_0224_0225_stations.parquet")
 historical_data$forecasting_date <- as.Date(as.POSIXct(historical_data$forecasting_date, format = "%Y-%m-%d %H:%M:%S %Z"))
 
 print(historical_data$forecasting_date)
