@@ -75,6 +75,11 @@ ui <- navbarPage(
           min = '2024-04-02',
           max = Sys.Date()
         ),
+        actionButton(
+          inputId = "run_model_wisc", 
+          label = "Run Forecasting", 
+          class = "btn-success"
+        ),
         hr(), 
         conditionalPanel(
           condition = "input.ibm_data == false",
@@ -133,7 +138,7 @@ ui <- navbarPage(
           condition = "input.ibm_data !== false",  # Ensure the condition is checking for exactly 'false'
           actionButton(
             inputId = "run_model", 
-            label = "Run Model", 
+            label = "Run Forecasting", 
             class = "btn-success"
           ),
           p(
@@ -165,7 +170,7 @@ ui <- navbarPage(
             style = "margin-top: 10px; color: #666; font-size: 14px;"
           )
         ),
-        p("Results will update after a short delay",
+        p("Daily weather data is sourced from public UW-Madison Mesonet startions and IBM.",
           style = "font-size: 0.6em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
         )
       )
@@ -177,6 +182,7 @@ ui <- navbarPage(
     title = "Summary",
     fluidPage(
       h3("Location Summary"),
+      p("Our models are advised when the averaged daily air temperature in the last 30 days is above 15 °C."),
       mainPanel(
         textOutput('station_specifications'),
         hr(),
