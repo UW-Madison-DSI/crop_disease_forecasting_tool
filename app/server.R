@@ -32,16 +32,17 @@ popup_content_str <- paste0(
   "<strong>Location:</strong> %s<br>",
   "<strong>Region:</strong> %s<br>",
   "<strong>Forecasting Date:</strong> %s<br>",
-  "<strong>Risk Models</strong><br>",
-  "<strong>Tarspot:</strong> %s<br>",
-  "<strong>Frogeye Leaf Spot:</strong> %s<br>",
-  "<strong>Gray Leaf Spot:</strong> %s<br>",
+  "<strong><mark>Crop Disease Forecasting in Corn</mark></strong><br>",
+  "<strong>Tarspot Risk:</strong> %s<br>",
+  "<strong>Frogeye Leaf Spot Risk:</strong> %s<br>",
+  "<strong>Gray Leaf Spot Risk:</strong> %s<br>",
+  "<strong><mark>Crop Disease Forecasting in Soybean</mark></strong><br>",
   "<strong>Whitemold Non-Irrigated Risk:</strong> %s<br>",
-  "<strong>Whitemold Non-Irrigated Class:</strong> %s<br>",
+  "<strong>Whitemold Non-Irrigated Risk:</strong> %s<br>",
   "<strong>Whitemold Irrigation (30in) Risk:</strong> %s<br>",
   "<strong>Whitemold Irrigation (15in) Risk:</strong> %s<br>",
-  "<strong>Whitemold Irrigation (30in) Class:</strong> %s<br>",
-  "<strong>Whitemold Irrigation (15in) Class:</strong> %s"
+  "<strong>Whitemold Irrigation (30in) Risk:</strong> %s<br>",
+  "<strong>Whitemold Irrigation (15in) Risk:</strong> %s"
 )
 
 historical_data <- get(load("data/historical_data.RData"))
@@ -247,34 +248,25 @@ server <- function(input, output, session) {
     shared_data$disease_name <- input$disease_name
   })
   
-  observe({
-    # If forecast_data() is NULL => show the notification, else remove it
-    if (is.null(forecast_data())) {
-      showNotification(
-        ui = "ok...",
-        id = "loading_data_notification",   # A unique ID
-        type = "message",
-        duration = NULL                    # Stay visible until removed
-      )
-    } else {
-      removeNotification("loading_data_notification")
-    }
+  observeEvent(input$run_model_wisc, {
+    showNotification(
+      paste("Loading data for", input$forecasting_date, "..."),
+      id='loading',
+      type = "message",
+      duration = 5
+    )
   })
   
   # Make the map responsive to both data changes AND disease selection changes
   observeEvent(list(forecast_data(), input$disease_name), {
     tryCatch({
-      showNotification(
-        ui = "Loading data...",
-        id = "loading_data_notification",   # A unique ID
-        type = "default",
-        duration = 5                    # Stay visible until removed
-      )
+      
       data1 <- forecast_data() %>%
         mutate(`Forecasting Date` = forecasting_date) %>%
         group_by(station_id) %>%
         filter(forecasting_date == max(forecasting_date)) %>%
         ungroup()
+      removeNotification("loading")
       # Debug print
       cat("Data retrieved, rows:", nrow(data1), "\n")
       
@@ -835,7 +827,7 @@ server <- function(input, output, session) {
           annotate("text", x = min(df_subset$forecasting_date), y = 42.5, label = "2.Moderate", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 67.5, label = "3.High", vjust = -0.5, hjust = 0, size = 4) +
           labs(
-            title = paste("Risk Trend at", shared_data$w_station_id, "Station"),
+            title = paste("Risk Trend at ", shared_data$w_station_id),
             x = "Forecasting Date",
             y = "Risk (%)",
             color = "Disease"
@@ -857,7 +849,7 @@ server <- function(input, output, session) {
           annotate("text", x = min(df_subset$forecasting_date), y = 32.5, label = "2.Moderate", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 47.5, label = "3.High", vjust = -0.5, hjust = 0, size = 4) +
           labs(
-            title = paste("Whitemold Dry at", shared_data$w_station_id, "Station"),
+            title = paste("Whitemold Dry at", shared_data$w_station_id),
             x = "Forecasting Date",
             y = "Risk (%)",
             color = "Disease"
@@ -879,7 +871,7 @@ server <- function(input, output, session) {
           annotate("text", x = min(df_subset$forecasting_date), y = 7.5, label = "2.Moderate", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 20.5, label = "3.High", vjust = -0.5, hjust = 0, size = 4) +
           labs(
-            title = paste("Whitemold Not Irrigation at ", shared_data$w_station_id, "Station"),
+            title = paste("Whitemold Not Irrigation at ", shared_data$w_station_id),
             x = "Forecasting Date",
             y = "Risk (%)",
             color = "Disease"
@@ -975,14 +967,14 @@ server <- function(input, output, session) {
   output$download_stations <- downloadHandler(
     # Dynamically generate the filename
     filename = function() {
-      paste0("Report_", input$disease_name, "_forecasting_", Sys.Date(), ".csv")
+      paste0("Report_ag_forecasting_", Sys.Date(), ".csv")
     },
     
     content = function(file) {
       # Fetch the data from your reactive function
       data_f <- NULL
       if(input$ibm_data==FALSE){
-        data_f <- forecast_data() %>% filter(station_name == shared_data$w_station_id)
+        data_f <- forecast_data()
              
       }else if(input$ibm_data==TRUE){
         if (!is.null(shared_data$ibm_data)) {
