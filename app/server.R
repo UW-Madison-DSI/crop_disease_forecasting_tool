@@ -23,7 +23,7 @@ source("functions/2_external_source.R")
 
 source("functions/3_weather_plots.R") 
 source("functions/4_pdf_template.R")
-
+source("functions/6_weather_station.R")
 source("functions/7_data_transformations.R")
 
 risk_class_vector <- c("1.Low", "2.Moderate", "3.High",'Inactive')
@@ -360,7 +360,7 @@ server <- function(input, output, session) {
                   style = list("font-weight" = "normal", padding = "3px 8px"),
                   textsize = "12px", direction = "auto"
                 ),
-                layerId = ~station_name
+                layerId = ~station_id
               ) %>%
               addLegend(
                 position = "bottomright",
@@ -445,7 +445,7 @@ server <- function(input, output, session) {
                   style = list("font-weight" = "normal", padding = "3px 8px"),
                   textsize = "12px", direction = "auto"
                 ),
-                layerId = ~station_name
+                layerId = ~station_id
               ) %>%
               addLegend(
                 position = "bottomright",
@@ -495,7 +495,7 @@ server <- function(input, output, session) {
                   style = list("font-weight" = "normal", padding = "3px 8px"),
                   textsize = "12px", direction = "auto"
                 ),
-                layerId = ~station_name
+                layerId = ~station_id
               ) %>%
               addLegend(
                 position = "bottomright",
@@ -539,7 +539,7 @@ server <- function(input, output, session) {
                   style = list("font-weight" = "normal", padding = "3px 8px"),
                   textsize = "12px", direction = "auto"
                 ),
-                layerId = ~station_name
+                layerId = ~station_id
               ) %>%
               addLegend(
                 position = "bottomright",
@@ -598,10 +598,11 @@ server <- function(input, output, session) {
   observeEvent(input$risk_map_marker_click, {
     click <- input$risk_map_marker_click
     shared_data$w_station_id<-click$id
+    shared_data$w_station_key<-click$id
     print(click)
     
     this_station <- shared_data$stations_data 
-    this_station <- this_station%>% filter(station_name == click$id)
+    this_station <- this_station%>% filter(station_id == click$id)
     
     shared_data$this_station_data <- this_station
     if (!is.null(click)) {
@@ -674,17 +675,17 @@ server <- function(input, output, session) {
   
   output$risk_trend <- renderPlot({
     ## Preparación de la data y definición de la ubicación
-    data_prepared <- historical_data %>% filter(station_name == 'ALTN')
+    data_prepared <- historical_data %>% filter(station_id == 'ALTN')
     location <- "HNCK Station"
     if (!is.null(shared_data$w_station_id)) {
       print(shared_data$w_station_id)
-      data_prepared <- forecast_data() %>% filter(station_name == shared_data$w_station_id)
+      data_prepared <- forecast_data() %>% filter(station_id == shared_data$w_station_id)
       #historical_data %>% filter(station_name == shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
-      title_txt <- paste0("Risk Trend at", shared_data$w_station_id, "Station")
+      title_txt <- paste0("Risk Trend at ", shared_data$w_station_id)
       data_selected <- data_prepared %>% 
         mutate(forecasting_date = as.Date(date, format = "%Y-%m-%d")) %>% 
-        filter(!is.na(tarspot_risk) & (station_name == shared_data$w_station_id)) %>% 
+        filter(!is.na(tarspot_risk) & (station_id == shared_data$w_station_id)) %>% 
         select(forecasting_date,station_name, tarspot_risk,tarspot_risk_class, 
                gls_risk, gls_risk_class, 
                fe_risk, fe_risk_class, 
@@ -889,28 +890,17 @@ server <- function(input, output, session) {
   
   output$weather_trend <- renderPlot({
     # Prepare the data based on shared_data.
-    data_prepared <- historical_data %>% filter(station_name == 'ALTN')
+    data_prepared <- historical_data %>% filter(station_id == 'ALTN')
     air_temp_data <- NULL
     rh_data <- NULL
     flag = TRUE
     if (!is.null(shared_data$w_station_id)) {
-      #data_prepared <- historical_data %>%
-      #  filter(station_name == shared_data$w_station_id)
-      #location <- paste0(shared_data$w_station_id, " Station")
-      air_temp_data <- NULL #data_prepared %>%
-        #pivot_longer(
-        #  cols = c(contains("air_temp"), -ends_with("_f")),
-        #  names_to = "variable",
-        #  values_to = "value"
-        #)
-      flag = FALSE
-      # Prepare relative humidity data.
-      rh_data <- NULL #data_prepared %>%
-        #pivot_longer(
-        #  cols = contains("rh_max"),
-         # names_to = "variable",
-        #  values_to = "value"
-        #)
+      print(shared_data$w_station_id)
+      result <- plot_airtemp_30day(shared_data$w_station_id, input$forecasting_date)
+      # View the data
+      # head(result$data)
+      # Print or render the plot
+      print(result$plot)
     } else if (!is.null(shared_data$ibm_data)) {
       data_prepared <- shared_data$ibm_data
       data_prepared$forecasting_date <- as.Date(data_prepared$forecasting_date, format = '%Y-%m-%d')
@@ -928,36 +918,37 @@ server <- function(input, output, session) {
           names_to = "variable",
           values_to = "value"
         )
-    }
     
-    if(!is.null(air_temp_data) && !is.null(rh_data)){
-      # Prepare air temperature data.
-      p1 <- ggplot(air_temp_data, aes(x = forecasting_date, y = value, color = variable)) +
-        geom_line() +
-        geom_point() +
-        labs(
-          title = paste("Air Temperature (°C) Trends at", location),
-          x = "Forecasting Date",
-          y = "Air Temperature (°C)"
-        ) +
-        theme_minimal()
-      
-      p2 <- ggplot(rh_data, aes(x = forecasting_date, y = value, color = variable)) +
-        geom_line() +
-        geom_point() +
-        labs(
-          title = paste("Relative Humidity Trends at", location),
-          x = "Forecasting Date",
-          y = "Relative Humidity (%)"
-        ) +
-        theme_minimal()
-      
-      grid.arrange(p1, p2, ncol = 1)
-    }else{
-      if(flag == TRUE){
-        plot.new()
-        #title("Please choose an station from the map first")
-        text(0.5, 0.5, "Please choose an station from the map to display the risk and weather trends for such location", cex = 1.5)
+    
+      if(!is.null(air_temp_data) && !is.null(rh_data)){
+        # Prepare air temperature data.
+        p1 <- ggplot(air_temp_data, aes(x = forecasting_date, y = value, color = variable)) +
+          geom_line() +
+          geom_point() +
+          labs(
+            title = paste("Air Temperature (°C) Trends at", location),
+            x = "Forecasting Date",
+            y = "Air Temperature (°C)"
+          ) +
+          theme_minimal()
+        
+        p2 <- ggplot(rh_data, aes(x = forecasting_date, y = value, color = variable)) +
+          geom_line() +
+          geom_point() +
+          labs(
+            title = paste("Relative Humidity Trends at", location),
+            x = "Forecasting Date",
+            y = "Relative Humidity (%)"
+          ) +
+          theme_minimal()
+        
+        grid.arrange(p1, p2, ncol = 1)
+      }else{
+        if(flag == TRUE){
+          plot.new()
+          #title("Please choose an station from the map first")
+          text(0.5, 0.5, "Please choose an station from the map to display the risk and weather trends for such location", cex = 1.5)
+        }
       }
     }
   }, width = 800, height = 600)
@@ -967,7 +958,7 @@ server <- function(input, output, session) {
   output$download_stations <- downloadHandler(
     # Dynamically generate the filename
     filename = function() {
-      paste0("Report_ag_forecasting_", Sys.Date(), ".csv")
+      paste0("Report_ag_forecasting_", input$forecasting_date, ".csv")
     },
     
     content = function(file) {
@@ -1005,7 +996,7 @@ server <- function(input, output, session) {
       #data <- historical_data %>% filter(as.Date(forecasting_date) == as.Date(input$forecasting_date) 
       #                                   & (station_id==shared_data$w_station_id))
       if (!is.null(shared_data$w_station_id)) {
-        data <- forecast_data() %>% filter(station_name == shared_data$w_station_id)
+        data <- forecast_data() %>% filter(station_id == shared_data$w_station_id)
         location_name <- paste0(data$station_name[1], " Station")
       }else{
         data <- shared_data$ibm_data
