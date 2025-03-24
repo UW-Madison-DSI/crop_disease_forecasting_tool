@@ -11,13 +11,14 @@ popup_content_str <- paste0(
   "<strong>Location:</strong> %s<br>",
   "<strong>Region:</strong> %s<br>",
   "<strong>Forecasting Date:</strong> %s<br>",
-  "<strong>Risk Models</strong><br>",
-  "<strong>Tarspot:</strong> %s<br>",
-  "<strong>Frogeye Leaf Spot:</strong> %s<br>",
-  "<strong>Gray Leaf Spot:</strong> %s<br>",
-  "<strong>Whitemold Non-Irrigated Class:</strong> %s<br>",
-  "<strong>Whitemold Irrigation (30in) Class:</strong> %s<br>",
-  "<strong>Whitemold Irrigation (15in) Class:</strong> %s"
+  "<strong><mark>Corn Crop Disease Forecasting</mark></strong><br>",
+  "<strong>Tarspot Risk:</strong> %s<br>",
+  "<strong>Frogeye Leaf Spot Risk:</strong> %s<br>",
+  "<strong>Gray Leaf Spot Risk:</strong> %s<br>",
+  "<strong><mark>Soybean Crop Disease Forecasting</mark></strong><br>",
+  "<strong>Whitemold Non-Irrigated Risk:</strong> %s<br>",
+  "<strong>Whitemold Irrigation (30in) Risk:</strong> %s<br>",
+  "<strong>Whitemold Irrigation (15in) Risk:</strong> %s"
 )
 
 
