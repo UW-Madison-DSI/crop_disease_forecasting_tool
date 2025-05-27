@@ -2,13 +2,6 @@ options(repos = c(
   CRAN = "https://cran.rstudio.com/",
   RSPM = "https://packagemanager.rstudio.com/all/latest"
 ))
-install.packages("memoise")
-#Sys.setenv(PKG_CONFIG = "/usr/local/bin/pkg-config")
-renv::install("sf")
-renv::install("tigris")
-renv::snapshot()
-
-#install.packages("tigris", dependencies = TRUE)
 
 library(shinyWidgets)
 library(shiny)
