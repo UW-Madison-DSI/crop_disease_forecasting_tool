@@ -1,25 +1,6 @@
-about_page<-fluidPage(
+about_page1<-fluidPage(
   h3("About the Agricultural Forecasting and Advisory System"),
   p("This application provides weather-based forecasting and risk assessments for various crop diseases, helping farmers, crop advisors, and agricultural researchers to make data-driven decisions."),
-  hr(),
-  h4("Features:"),
-  tags$ul(
-    tags$li("Interactive weather map with disease risk visualization."),
-    tags$li("Dynamic data for different forecasting dates and diseases."),
-    tags$li("Downloadable reports.")
-  ),
-  hr(),
-  h4("How It Works:"),
-  p("The application uses data from WiscoNet and forecasting Models that were developed by researchers in the University of Madison-Wisconsin to forecast the risk of crop diseases. In this app:"),
-  tags$ul(
-    tags$li("The 'Disease Forecasting' tab provides a risk map on the Wisconet Stations and the option to choose a pin to retrieve forecasting information."),
-    tags$ul(
-      tags$li("Select a disease and forecasting date to view the corresponding risk map."),
-      tags$li("Click on stations to view more details and center the map on specific locations. This action will trigger weather charts and display downloadable information in the tabs above.")
-    ),
-    tags$li("The 'Summary' tab provides detailed information about the selected station or location, including disease forecasts and risk trends for the past 7 days. A PDF report is available for the Station Specification."),
-    tags$li("The 'Downloads' tab allows users to download a CSV file of the forecast data for the selected station or location.")
-  ),
   hr(),
   h4("Credits:"),
   p("This project is supported by the",
@@ -37,19 +18,6 @@ about_page<-fluidPage(
       "Development support for this tool was made by the ",
       tags$a(href = "https://dsi.wisc.edu", "Data Science Institute at the University of Madison-Wisconsin.", target = "_blank")
     )
-  ),
-  hr(),
-  h4("Plant Disease Models"),
-  p("Selected field crops and vegetable disease model outputs are provided. These models are subject to change. The calculations used to generate each model prediction can be viewed in the source code."),
-  tags$ul(
-    tags$li('White mold (aka Sporecaster) - dry, irrigated 15-inch row spacing, irrigated 30-inch row spacing - probability of apothecial presence. More information: ',
-            tags$a(href = 'https://cropprotectionnetwork.org/news/smartphone-application-to-forecast-white-mold-in-soybean-now-available-to-growers',"Link", target = "_blank")),
-    tags$li('Frogeye Leaf Spot of soybean - probability of presence. More information: ',
-            tags$a(href = 'https://cropprotectionnetwork.org/encyclopedia/frogeye-leaf-spot-of-soybean',"Link", target = "_blank")),
-    tags$li('Gray Leaf Spot of corn - probability of presence. More information: ',
-            tags$a(href = 'https://cropprotectionnetwork.org/encyclopedia/gray-leaf-spot-of-corn',"Link", target = "_blank")),
-    tags$li('Tar Spot of corn (aka Tarspotter) - probability of presence. More information:',
-            tags$a(href = 'https://cropprotectionnetwork.org/encyclopedia/tar-spot-of-corn',"Link", target = "_blank"))
   ),
   hr(),
   h4("Contact Us:"),
@@ -105,26 +73,26 @@ about_page<-fluidPage(
   hr(),
   h4("For Developers:"),
   tags$div(
-    style = "margin-bottom: 16px;",  # Add spacing between items
+    style = "margin-bottom: 16px;",
+    
+    # First URL
     tags$div(
       tags$span(
         tags$img(
-          src = "https://cdn-icons-png.flaticon.com/512/25/25231.png", 
-          alt = "GitHub Icon", 
-          style = "width: 16px; height: 16px; margin-right: 8px;"
+          src    = "https://cdn-icons-png.flaticon.com/512/25/25231.png",
+          alt    = "GitHub Icon",
+          style  = "width: 16px; height: 16px; margin-right: 8px;"
         ),
-        "Visit our GitHub repository: ",
         tags$a(
-          href = "https://github.com/UW-Madison-DSI/corn_disease_forecast_api.git",
-          target = "_blank",  # Open link in a new tab
-          style = "text-decoration: none; color: #007BFF;",  # Link styling
-          "UW-Madison DSI GitHub Repository"
+          href   = "https://github.com/UW-Madison-DSI/ag_forecasting_app.git",
+          target = "_blank",
+          style  = "text-decoration: none; color: #007BFF;",
+          "UW-Madison DSI Ag Forecasting (this) APP"
         )
       )
-    )
-  ),
-  tags$div(
-    style = "margin-bottom: 16px;",  # Add spacing between items
+    ),
+    
+    # Second URL
     tags$div(
       tags$span(
         tags$img(
@@ -132,14 +100,41 @@ about_page<-fluidPage(
           alt = "API Icon", 
           style = "width: 24px; height: 24px; margin-right: 8px;"
         ),
-        "Visit our API: ",
         tags$a(
-          href = "https://github.com/UW-Madison-DSI/pywisconet.git",
-          target = "_blank",  # Open link in a new tab
-          style = "text-decoration: none; color: #007BFF;",  # Link styling
-          "Forecasting Disease API"
+          href   = "https://github.com/UW-Madison-DSI/ag_forecasting_api.git",
+          target = "_blank",
+          style  = "text-decoration: none; color: #007BFF;",
+          "UW-Madison DSI Ag Forecasting API"
         )
       )
     )
+  ),
+  hr(),
+  h4("How It Works:"),
+  p("The application uses data from WiscoNet and forecasting Models that were developed by researchers in the University of Madison-Wisconsin to forecast the risk of crop diseases. In this app:"),
+  tags$ul(
+    tags$li("The 'Ag Forecasting' tab provides a risk map on the Wisconet Stations and the option to choose a pin to retrieve forecasting information."),
+    tags$ul(
+      tags$li("Keep 'Pin my location' OFF if you want to select a Wisconet weather station, or turn it ON to pin your location in map."),
+      tags$li("Select a crop disease and forecasting date to view the corresponding risk map."),
+      tags$li("Select a wisconet weather station by double clicking on it, this will display a pop up with the summary of crop diseases and risk."),
+      tags$li("If you choosed to pin your location, please pin it in the map and push 'Run Model', this will display a summary of crop diseases and risk at the top of the app."),
+    ),
+    tags$li("The 'Weather' tab provides detailed information about the selected station or location, including disease forecasts and risk trends for the past 7 days. A PDF report is available for the Station Specification."),
+  )
+)
+
+about_page2<-fluidPage(
+  h4("Plant Disease Models"),
+  p("Selected field crops and vegetable disease model outputs are provided. These models are subject to change. The calculations used to generate each model prediction can be viewed in the source code."),
+  tags$ul(
+    tags$li('White mold (aka Sporecaster) - dry, irrigated 15-inch row spacing, irrigated 30-inch row spacing - probability of apothecial presence. More information: ',
+            tags$a(href = 'https://cropprotectionnetwork.org/news/smartphone-application-to-forecast-white-mold-in-soybean-now-available-to-growers',"Link", target = "_blank")),
+    tags$li('Frogeye Leaf Spot of soybean - probability of presence. More information: ',
+            tags$a(href = 'https://cropprotectionnetwork.org/encyclopedia/frogeye-leaf-spot-of-soybean',"Link", target = "_blank")),
+    tags$li('Gray Leaf Spot of corn - probability of presence. More information: ',
+            tags$a(href = 'https://cropprotectionnetwork.org/encyclopedia/gray-leaf-spot-of-corn',"Link", target = "_blank")),
+    tags$li('Tar Spot of corn (aka Tarspotter) - probability of presence. More information:',
+            tags$a(href = 'https://cropprotectionnetwork.org/encyclopedia/tar-spot-of-corn',"Link", target = "_blank"))
   )
 )
