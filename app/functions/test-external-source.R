@@ -43,19 +43,6 @@ fetch_forecasting_data_uncached <- function(forecast_date) {
         mutate(
           popup_content = sprintf(
             popup_content_str,
-<<<<<<< HEAD:app/functions/test-external-source.R
-            station_name,
-            location,
-            region,
-            forecasting_date,
-            tarspot_risk_class,
-            fe_risk_class,
-            gls_risk_class,
-            whitemold_irr_15in_class,
-            whitemold_irr_30in_class,
-            whitemold_nirr_risk_class,
-            whitemold_nirr_risk
-=======
             as.character(station_name),
             as.character(location),
             as.character(region),
@@ -66,7 +53,6 @@ fetch_forecasting_data_uncached <- function(forecast_date) {
             as.character(whitemold_nirr_risk_class),  # updated column name
             as.character(whitemold_irr_30in_class),
             as.character(whitemold_irr_15in_class)
->>>>>>> main:app/functions/1_wisconet_calls.R
           )
         )
       

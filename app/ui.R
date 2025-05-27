@@ -6,8 +6,8 @@ library(dplyr)
 library(leaflet.extras)
 library(httr)
 library(tigris)
-library(sf)
-options(tigris_use_cache = TRUE)
+#library(sf)
+#options(tigris_use_cache = TRUE)
 library(DT)
 library(shinyWidgets)
 
@@ -33,10 +33,10 @@ ui <- navbarPage(
   
   # Tab 1: Weather Map
   tabPanel(
-    "Disease Forecasting",
+    "Ag Forecasting",
     sidebarLayout(
       sidebarPanel(
-        style = "height: 800px;",
+        style = "height: 1000px;",
         div(
           class = "logo-container",
           tags$img(
@@ -54,18 +54,20 @@ ui <- navbarPage(
         ),
         hr(),
         conditionalPanel(
-          condition = "input.ibm_data == false",  # Condition to display disease selection
-          selectInput(
-            "disease_name",
-            "Select Crop Disease:",
-            choices = c(
-              "Tar Spot (Corn)" = 'tarspot',
-              "Gray Leaf Spot (Corn)" = 'gls',
-              "Frogeye Leaf Spot (Corn)" = 'fe',
-              "Whitemold Irr 30in (Soybean)" = 'whitemold_irr_30in',
-              "Whitemold Irr 15in (Soybean)" = 'whitemold_irr_15in',
-              "Whitemold Dry (Soybean)" = 'whitemold_nirr'
-            )
+          condition = "input.ibm_data == false",
+          radioButtons(
+            inputId  = "disease_name",
+            label    = "Select Disease:",
+            choices  = c(
+              "Tar Spot (🌽)"           = "tarspot",
+              "Gray Leaf Spot (🌽)"     = "gls",
+              "Frogeye Leaf Spot (🫘 Soybean)" = "fe",
+              "Whitemold Irr 30in (🫘 Soybean)" = "whitemold_irr_30in",
+              "Whitemold Irr 15in (🫘 Soybean)" = "whitemold_irr_15in",
+              "Whitemold Dry (🫘 Soybean)"     = "whitemold_nirr"
+            ),
+            selected = "tarspot",
+            inline   = TRUE   # set FALSE (default) for vertical stacking
           )
         ),
         dateInput(
@@ -75,36 +77,31 @@ ui <- navbarPage(
           min = '2024-04-02',
           max = Sys.Date()
         ),
-        actionButton(
-          inputId = "run_model_wisc", 
-          label = "Run Forecasting", 
-          class = "btn-success"
-        ),
         hr(), 
         conditionalPanel(
           condition = "input.ibm_data == false",
           h4("Crop Management"),
           p(
-            "Our model predictions are advised when air temperature is above 15°C in average from the last 30 days and the next conditions are satisfied.",
+            "Our model predictions are advised when air temperature is above 59 °F (15°C) in average from the last 30 days and the next conditions are satisfied.",
             style = "font-size: 0.6em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
           )
         ),
         # Conditional panel for Frogeye Leaf Spot
+        #conditionalPanel(
+        #  condition = "input.disease_name == 'whitemold_irr_15in' && input.ibm_data == false",
+        #  checkboxInput("flowers_present", "Are Flowers present?", value = TRUE),
+        
+        #),
         conditionalPanel(
-          condition = "input.disease_name == 'whitemold_irr_15in' && input.ibm_data == false",
-          checkboxInput("flowers_present", "Are Flowers present?", value = TRUE),
-
-        ),
-        conditionalPanel(
-          condition = "(input.disease_name == 'whitemold_irr_30in' || input.disease_name == 'whitemold_nirr') && input.ibm_data == false",
+          condition = "(input.disease_name == 'whitemold_irr_30in' || input.disease_name == 'whitemold_nirr' || input.disease_name == 'whitemold_irr_15in') && input.ibm_data == false",
           checkboxInput("flowers_present", "Are Flowers present?", value = TRUE),
           checkboxInput("row_closure", "Row Closure over threshold?", value = TRUE),
-
+          
           div(
             class = "info_tooltip",
             tags$img(
               src = "IMG_0690.svg",
-              style = "max-width: 2000px; max-height: 100px; display: block; margin: 10px auto;" # Limit height
+              style = "max-width: 2000px; max-height: 200px; display: block; margin: 10px auto;" # Limit height
             )
           )
         ),
@@ -138,7 +135,7 @@ ui <- navbarPage(
           condition = "input.ibm_data !== false",  # Ensure the condition is checking for exactly 'false'
           actionButton(
             inputId = "run_model", 
-            label = "Run Forecasting", 
+            label = "Run Model", 
             class = "btn-success"
           ),
           p(
@@ -148,22 +145,34 @@ ui <- navbarPage(
         )
       ),
       mainPanel(
-        h3("Mesonet Weather Stations", style = "font-family: 'Times New Roman', Times, serif;"),
-        leafletOutput("risk_map", height = 740),
         conditionalPanel(
-          condition = "input.ibm_data == false",
+          condition = "input.ibm_data",
+          h3(
+            "Agricultural Forecasting System based on a custom location 📍",  
+            style = "font-family: 'Arial', Times, serif;"
+          ),
           div(
-            textOutput("map_info"),
+            uiOutput("click_coordinates"),
             style = "margin-top: 10px; color: #666;"
           )
         ),
         conditionalPanel(
-          condition = "input.ibm_data != false",
+          condition = "!input.ibm_data",
+          h3(
+            "Agricultural Forecasting System based on Wisconet Weather Stations 🗼",
+            style = "font-family: 'Arial', Times, serif;"
+          )
+        ),
+        leafletOutput("risk_map", height = "740px"),
+        # “Station mode” panel shown when ibm_data is FALSE
+        conditionalPanel(
+          condition = "!input.ibm_data",
           div(
-            uiOutput('click_coordinates'),
+            textOutput("station_specifications"),
             style = "margin-top: 10px; color: #666;"
           )
         ),
+        
         conditionalPanel(
           condition = "input.ibm_data == false",
           div(
@@ -171,7 +180,18 @@ ui <- navbarPage(
             style = "margin-top: 10px; color: #666; font-size: 14px;"
           )
         ),
-        p("Daily weather data is sourced from public UW-Madison Mesonet startions and IBM.",
+        wellPanel(
+          style = "background: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin-top: 20px;",
+          h4("Download Data", style = "margin-top: 0;"),
+          p("Export the currently displayed station-level forecast data as CSV."),
+          downloadButton(
+            "download_stations",
+            label = "Download CSV",
+            class = "btn-primary",
+            style = "width: 100%;"
+          )
+        ),
+        p("Results will update after a short delay",
           style = "font-size: 0.6em; color: #777; font-style: italic; margin-top: 5px; margin-bottom: 5px;"
         )
       )
@@ -180,47 +200,82 @@ ui <- navbarPage(
   
   # Tab 2: Station Forecasting Risk and Weather Trends
   tabPanel(
-    title = "Summary",
+    title = "Weather",
     fluidPage(
-      h3("Location Summary"),
-      p("Our models are advised when the averaged daily air temperature in the last 30 days is above 15 °C."),
+      h3("Daily Weather and Crop Disease Risk Trends at the Given Location"),
       mainPanel(
         textOutput('station_specifications'),
         hr(),
-        radioButtons("disease", 
-                     label = "Choose Crop Disease",
-                     choices = c("Gray Leaf Spot", "Frog Eye Leaf Spot",
-                                 "Tar Spot",
-                                 "Whitemold Irr (30in)", 
-                                 "Whitemold Irr (15in)", 
-                                 "Whitemold No Irr"),
-                     selected = "Gray Leaf Spot",
-                     inline = TRUE),
+        selectInput(
+          "disease",
+          "Select Disease:",
+          choices = c(
+            "Tar Spot (Corn)" = 'tarspot',
+            "Gray Leaf Spot (Corn)" = 'gls',
+            "Frogeye Leaf Spot (Soybean)" = 'fe',
+            "Whitemold Irr 30in (Soybean)" = 'whitemold_irr_30in',
+            "Whitemold Irr 15in (Soybean)" = 'whitemold_irr_15in',
+            "Whitemold Dry (Soybean)" = 'whitemold_nirr'
+          )
+        ),
         hr(),
         plotOutput("risk_trend", width = "100%", height = "600px"),
         hr(),
+        radioButtons(
+          inputId  = "temp_unit",
+          label    = "Temperature Units",
+          choices  = c("°C" = "C", "°F" = "F"),
+          selected = "F",
+          inline   = TRUE
+        ),
         plotOutput("weather_trend", width = "100%", height = "600px")
       )
-    )
-  ),
-  # Tab 3: Downloads
-  tabPanel(
-    title = "Downloads",
-    fluidPage(
-      h3("Downloads"),
-      hr(),
-      p("A tabular report on weather data and risk estimates for the selected location, such as a specific station or a location pinned on the map."),
-      downloadButton("download_stations", "Download csv", 
-                     class = "btn-primary", 
-                     style = "text-align: center; margin-top: 10px;"),
-      #hr(),
-      #plotOutput('air_temperature_plot', height = "1200px", width = "100%")
     )
   ),
   
   # Tab 6: About
   tabPanel(
     title = "About",
-    about_page
+    fluidPage(
+      # your existing about_page UI (if it's HTML or markdown)
+      about_page1,
+      fluidRow(
+        column(6,
+               tags$img(
+                 src    = "wisconet.png", 
+                 style  = "width:100%; height:auto; display:block; margin:0 auto;",
+                 alt    = "Wisconet Station"
+               )
+        ),
+        column(6,
+               tags$img(
+                 src    = "pin.png", 
+                 style  = "width:100%; height:auto; display:block; margin:0 auto;",
+                 alt    = "Custom Location"
+               )
+        )
+        
+      ),
+      # maybe a caption or extra text below
+      tags$p("Forecasting Tool information based on location.",
+             style = "text-align:center; color:#666; margin-top:10px;"),
+      hr(),
+      about_page2,
+      # two side-by-side images from www/
+      fluidRow(
+        column(6,
+               tags$img(
+                 src    = "IMG_0690.PNG", 
+                 style  = "width:100%; height:auto; display:block; margin:0 auto;",
+                 alt    = "First Logo"
+               )
+        )
+      ),
+      
+      # maybe a caption or extra text below
+      tags$p("Row thresholds for soybean risk.",
+             style = "text-align:center; color:#666; margin-top:10px;")
+    )
   )
+  
 )
