@@ -59,7 +59,7 @@ custom_palette <- function(x) {
   }
 }
 
-  
+
 data_transform_risk_labels<-function(data, disease_name){
   if (disease_name == 'tarspot') {
     data$fill_color <- sapply(data$tarspot_risk_class, custom_palette)
@@ -72,10 +72,10 @@ data_transform_risk_labels<-function(data, disease_name){
     
   } else if(disease_name == 'whitemold_irr_30in'){
     data$Risk <- data$whitemold_irr_30in_risk
-
+    
   }else if(disease_name == 'whitemold_irr_15in'){
     data$Risk <- data$whitemold_irr_15in_risk
-
+    
   }else if(disease_name == 'whitemold_nirr'){
     data$Risk <- data$whitemold_nirr_risk
   }

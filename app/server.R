@@ -23,7 +23,7 @@ tryCatch({
   source("functions/1_wisconet_calls1.R")
   source("functions/2_external_source.R")
   source("functions/3_weather_plots.R") 
-  source("functions/4_pdf_template.R")
+  #source("functions/4_pdf_template.R")
   source("functions/7_data_transformations.R")
 }, error = function(e) {
   cat("Warning: Could not source one or more function files:", e$message, "\n")
