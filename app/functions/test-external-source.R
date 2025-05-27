@@ -4,13 +4,28 @@ library(jsonlite)
 library(dplyr)
 library(memoise)
 
-popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %s<br><strong>Frogeye Leaf Spot:</strong> %s<br><strong>Gray Leaf Spot:</strong> %s<br><strong>Whitemold Irrigation (30in):</strong> %s<br><strong>Whitemold Irrigation (15in):</strong> %s<br><strong>Whitemold Dry:</strong> %s"
 base_url <- "https://connect.doit.wisc.edu/pywisconet_wrapper/ag_models_wrappers/wisconet"
+
+popup_content_str <- paste0(
+  "<strong>Station:</strong> %s<br>",
+  "<strong>Location:</strong> %s<br>",
+  "<strong>Region:</strong> %s<br>",
+  "<strong>Forecasting Date:</strong> %s<br>",
+  "<strong><mark>Corn Crop Disease Forecasting</mark></strong><br>",
+  "<strong>Tarspot Risk:</strong> %s<br>",
+  "<strong>Frogeye Leaf Spot Risk:</strong> %s<br>",
+  "<strong>Gray Leaf Spot Risk:</strong> %s<br>",
+  "<strong><mark>Soybean Crop Disease Forecasting</mark></strong><br>",
+  "<strong>Whitemold Non-Irrigated Risk:</strong> %s<br>",
+  "<strong>Whitemold Irrigation (30in) Risk:</strong> %s<br>",
+  "<strong>Whitemold Irrigation (15in) Risk:</strong> %s"
+)
+
 
 # simple function not cache
 fetch_forecasting_data_uncached <- function(forecast_date) {
   tryCatch({
-    converted_date <- as.Date(forecast_date, format = "%Y-%m-%d")
+    converted_date <- as.Date(forecast_date-1, format = "%Y-%m-%d")
     init <- Sys.time()
     
     req <- request(base_url) %>%
@@ -21,12 +36,14 @@ fetch_forecasting_data_uncached <- function(forecast_date) {
       req_headers("Accept" = "application/json")
     
     response <- req_perform(req)
+  
     
     if (resp_status(response) == 200) {
-      data <- fromJSON(resp_body_string(response)) %>%
+      data <- fromJSON(resp_body_string(response)) %>% 
         mutate(
           popup_content = sprintf(
             popup_content_str,
+<<<<<<< HEAD:app/functions/test-external-source.R
             station_name,
             location,
             region,
@@ -38,6 +55,18 @@ fetch_forecasting_data_uncached <- function(forecast_date) {
             whitemold_irr_30in_class,
             whitemold_nirr_risk_class,
             whitemold_nirr_risk
+=======
+            as.character(station_name),
+            as.character(location),
+            as.character(region),
+            as.character(forecasting_date),
+            as.character(tarspot_risk_class),
+            as.character(fe_risk_class),
+            as.character(gls_risk_class),
+            as.character(whitemold_nirr_risk_class),  # updated column name
+            as.character(whitemold_irr_30in_class),
+            as.character(whitemold_irr_15in_class)
+>>>>>>> main:app/functions/1_wisconet_calls.R
           )
         )
       

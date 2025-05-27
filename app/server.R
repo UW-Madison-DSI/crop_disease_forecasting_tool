@@ -27,59 +27,30 @@ source("functions/2_external_source.R")
 
 source("functions/3_weather_plots.R") 
 source("functions/4_pdf_template.R")
-
+source("functions/6_weather_station.R")
 source("functions/7_data_transformations.R")
 
 risk_class_vector <- c("1.Low", "2.Moderate", "3.High",'Inactive')
-#popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
 
-getStationIcon <- function(risk_class) {
-  icon_color <- switch(
-    as.character(risk_class),
-    "1.Low" = "green",
-    "2.Moderate" = "orange",
-    "3.High" = "red",
-    "Inactive" = "gray",
-    "black" # default
-  )
-  
-  # Create custom marker icons
-  leaflet::makeIcon(
-    iconUrl = sprintf("https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-%s.png", icon_color),
-    iconWidth = 25, 
-    iconHeight = 41,
-    iconAnchorX = 12, 
-    iconAnchorY = 41,
-    shadowUrl = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-    shadowWidth = 41, 
-    shadowHeight = 41,
-    shadowAnchorX = 12, 
-    shadowAnchorY = 41
-  )
-}
+popup_content_str <- paste0(
+  "<strong>Station:</strong> %s<br>",
+  "<strong>Location:</strong> %s<br>",
+  "<strong>Region:</strong> %s<br>",
+  "<strong>Forecasting Date:</strong> %s<br>",
+  "<strong><mark>Crop Disease Forecasting in Corn</mark></strong><br>",
+  "<strong>Tarspot Risk:</strong> %s<br>",
+  "<strong>Frogeye Leaf Spot Risk:</strong> %s<br>",
+  "<strong>Gray Leaf Spot Risk:</strong> %s<br>",
+  "<strong><mark>Crop Disease Forecasting in Soybean</mark></strong><br>",
+  "<strong>Whitemold Non-Irrigated Risk:</strong> %s<br>",
+  "<strong>Whitemold Non-Irrigated Risk:</strong> %s<br>",
+  "<strong>Whitemold Irrigation (30in) Risk:</strong> %s<br>",
+  "<strong>Whitemold Irrigation (15in) Risk:</strong> %s<br>",
+  "<strong>Whitemold Irrigation (30in) Risk:</strong> %s<br>",
+  "<strong>Whitemold Irrigation (15in) Risk:</strong> %s"
+)
 
-library(dplyr)
-library(glue)
-
-historical_data <-
-  get(load("data/historical_data.RData")) %>%
-  mutate(
-    forecasting_date = as.Date(date) + 1,
-    popup_content = glue(
-      "<strong>Station:</strong> {station_name}<br>",
-      "<strong>Location:</strong> {location}<br>",
-      "<strong>Region:</strong> {region}<br>",
-      "<strong>Forecasting Date:</strong> {forecasting_date}<br>",
-      "<strong>Risk Models</strong><br>",
-      "<strong>Tarspot:</strong> {sprintf('%.2f%%', tarspot_risk * 100)}<br>",
-      "<strong>Frogeye Leaf Spot:</strong> {sprintf('%.2f%%', fe_risk * 100)}<br>",
-      "<strong>Gray Leaf Spot:</strong> {sprintf('%.2f%%', gls_risk * 100)}<br>",
-      "<strong>Whitemold Irrigation (no irr):</strong> {sprintf('%.2f%%', whitemold_nirr_risk * 100)}<br>",
-      "<strong>Whitemold Irrigation (30in):</strong> {sprintf('%.2f%%', whitemold_irr_30in_risk * 100)}<br>",
-      "<strong>Whitemold Irrigation (15in):</strong> {sprintf('%.2f%%', whitemold_irr_15in_risk * 100)}"
-    )
-  )
-
+historical_data <- get(load("data/historical_data.RData"))
 
 
 ########################################################## SETTINGS: WI boundary
@@ -111,9 +82,9 @@ server <- function(input, output, session) {
     lng_location = NULL,
     ibm_data = NULL,
     disease_name = 'tarspot',
-    stations_data = historical_data%>%filter(forecasting_date=='2025-03-03'),
-    this_station_data = historical_data%>%filter((forecasting_date=='2025-03-03')
-                                                & (station_id=='HNCK')),
+    stations_data = NULL, #historical_data%>%filter(forecasting_date=='2025-03-03'),
+    this_station_data = NULL,#historical_data%>%filter((forecasting_date=='2025-03-03')
+                        #                        & (station_id=='HNCK')),
     start_time = Sys.time(),
     is_loading = FALSE
   )
@@ -131,9 +102,8 @@ server <- function(input, output, session) {
       
       
     } else {
-      result <- fetch_forecasting_data("2025-03-05")
-      #result<-fetch_forecasting_data_uncached(input$forecasting_date)
-      print("here------------2")
+      result<-fetch_forecasting_data(input$forecasting_date)
+      print("<<<<<<------------->>>>>>")
       print(result)
 
     }
@@ -249,7 +219,6 @@ server <- function(input, output, session) {
         getRiskIcon(punctual_estimate$whitemold_nirr_risk_class), punctual_estimate$whitemold_nirr_risk_class
       )
       
-      
       # Display the clicked coordinates and risk information
       output$click_coordinates <- renderText({
         paste(
@@ -286,40 +255,25 @@ server <- function(input, output, session) {
     shared_data$disease_name <- input$disease_name
   })
   
-  observe({
-    # If forecast_data() is NULL => show the notification, else remove it
-    if (is.null(forecast_data())) {
-      showNotification(
-        ui = "ok...",
-        id = "loading_data_notification",   # A unique ID
-        type = "message",
-        duration = NULL                    # Stay visible until removed
-      )
-    } else {
-      removeNotification("loading_data_notification")
-    }
+  observeEvent(input$run_model_wisc, {
+    showNotification(
+      paste("Loading data for", input$forecasting_date, "..."),
+      id='loading',
+      type = "message",
+      duration = 5
+    )
   })
   
   # Make the map responsive to both data changes AND disease selection changes
   observeEvent(list(forecast_data(), input$disease_name), {
     tryCatch({
-      library(shiny)
       
-      # somewhere in your server, e.g. inside an observeEvent or onLoad
-      showNotification(
-        "Please choose a weather station by clicking a circle on the map.",
-        type        = "message",             # uses Bootstrap “info” by default…
-        duration    = 5,                  # stay until dismissed
-        closeButton = TRUE
-      )
-      
-      
-      data1 <- forecast_data()
-      #mutate(`Forecasting Date` = forecasting_date) %>%
-      print(data1)
-      data1<-data1%>%group_by(station_id) %>%
+      data1 <- forecast_data() %>%
+        mutate(`Forecasting Date` = forecasting_date) %>%
+        group_by(station_id) %>%
         filter(forecasting_date == max(forecasting_date)) %>%
         ungroup()
+      removeNotification("loading")
       # Debug print
       cat("Data retrieved, rows:", nrow(data1), "\n")
       
@@ -409,14 +363,14 @@ server <- function(input, output, session) {
                 color = ~ts_color,
                 fillColor = ~ts_color,
                 fillOpacity = 0.8,
-                radius = 12,
+                radius = 14,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
                   style = list("font-weight" = "normal", padding = "3px 8px"),
                   textsize = "12px", direction = "auto"
                 ),
-                layerId = ~station_name
+                layerId = ~station_id
               ) %>%
               addLegend(
                 position = "bottomright",
@@ -453,7 +407,7 @@ server <- function(input, output, session) {
                 color = ~fe_color,
                 fillColor = ~fe_color,
                 fillOpacity = 0.8,
-                radius = 12,
+                radius = 14,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
@@ -464,7 +418,7 @@ server <- function(input, output, session) {
               ) %>%
               addLegend(
                 position = "bottomright",
-                title = "Frog Eye Leaf Spot Risk",
+                title = "Frog Eye Risk",
                 pal = pal,
                 values = risk_class_vector,
                 opacity = 1
@@ -494,18 +448,18 @@ server <- function(input, output, session) {
                 color = ~whitemold_nirr_color,
                 fillColor = ~whitemold_nirr_color,
                 fillOpacity = 0.8,
-                radius = 12,
+                radius = 14,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
                   style = list("font-weight" = "normal", padding = "3px 8px"),
                   textsize = "12px", direction = "auto"
                 ),
-                layerId = ~station_name
+                layerId = ~station_id
               ) %>%
               addLegend(
                 position = "bottomright",
-                title = "White Mold Dry Risk",
+                title = "Whitemold Dry Risk",
                 pal = pal,
                 values = risk_class_vector,
                 opacity = 1
@@ -513,18 +467,28 @@ server <- function(input, output, session) {
           }
           
           # For whitemold irrigated risk
-          if (input$disease_name %in% c("whitemold_irr_30in")) {
-            
-            filtered_data <- data1 %>% filter(whitemold_irr_30in_class %in% risk_class_vector)
-            if (nrow(filtered_data) == 0) {
-              cat("WARNING: No valid whitemold_irr_class data found after filtering\n")
-              return()
+          if (input$disease_name %in% c("whitemold_irr_30in","whitemold_irr_15in")) {
+            if (input$disease_name %in% c("whitemold_irr_30in")){
+              filtered_data <- data1 %>% filter(whitemold_irr_30in_class %in% risk_class_vector)
+              if (nrow(filtered_data) == 0) {
+                cat("WARNING: No valid whitemold_irr_class data found after filtering\n")
+                return()
+              }
+              
+              filtered_data$whitemold_irr_30in_class <- factor(filtered_data$whitemold_irr_30in_class,
+                                                          levels = risk_class_vector)
+              filtered_data$whitemold_irr_color <- pal(filtered_data$whitemold_irr_30in_class)
+            }else{
+              filtered_data <- data1 %>% filter(whitemold_irr_15in_class %in% risk_class_vector)
+              if (nrow(filtered_data) == 0) {
+                cat("WARNING: No valid whitemold_irr_class data found after filtering\n")
+                return()
+              }
+              
+              filtered_data$whitemold_irr_15in_class <- factor(filtered_data$whitemold_irr_15in_class,
+                                                               levels = risk_class_vector)
+              filtered_data$whitemold_irr_color <- pal(filtered_data$whitemold_irr_15in_class)
             }
-            
-            filtered_data$whitemold_irr_30in_class <- factor(filtered_data$whitemold_irr_30in_class,
-                                                        levels = risk_class_vector)
-            filtered_data$whitemold_irr_30in_class_color <- pal(filtered_data$whitemold_irr_30in_class)
-            
             map_proxy %>%
               addCircleMarkers(
                 data = filtered_data,
@@ -534,58 +498,18 @@ server <- function(input, output, session) {
                 color = ~whitemold_irr_30in_class_color,
                 fillColor = ~whitemold_irr_30in_class_color,
                 fillOpacity = 0.8,
-                radius = 12,
+                radius = 14,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
                   style = list("font-weight" = "normal", padding = "3px 8px"),
                   textsize = "12px", direction = "auto"
                 ),
-                layerId = ~station_name
+                layerId = ~station_id
               ) %>%
               addLegend(
                 position = "bottomright",
-                title = "White mold irr 30in",
-                pal = pal,
-                values = risk_class_vector,
-                opacity = 1
-              )
-          }
-          
-          # For whitemold irrigated risk
-          if (input$disease_name %in% c("whitemold_irr_15in")) {
-            
-            filtered_data <- data1 %>% filter(whitemold_irr_15in_class %in% risk_class_vector)
-            if (nrow(filtered_data) == 0) {
-              cat("WARNING: No valid whitemold_irr_class data found after filtering\n")
-              return()
-            }
-            
-            filtered_data$whitemold_irr_15in_class <- factor(filtered_data$whitemold_irr_15in_class,
-                                                             levels = risk_class_vector)
-            filtered_data$whitemold_irr_15in_class_color <- pal(filtered_data$whitemold_irr_15in_class)
-            
-            map_proxy %>%
-              addCircleMarkers(
-                data = filtered_data,
-                lng = ~longitude,
-                lat = ~latitude,
-                popup = ~popup_content,
-                color = ~whitemold_irr_15in_class_color,
-                fillColor = ~whitemold_irr_15in_class_color,
-                fillOpacity = 0.8,
-                radius = 12,
-                weight = 1.5,
-                label = ~station_name,
-                labelOptions = labelOptions(
-                  style = list("font-weight" = "normal", padding = "3px 8px"),
-                  textsize = "12px", direction = "auto"
-                ),
-                layerId = ~station_name
-              ) %>%
-              addLegend(
-                position = "bottomright",
-                title = "White mold irr 15in",
+                title = "Whitemold Irrigation Risk",
                 pal = pal,
                 values = risk_class_vector,
                 opacity = 1
@@ -618,18 +542,18 @@ server <- function(input, output, session) {
                 color = ~gls_risk_color,
                 fillColor = ~gls_risk_color,
                 fillOpacity = 0.8,
-                radius = 16,
+                radius = 14,
                 weight = 1.5,
                 label = ~station_name,
                 labelOptions = labelOptions(
                   style = list("font-weight" = "normal", padding = "3px 8px"),
                   textsize = "12px", direction = "auto"
                 ),
-                layerId = ~station_name
+                layerId = ~station_id
               ) %>%
               addLegend(
                 position = "bottomright",
-                title = "Crop Disease Risk",
+                title = "Gray Leaf Spot",
                 pal = pal,
                 values = risk_class_vector,
                 opacity = 1
@@ -684,10 +608,11 @@ server <- function(input, output, session) {
   observeEvent(input$risk_map_marker_click, {
     click <- input$risk_map_marker_click
     shared_data$w_station_id<-click$id
+    shared_data$w_station_key<-click$id
     print(click)
     
     this_station <- shared_data$stations_data 
-    this_station <- this_station%>% filter(station_name == click$id)
+    this_station <- this_station%>% filter(station_id == click$id)
     
     shared_data$this_station_data <- this_station
     if (!is.null(click)) {
@@ -756,17 +681,23 @@ server <- function(input, output, session) {
   
   output$risk_trend <- renderPlot({
     ## Preparación de la data y definición de la ubicación
-    data_prepared <- historical_data %>% filter(station_name == 'HNCK')
+    data_prepared <- historical_data %>% filter(station_id == 'ALTN')
     location <- "HNCK Station"
     if (!is.null(shared_data$w_station_id)) {
-      data_prepared <- forecast_data() %>% filter(station_name == shared_data$w_station_id)
+      print(shared_data$w_station_id)
+      data_prepared <- forecast_data() %>% filter(station_id == shared_data$w_station_id)
+      #historical_data %>% filter(station_name == shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
-      title_txt <- paste0("Risk Trend at", shared_data$w_station_id, "Station")
+      title_txt <- paste0("Risk Trend at ", shared_data$w_station_id)
       data_selected <- data_prepared %>% 
         mutate(forecasting_date = as.Date(date, format = "%Y-%m-%d")) %>% 
-        filter(!is.na(tarspot_risk)) %>% 
-        select(forecasting_date, tarspot_risk, gls_risk, fe_risk, 
-               whitemold_irr_30in_risk, whitemold_irr_15in_risk, whitemold_nirr_risk) %>% 
+        filter(!is.na(tarspot_risk) & (station_id == shared_data$w_station_id)) %>% 
+        select(forecasting_date,station_name, tarspot_risk,tarspot_risk_class, 
+               gls_risk, gls_risk_class, 
+               fe_risk, fe_risk_class, 
+               whitemold_irr_30in_risk, whitemold_irr_30in_class, 
+               whitemold_irr_15in_risk, whitemold_irr_15in_class, 
+               whitemold_nirr_risk, whitemold_nirr_risk_class) %>% 
         rename(
           `Tar Spot` = tarspot_risk,
           `Gray Leaf Spot` = gls_risk,
@@ -787,8 +718,12 @@ server <- function(input, output, session) {
         mutate(forecasting_date = date)%>%#as.Date(date, format = "%Y-%m-%d") + 1) %>% 
         filter(!is.na(tarspot_risk)) %>% 
         mutate(across(ends_with("_risk"), as.numeric)) %>%
-        select(forecasting_date, tarspot_risk, gls_risk, fe_risk, 
-               whitemold_irr_30in_risk, whitemold_irr_15in_risk, whitemold_nirr_risk) %>% 
+        select(forecasting_date, tarspot_risk, tarspot_risk_class, 
+               gls_risk, gls_risk_class, 
+               fe_risk, fe_risk_class, 
+               whitemold_irr_30in_risk, whitemold_irr_30in_class, 
+               whitemold_irr_15in_risk, whitemold_irr_15in_class, 
+               whitemold_nirr_risk, whitemold_nirr_risk_class) %>% 
         rename(
           `Tar Spot` = tarspot_risk,
           `Gray Leaf Spot` = gls_risk,
@@ -797,6 +732,8 @@ server <- function(input, output, session) {
           `Whitemold Irr (15in)` = whitemold_irr_15in_risk,
           `Whitemold No Irr` = whitemold_nirr_risk
         )
+      print("-----------------------")
+      print(data_selected)
     }
     
     if (is.null(data_prepared) || nrow(data_prepared) == 0) {
@@ -806,21 +743,47 @@ server <- function(input, output, session) {
     } else {
       selected_diseases <- input$disease
       
+      #data_long <- data_selected %>% 
+      #  pivot_longer(
+      #    cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
+      #    names_to = "Disease",
+      #    values_to = "risk_value"
+      #  )
       data_long <- data_selected %>% 
         pivot_longer(
-          cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold No Irr", "Whitemold Irr (30in)", "Whitemold Irr (15in)"),
+          cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", 
+                   "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
           names_to = "Disease",
           values_to = "risk_value"
+        ) %>%
+        pivot_longer(
+          cols = c(tarspot_risk_class, 
+                   gls_risk_class, 
+                   fe_risk_class, 
+                   whitemold_irr_30in_class, 
+                   whitemold_irr_15in_class, 
+                   whitemold_nirr_risk_class),
+          names_to = "Risk_Class_Type",
+          values_to = "risk_class"
         )
       
       data_long$risk_value <- as.numeric(data_long$risk_value) * 100
       
-      df_subset <- data_long %>% filter(Disease %in% selected_diseases)
+      df_subset <- data_long %>% filter((Disease %in% selected_diseases))%>%
+        # This step is needed to match the risk class with the appropriate disease.
+        filter((Disease == "Tar Spot" & Risk_Class_Type == "tarspot_risk_class") |
+                 (Disease == "Gray Leaf Spot" & Risk_Class_Type == "gls_risk_class") |
+                 (Disease == "Frog Eye Leaf Spot" & Risk_Class_Type == "fe_risk_class") |
+               (Disease == "Whitemold Irr (15in)" & Risk_Class_Type == "whitemold_irr_15in_class") |
+               (Disease == "Whitemold Irr (30in)" & Risk_Class_Type == "whitemold_irr_30in_class") |
+                 (Disease == "Whitemold No Irr" & Risk_Class_Type == "whitemold_nirr_risk_class"))
       
       if (selected_diseases == 'Tar Spot') {
+        print(df_subset)
         ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = Disease)) +
-          geom_line() +
+          geom_line(size = 1.5) +
           geom_point() +
+          geom_text(aes(label = risk_class), vjust = -1, size = 4) +
           geom_hline(yintercept = 35, linetype = "dashed", color = "green") +
           geom_hline(yintercept = 50, linetype = "dashed", color = "gray50") +
           annotate("text", x = min(df_subset$forecasting_date), y = 17.5, label = "1.Low", vjust = -0.5, hjust = 0, size = 4) +
@@ -838,17 +801,18 @@ server <- function(input, output, session) {
             axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
             legend.position = "bottom"
           )
-      } else if (selected_diseases == 'Gray Leaf Spot') {
+      } else if (selected_diseases == 'Frog Eye Leaf Spot') {
         ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = Disease)) +
-          geom_line() +
-          geom_point() +
-          geom_hline(yintercept = 39, linetype = "dashed", color = "green") +
+          geom_line(size = 1.5) +
+          geom_point(size = 4) +
+          geom_text(aes(label = risk_class), vjust = -1, size = 4) +
+          geom_hline(yintercept = 50, linetype = "dashed", color = "green") +
           geom_hline(yintercept = 60, linetype = "dashed", color = "gray50") +
-          annotate("text", x = min(df_subset$forecasting_date), y = 17.5, label = "1.Low", vjust = -0.5, hjust = 0, size = 4) +
-          annotate("text", x = min(df_subset$forecasting_date), y = 42.5, label = "2.Moderate", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 37.5, label = "1.Low", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 52.5, label = "2.Moderate", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 67.5, label = "3.High", vjust = -0.5, hjust = 0, size = 4) +
           labs(
-            title = paste("Risk Trend at", shared_data$w_station_id, "Station"),
+            title = title_txt,
             x = "Forecasting Date",
             y = "Risk (%)",
             color = "Disease"
@@ -859,17 +823,62 @@ server <- function(input, output, session) {
             axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
             legend.position = "bottom"
           )
-      } else {
+      } else if (selected_diseases == 'Gray Leaf Spot') {
         ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = Disease)) +
-          geom_line() +
-          geom_point() +
+          geom_line(size = 1.5) +
+          geom_point(size = 4) +
+          geom_text(aes(label = risk_class), vjust = -1, size = 4) +
           geom_hline(yintercept = 39, linetype = "dashed", color = "green") +
           geom_hline(yintercept = 60, linetype = "dashed", color = "gray50") +
           annotate("text", x = min(df_subset$forecasting_date), y = 17.5, label = "1.Low", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 42.5, label = "2.Moderate", vjust = -0.5, hjust = 0, size = 4) +
           annotate("text", x = min(df_subset$forecasting_date), y = 67.5, label = "3.High", vjust = -0.5, hjust = 0, size = 4) +
           labs(
-            title = paste("Risk Trend at", shared_data$w_station_id, "Station"),
+            title = paste("Risk Trend at ", shared_data$w_station_id),
+            x = "Forecasting Date",
+            y = "Risk (%)",
+            color = "Disease"
+          ) +
+          theme_minimal() +
+          theme(
+            plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+            legend.position = "bottom"
+          )
+      } else if (selected_diseases == 'Whitemold No Irr') {
+        ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = Disease)) +
+          geom_line(size = 1.5) +
+          geom_point(size = 4) +
+          geom_text(aes(label = risk_class), vjust = -1, size = 4) +
+          geom_hline(yintercept = 20, linetype = "dashed", color = "green") +
+          geom_hline(yintercept = 35, linetype = "dashed", color = "gray50") +
+          annotate("text", x = min(df_subset$forecasting_date), y = 17.5, label = "1.Low", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 32.5, label = "2.Moderate", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 47.5, label = "3.High", vjust = -0.5, hjust = 0, size = 4) +
+          labs(
+            title = paste("Whitemold Dry at", shared_data$w_station_id),
+            x = "Forecasting Date",
+            y = "Risk (%)",
+            color = "Disease"
+          ) +
+          theme_minimal() +
+          theme(
+            plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+            legend.position = "bottom"
+          )
+      }else {
+        ggplot(df_subset, aes(x = forecasting_date, y = risk_value, color = Disease)) +
+          geom_line(size = 1.5) +
+          geom_point(size = 4) +
+          geom_text(aes(label = risk_class), vjust = -1, size = 4) +
+          geom_hline(yintercept = 5, linetype = "dashed", color = "green") +
+          geom_hline(yintercept = 10, linetype = "dashed", color = "gray50") +
+          annotate("text", x = min(df_subset$forecasting_date), y = 3.5, label = "1.Low", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 7.5, label = "2.Moderate", vjust = -0.5, hjust = 0, size = 4) +
+          annotate("text", x = min(df_subset$forecasting_date), y = 20.5, label = "3.High", vjust = -0.5, hjust = 0, size = 4) +
+          labs(
+            title = paste("Whitemold Not Irrigation at ", shared_data$w_station_id),
             x = "Forecasting Date",
             y = "Risk (%)",
             color = "Disease"
@@ -887,26 +896,17 @@ server <- function(input, output, session) {
   
   output$weather_trend <- renderPlot({
     # Prepare the data based on shared_data.
-    data_prepared <- historical_data %>% filter(station_name == 'ALTN')
+    data_prepared <- historical_data %>% filter(station_id == 'ALTN')
     air_temp_data <- NULL
     rh_data <- NULL
-    
+    flag = TRUE
     if (!is.null(shared_data$w_station_id)) {
-      data_prepared <- historical_data %>% filter(station_name == shared_data$w_station_id)
-      location <- paste0(shared_data$w_station_id, " Station")
-      air_temp_data <- data_prepared %>%
-        pivot_longer(
-          cols = c(contains("air_temp"), -ends_with("_f")),
-          names_to = "variable",
-          values_to = "value"
-        )
-      # Prepare relative humidity data.
-      rh_data <- data_prepared %>%
-        pivot_longer(
-          cols = contains("rh_max"),
-          names_to = "variable",
-          values_to = "value"
-        )
+      print(shared_data$w_station_id)
+      result <- plot_airtemp_30day(shared_data$w_station_id, input$forecasting_date)
+      # View the data
+      # head(result$data)
+      # Print or render the plot
+      print(result$plot)
     } else if (!is.null(shared_data$ibm_data)) {
       data_prepared <- shared_data$ibm_data
       data_prepared$forecasting_date <- as.Date(data_prepared$forecasting_date, format = '%Y-%m-%d')
@@ -924,35 +924,38 @@ server <- function(input, output, session) {
           names_to = "variable",
           values_to = "value"
         )
-    }
     
-    if(!is.null(air_temp_data) && !is.null(rh_data)){
-      # Prepare air temperature data.
-      p1 <- ggplot(air_temp_data, aes(x = forecasting_date, y = value, color = variable)) +
-        geom_line() +
-        geom_point() +
-        labs(
-          title = paste("Air Temperature (°C) Trends at", location),
-          x = "Forecasting Date",
-          y = "Air Temperature (°C)"
-        ) +
-        theme_minimal()
-      
-      p2 <- ggplot(rh_data, aes(x = forecasting_date, y = value, color = variable)) +
-        geom_line() +
-        geom_point() +
-        labs(
-          title = paste("Relative Humidity Trends at", location),
-          x = "Forecasting Date",
-          y = "Relative Humidity (%)"
-        ) +
-        theme_minimal()
-      
-      grid.arrange(p1, p2, ncol = 1)
-    }else{
-      plot.new()
-      #title("Please choose an station from the map first")
-      text(0.5, 0.5, "Please choose an station from the map to display the risk and weather trends for such location", cex = 1.5)
+    
+      if(!is.null(air_temp_data) && !is.null(rh_data)){
+        # Prepare air temperature data.
+        p1 <- ggplot(air_temp_data, aes(x = forecasting_date, y = value, color = variable)) +
+          geom_line() +
+          geom_point() +
+          labs(
+            title = paste("Air Temperature (°C) Trends at", location),
+            x = "Forecasting Date",
+            y = "Air Temperature (°C)"
+          ) +
+          theme_minimal()
+        
+        p2 <- ggplot(rh_data, aes(x = forecasting_date, y = value, color = variable)) +
+          geom_line() +
+          geom_point() +
+          labs(
+            title = paste("Relative Humidity Trends at", location),
+            x = "Forecasting Date",
+            y = "Relative Humidity (%)"
+          ) +
+          theme_minimal()
+        
+        grid.arrange(p1, p2, ncol = 1)
+      }else{
+        if(flag == TRUE){
+          plot.new()
+          #title("Please choose an station from the map first")
+          text(0.5, 0.5, "Please choose an station from the map to display the risk and weather trends for such location", cex = 1.5)
+        }
+      }
     }
   }, width = 800, height = 600)
   
@@ -961,21 +964,15 @@ server <- function(input, output, session) {
   output$download_stations <- downloadHandler(
     # Dynamically generate the filename
     filename = function() {
-      paste0("Report_", input$disease_name, "_forecasting_", Sys.Date(), ".csv")
+      paste0("Report_ag_forecasting_", input$forecasting_date, ".csv")
     },
     
     content = function(file) {
       # Fetch the data from your reactive function
       data_f <- NULL
       if(input$ibm_data==FALSE){
-        data_f <- shared_data$stations_data 
-        data_f <- data_f %>%
-          select(date, forecasting_date, location, station_name, 
-                 city, county, earliest_api_date, latitude, longitude, region, state, 
-                 station_timezone, tarspot_risk, tarspot_risk_class, gls_risk, 
-                 gls_risk_class, fe_risk, fe_risk_class, whitemold_nirr_risk,
-                 whitemold_irr_30in_risk, whitemold_irr_15in_risk) %>%
-          mutate(across(ends_with("_risk"), ~ . * 100))      
+        data_f <- forecast_data()
+             
       }else if(input$ibm_data==TRUE){
         if (!is.null(shared_data$ibm_data)) {
           # Query IBM data
@@ -1002,10 +999,16 @@ server <- function(input, output, session) {
              output$w_station_id,'_', Sys.Date(), ".pdf")
     },
     content = function(file) {
-      data <- historical_data %>% filter(as.Date(forecasting_date) == as.Date(input$forecasting_date) 
-                                         & (station_id==shared_data$w_station_id))
-
-      location_name <- paste0(data$station_name[1], " Station")
+      #data <- historical_data %>% filter(as.Date(forecasting_date) == as.Date(input$forecasting_date) 
+      #                                   & (station_id==shared_data$w_station_id))
+      if (!is.null(shared_data$w_station_id)) {
+        data <- forecast_data() %>% filter(station_id == shared_data$w_station_id)
+        location_name <- paste0(data$station_name[1], " Station")
+      }else{
+        data <- shared_data$ibm_data
+        data$forecasting_date <- as.Date(data$forecasting_date, format = '%Y-%m-%d')
+        
+      }
       
       if (is.null(data) || nrow(data) == 0) {
         showNotification("No data available to generate the report.", type = "warning")

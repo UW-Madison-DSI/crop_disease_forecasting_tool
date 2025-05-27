@@ -7,7 +7,7 @@ This open-source plant disease forecasting API and Dashboard enables proactive a
 
 ## Shiny APP
 
-Visit our [dashboard here](https://connect.doit.wisc.edu/tarspot_forecasting_app/)
+Visit our [dashboard here](https://connect.doit.wisc.edu/ag_forecasting/)
 
 ## API
 
@@ -16,14 +16,19 @@ Method: `GET`
 Response: A JSON object containing the predicted probability and underlying variables.
 
 ### API to our models in top of Wisconet and IBM:
-- Our API provides the prediction of a number of crop diseases based on historical data sourced from 1) Wisconet and 2) IBM-source. Our API is defided to retrieve the historical data and provide the forecasting risk estimates on such locations.
-[LINK](https://github.com/UW-Madison-DSI/pywisconet)
-[Endpoints](https://connect.doit.wisc.edu/pywisconet_wrapper/docs)
+Our API predicts various crop diseases using historical data sourced from Wisconet and IBM. It retrieves and processes historical records to generate risk forecasts for specific locations.
+
+- [LINK](https://github.com/UW-Madison-DSI/pywisconet)
+
+<<<<<<< HEAD
+=======
+- [Endpoints](https://connect.doit.wisc.edu/pywisconet_wrapper/docs)
 
 
+>>>>>>> main
 
 ### Usage
-See example of how to do an api call on this tool in the materials section of the repository [HERE](https://github.com/UW-Madison-DSI/corn_disease_forecast_api/blob/main/materials/example/example_api_call.R)
+See example of how to do an api call on this tool in the materials section of the repository [HERE](https://github.com/UW-Madison-DSI/crop_disease_forecasting_tool/blob/main/materials/callapi.ipynb)
 
 
 ## For Developers
