@@ -1,0 +1,36 @@
+name: R CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+
+      # Cache R library if not using a lockfile, or the lockfile-based approach
+      - name: Cache R packages
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-r-${{ hashFiles('**/DESCRIPTION') }}
+          restore-keys: ${{ runner.os }}-r-
+
+      - name: Install pak
+        run: |
+          Rscript -e 'install.packages("pak", repos = "https://cran.rstudio.com")'
+
+      - name: Install dependencies
+        run: |
+          Rscript -e 'pak::pkg_install("renv.lock")'
+
+      - name: Run a specific test
+        run: Rscript -e 'testthat::test_file("app/test/testthat/test-server-functions.R")'
+

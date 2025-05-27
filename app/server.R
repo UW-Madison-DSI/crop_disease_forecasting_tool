@@ -1,7 +1,18 @@
-options(repos = c(CRAN = "https://cran.rstudio.com/"))
-#install.packages("memoise")
+options(repos = c(
+  CRAN = "https://cran.rstudio.com/",
+  RSPM = "https://packagemanager.rstudio.com/all/latest"
+))
+install.packages("memoise")
+#Sys.setenv(PKG_CONFIG = "/usr/local/bin/pkg-config")
+renv::install("sf")
+renv::install("tigris")
+renv::snapshot()
 
+#install.packages("tigris", dependencies = TRUE)
+
+library(shinyWidgets)
 library(shiny)
+library(shinythemes)
 library(leaflet)
 library(httr)
 library(jsonlite)
@@ -18,7 +29,7 @@ library(readr)
 library(scales)
 library(later)
 
-source("functions/1_wisconet_calls.R")
+source("functions/1_wisconet_calls1.R")
 source("functions/2_external_source.R")
 
 source("functions/3_weather_plots.R") 
@@ -27,7 +38,7 @@ source("functions/4_pdf_template.R")
 source("functions/7_data_transformations.R")
 
 risk_class_vector <- c("1.Low", "2.Moderate", "3.High",'Inactive')
-popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
+#popup_content_str <- "<strong>Station:</strong> %s<br><strong>Location:</strong> %s <br><strong>Region:</strong> %s<br><strong>Forecasting Date:</strong> %s<br><strong>Risk Models</strong><br><strong>Tarspot:</strong> %.2f%%<br><strong>Frogeye Leaf Spot:</strong> %.2f%%<br><strong>Gray Leaf Spot:</strong> %.2f%%<br><strong>Whitemold Irrigation (30in):</strong> %.2f%%<br><strong>Whitemold Irrigation (15in):</strong> %.2f%%"
 
 getStationIcon <- function(risk_class) {
   icon_color <- switch(
@@ -54,23 +65,28 @@ getStationIcon <- function(risk_class) {
   )
 }
 
-historical_data <- get(load("data/historical_data.RData"))%>%
+library(dplyr)
+library(glue)
+
+historical_data <-
+  get(load("data/historical_data.RData")) %>%
   mutate(
-    forecasting_date = as.Date(date)+1,
-    popup_content = sprintf(
-      popup_content_str,
-      station_name,
-      location,
-      region,
-      forecasting_date,
-      tarspot_risk * 100,
-      fe_risk * 100,
-      gls_risk * 100,
-      whitemold_nirr_risk * 100,
-      whitemold_irr_30in_risk * 100,
-      whitemold_irr_15in_risk * 100
+    forecasting_date = as.Date(date) + 1,
+    popup_content = glue(
+      "<strong>Station:</strong> {station_name}<br>",
+      "<strong>Location:</strong> {location}<br>",
+      "<strong>Region:</strong> {region}<br>",
+      "<strong>Forecasting Date:</strong> {forecasting_date}<br>",
+      "<strong>Risk Models</strong><br>",
+      "<strong>Tarspot:</strong> {sprintf('%.2f%%', tarspot_risk * 100)}<br>",
+      "<strong>Frogeye Leaf Spot:</strong> {sprintf('%.2f%%', fe_risk * 100)}<br>",
+      "<strong>Gray Leaf Spot:</strong> {sprintf('%.2f%%', gls_risk * 100)}<br>",
+      "<strong>Whitemold Irrigation (no irr):</strong> {sprintf('%.2f%%', whitemold_nirr_risk * 100)}<br>",
+      "<strong>Whitemold Irrigation (30in):</strong> {sprintf('%.2f%%', whitemold_irr_30in_risk * 100)}<br>",
+      "<strong>Whitemold Irrigation (15in):</strong> {sprintf('%.2f%%', whitemold_irr_15in_risk * 100)}"
     )
   )
+
 
 
 ########################################################## SETTINGS: WI boundary
@@ -114,17 +130,18 @@ server <- function(input, output, session) {
     req(input$forecasting_date)  # Ensure the input is available
 
     # Convert input date to Date objects for safe comparison
-    cutoff_date <- as.Date("2022-02-21")
+    cutoff_date <- as.Date("2025-05-23")
     
     if (input$forecasting_date < "2022-02-21") {
       result<-historical_data%>% filter(forecasting_date == input$forecasting_date)%>%
                mutate(`Forecasting Date` = forecasting_date)
+      
+      
     } else {
-      result<-fetch_forecasting_data(input$forecasting_date)%>%
-        mutate(`Forecasting Date` = forecasting_date) %>%
-        group_by(station_id) %>%
-        filter(forecasting_date == max(forecasting_date)) %>%
-        ungroup()
+      result <- fetch_forecasting_data("2025-03-05")
+      #result<-fetch_forecasting_data_uncached(input$forecasting_date)
+      print("here------------2")
+      print(result)
 
     }
 
@@ -293,13 +310,23 @@ server <- function(input, output, session) {
   # Make the map responsive to both data changes AND disease selection changes
   observeEvent(list(forecast_data(), input$disease_name), {
     tryCatch({
+      library(shiny)
+      
+      # somewhere in your server, e.g. inside an observeEvent or onLoad
       showNotification(
-        ui = "Loading data...",
-        id = "loading_data_notification",   # A unique ID
-        type = "default",
-        duration = 5                    # Stay visible until removed
+        "Please choose a weather station by clicking a circle on the map.",
+        type        = "message",             # uses Bootstrap “info” by default…
+        duration    = 5,                  # stay until dismissed
+        closeButton = TRUE
       )
+      
+      
       data1 <- forecast_data()
+      #mutate(`Forecasting Date` = forecasting_date) %>%
+      print(data1)
+      data1<-data1%>%group_by(station_id) %>%
+        filter(forecasting_date == max(forecasting_date)) %>%
+        ungroup()
       # Debug print
       cat("Data retrieved, rows:", nrow(data1), "\n")
       
@@ -535,7 +562,7 @@ server <- function(input, output, session) {
           # For whitemold irrigated risk
           if (input$disease_name %in% c("whitemold_irr_15in")) {
             
-            filtered_data <- data1 %>% filter(whitemold_irr_15in_class_class %in% risk_class_vector)
+            filtered_data <- data1 %>% filter(whitemold_irr_15in_class %in% risk_class_vector)
             if (nrow(filtered_data) == 0) {
               cat("WARNING: No valid whitemold_irr_class data found after filtering\n")
               return()
@@ -739,7 +766,7 @@ server <- function(input, output, session) {
     data_prepared <- historical_data %>% filter(station_name == 'HNCK')
     location <- "HNCK Station"
     if (!is.null(shared_data$w_station_id)) {
-      data_prepared <- historical_data %>% filter(station_name == shared_data$w_station_id)
+      data_prepared <- forecast_data() %>% filter(station_name == shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
       title_txt <- paste0("Risk Trend at", shared_data$w_station_id, "Station")
       data_selected <- data_prepared %>% 
@@ -788,7 +815,7 @@ server <- function(input, output, session) {
       
       data_long <- data_selected %>% 
         pivot_longer(
-          cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold Irr (30in)", "Whitemold Irr (15in)", "Whitemold No Irr"),
+          cols = c("Tar Spot", "Gray Leaf Spot", "Frog Eye Leaf Spot", "Whitemold No Irr", "Whitemold Irr (30in)", "Whitemold Irr (15in)"),
           names_to = "Disease",
           values_to = "risk_value"
         )
@@ -872,8 +899,7 @@ server <- function(input, output, session) {
     rh_data <- NULL
     
     if (!is.null(shared_data$w_station_id)) {
-      data_prepared <- historical_data %>%
-        filter(station_name == shared_data$w_station_id)
+      data_prepared <- historical_data %>% filter(station_name == shared_data$w_station_id)
       location <- paste0(shared_data$w_station_id, " Station")
       air_temp_data <- data_prepared %>%
         pivot_longer(
