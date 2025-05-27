@@ -1,7 +1,11 @@
-options(repos = c(CRAN = "https://cran.rstudio.com/"))
-#install.packages("memoise")
+options(repos = c(
+  CRAN = "https://cran.rstudio.com/",
+  RSPM = "https://packagemanager.rstudio.com/all/latest"
+))
 
+library(shinyWidgets)
 library(shiny)
+library(shinythemes)
 library(leaflet)
 library(httr)
 library(jsonlite)
@@ -18,7 +22,7 @@ library(readr)
 library(scales)
 library(later)
 
-source("functions/1_wisconet_calls.R")
+source("functions/1_wisconet_calls1.R")
 source("functions/2_external_source.R")
 
 source("functions/3_weather_plots.R") 
@@ -27,6 +31,7 @@ source("functions/6_weather_station.R")
 source("functions/7_data_transformations.R")
 
 risk_class_vector <- c("1.Low", "2.Moderate", "3.High",'Inactive')
+
 popup_content_str <- paste0(
   "<strong>Station:</strong> %s<br>",
   "<strong>Location:</strong> %s<br>",
@@ -89,11 +94,13 @@ server <- function(input, output, session) {
     req(input$forecasting_date)  # Ensure the input is available
 
     # Convert input date to Date objects for safe comparison
-    cutoff_date <- as.Date("2022-02-21")
+    cutoff_date <- as.Date("2025-05-23")
     
     if (input$forecasting_date < "2022-02-21") {
       result<-historical_data%>% filter(forecasting_date == input$forecasting_date)%>%
                mutate(`Forecasting Date` = forecasting_date)
+      
+      
     } else {
       result<-fetch_forecasting_data(input$forecasting_date)
       print("<<<<<<------------->>>>>>")
@@ -339,17 +346,20 @@ server <- function(input, output, session) {
           
           # For tarspot risk
           if (input$disease_name %in% c("tarspot")) {
+            
             filtered_data <- data1 %>% filter(tarspot_risk_class %in% risk_class_vector)
             filtered_data$tarspot_risk_class <- factor(filtered_data$tarspot_risk_class,
                                                        levels = risk_class_vector)
             filtered_data$ts_color <- pal(filtered_data$tarspot_risk_class)
-
+            #icons_list <- lapply(filtered_data$tarspot_risk_class, getStationIcon)
+            
             map_proxy %>%
               addCircleMarkers(
                 data = filtered_data,
                 lng = ~longitude,
                 lat = ~latitude,
                 popup = ~popup_content,
+                #icon = icons_list,
                 color = ~ts_color,
                 fillColor = ~ts_color,
                 fillOpacity = 0.8,
@@ -485,8 +495,8 @@ server <- function(input, output, session) {
                 lng = ~longitude,
                 lat = ~latitude,
                 popup = ~popup_content,
-                color = ~whitemold_irr_color,
-                fillColor = ~whitemold_irr_color,
+                color = ~whitemold_irr_30in_class_color,
+                fillColor = ~whitemold_irr_30in_class_color,
                 fillOpacity = 0.8,
                 radius = 14,
                 weight = 1.5,
@@ -654,10 +664,6 @@ server <- function(input, output, session) {
             "", 
             paste("situated in", data$location[1], ",", data$region[1], "Region,", data$state[1])
           )
-          
-          #date_obj <- as.Date(earliest_api_date, format = "%Y-%m-%d")  
-          # Format for user-friendly reading
-          user_friendly_date <- format(date_obj, "%B %d, %Y")
           
           paste(
             station, "Station,", location, "."

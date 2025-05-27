@@ -148,7 +148,8 @@ ui <- navbarPage(
         )
       ),
       mainPanel(
-        leafletOutput("risk_map", height = 800),
+        h3("Mesonet Weather Stations", style = "font-family: 'Times New Roman', Times, serif;"),
+        leafletOutput("risk_map", height = 740),
         conditionalPanel(
           condition = "input.ibm_data == false",
           div(

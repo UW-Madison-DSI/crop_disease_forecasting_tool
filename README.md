@@ -20,9 +20,12 @@ Our API predicts various crop diseases using historical data sourced from Wiscon
 
 - [LINK](https://github.com/UW-Madison-DSI/pywisconet)
 
+<<<<<<< HEAD
+=======
 - [Endpoints](https://connect.doit.wisc.edu/pywisconet_wrapper/docs)
 
 
+>>>>>>> main
 
 ### Usage
 See example of how to do an api call on this tool in the materials section of the repository [HERE](https://github.com/UW-Madison-DSI/crop_disease_forecasting_tool/blob/main/materials/callapi.ipynb)
