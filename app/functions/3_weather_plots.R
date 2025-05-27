@@ -7,6 +7,10 @@ library(lubridate)
 library(tidyr)
 library(ggplot2)
 
+library(shinyWidgets)
+library(shiny)
+library(shinythemes)
+
 #############################################################################################  
 # function to standarize the risk models into a pivot tabular object and then plot the risk functions
 seven_days_trend_plot <- function(data_prepared, location, selected_diseases){
@@ -35,7 +39,7 @@ seven_days_trend_plot <- function(data_prepared, location, selected_diseases){
                  values_to = "risk_value") #%>% filter(`Disease Model` %in% disease_choices)
   data_long$risk_value <- data_long$risk_value*100
   df_subset <- data_long %>% filter(`Disease Model` %in% c(selected_diseases))
-
+  
   # Plot the trend of the specified risk variables over time
   ggplot(df_subset, aes(x = date, y = risk_value, color = `Disease Model`)) +
     geom_line() +
