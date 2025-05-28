@@ -1,0 +1,28 @@
+FROM rocker/shiny:4.3.0
+
+# 0) (Optional) Force APT to use HTTPS mirrors
+RUN sed -i \
+    -e 's|http://archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' \
+    -e 's|http://security.ubuntu.com/ubuntu|https://security.ubuntu.com/ubuntu|g' \
+    /etc/apt/sources.list
+
+# 1) (If HTTPS alone doesn’t solve it) allow insecure repos  
+#    This will let apt update even if signatures look “invalid.”
+RUN printf 'Acquire::AllowInsecureRepositories "true";\n' \
+           'Acquire::AllowDowngradeToInsecureRepositories "true";\n' \
+       > /etc/apt/apt.conf.d/99allow-insecure
+
+# 2) Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libcurl4-gnutls-dev libssl-dev libxml2-dev libxt6 \
+      curl wget ca-certificates \
+      libgdal-dev libproj-dev libgeos-dev libudunits2-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3) Install all your R packages in one go
+RUN R -e "install.packages(c('shiny','shinydashboard','DT','plotly','dplyr','ggplot2','shinyWidgets','shinythemes','leaflet','leaflet.extras','tigris','sf','httr','httr2','jsonlite','gridExtra','reshape2','readr','scales','later'),repos='https://cran.rstudio.com/',dependencies=TRUE)"
+
+# 4) Copy your app and fix perms
+COPY . /srv/shiny-server/
+RUN chown -R shiny:shiny /srv/shiny-server/

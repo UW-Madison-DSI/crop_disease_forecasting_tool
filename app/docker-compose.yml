@@ -1,0 +1,68 @@
+version: "3.8"
+
+services:
+  ag_shiny_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ag_shiny_app
+    expose:
+      - "3838"
+    environment:
+      - APPLICATION_LOGS_TO_STDOUT=false
+      - SHINY_LOG_STDERR=1
+      - R_SHINY_PORT=3838
+      - R_SHINY_HOST=0.0.0.0
+      # Add memory limits for R processes
+      - R_MAX_MEM_SIZE=2g
+      - SHINY_SERVER_LOGGING=1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ag_shiny_app.rule=Host(`ag-forecasting-app.services.dsi.wisc.edu`)"
+      - "traefik.http.routers.ag_shiny_app.entrypoints=websecure"
+      - "traefik.http.routers.ag_shiny_app.tls=true"
+      - "traefik.http.routers.ag_shiny_app.tls.certresolver=myresolver"
+      - "traefik.http.services.ag_shiny_app.loadbalancer.server.port=3838"
+      # Add middleware for better handling
+      - "traefik.http.routers.ag_shiny_app.middlewares=ag-shiny-headers"
+      - "traefik.http.middlewares.ag-shiny-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+    networks:
+      - traefik_network
+    restart: unless-stopped
+    
+    # Resource limits to prevent container from consuming too much memory/CPU
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Improved health check
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3838/ || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    
+    # Volume for persistent logs (optional)
+    volumes:
+      - shiny_logs:/var/log/shiny-server
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp:size=100M,noexec,nosuid,nodev
+
+networks:
+  traefik_network:
+    external: true
+
+volumes:
+  shiny_logs:
+    driver: local
